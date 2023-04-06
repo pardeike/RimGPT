@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26730.8
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{1C3E372A-16D1-47D7-865E-BAB22551B035}") = "RimGPT", "Source\RimGPT.csproj", "{B0D46BB5-08FF-4E04-9EFD-3E32E38A9CC2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B0D46BB5-08FF-4E04-9EFD-3E32E38A9CC2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B0D46BB5-08FF-4E04-9EFD-3E32E38A9CC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B0D46BB5-08FF-4E04-9EFD-3E32E38A9CC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B0D46BB5-08FF-4E04-9EFD-3E32E38A9CC2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {75F441B3-A247-4859-9905-6A3E6B8162E4}
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		Policies = $0
+		$0.DotNetNamingPolicy = $1
+		$1.DirectoryNamespaceAssociation = None
+		$1.ResourceNamePolicy = FileFormatDefault
+		version = 1.0
+	EndGlobalSection
+EndGlobal
