@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using UnityEngine;
 using Verse;
-using static Verse.HediffCompProperties_RandomizeSeverityPhases;
 
 namespace RimGPT
 {
@@ -14,26 +15,23 @@ namespace RimGPT
         public void RemoveFromStart(int max)
         {
             var count = Math.Min(max, Count);
-            for (int i = 0; i < count; i++)
-                RemoveAt(0);
+            for (int i = 0; i < count; i++) RemoveAt(0);
         }
     }
 
     public static class PhraseManager
     {
-        public const int batchSize = 25;
-        public const int minDelayTicks = 5000;
-        public const int maxDelayTicks = 15000;
-
         public static OrderedHashSet<string> phrases = new();
+        public static readonly Regex tagRemover = new Regex("<color.+?>(.+?)</(?:color)?>", RegexOptions.Singleline);
 
         public static void Add(string phrase)
         {
+            phrase = tagRemover.Replace(phrase, "$1");
             lock (phrases)
             {
                 if (phrases.Contains(phrase)) return;
                 phrases.Add(phrase);
-                Log.Warning(phrase);
+                Log.Message(phrase);
             }
         }
 
@@ -42,12 +40,12 @@ namespace RimGPT
             string[] observations;
             lock (phrases)
             {
-                observations = phrases.Take(batchSize).ToArray();
-                phrases.RemoveFromStart(batchSize);
+                observations = phrases.Take(Configuration.phraseBatchSize).ToArray();
+                phrases.RemoveFromStart(Configuration.phraseBatchSize);
             }
             if (observations.Length == 0) return false;
             var result = await AI.Evaluate(observations);
-            await TTS.PlayAzure(result);
+            await TTS.PlayAzure(result, "en-US-AriaNeural", "Chat");
             return true;
         }
 
@@ -60,8 +58,8 @@ namespace RimGPT
                 {
                     await Task.Delay(delay);
                     delay += await Process() ? 1000 : -1000;
-                    if (delay < minDelayTicks) delay = minDelayTicks;
-                    if (delay > maxDelayTicks) delay = maxDelayTicks;
+                    if (delay < Configuration.phraseDelayMin) delay = Configuration.phraseDelayMin;
+                    if (delay > Configuration.phraseDelayMax) delay = Configuration.phraseDelayMax;
                 }
             });
         }

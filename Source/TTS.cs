@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using System.Text;
 using System;
 using System.Xml.Linq;
+using Verse;
+using Kevsoft.Ssml;
 
 namespace RimGPT
 {
@@ -34,6 +36,11 @@ namespace RimGPT
                 gameObject2.transform.parent = gameObject.transform;
                 gameObject2.transform.localPosition = Vector3.zero;
                 audioSource = AudioSourceMaker.NewAudioSourceOn(gameObject2);
+                audioSource.bypassEffects = true;
+                audioSource.bypassListenerEffects = true;
+                audioSource.bypassReverbZones = true;
+                audioSource.ignoreListenerVolume = true;
+                audioSource.volume = 1;
             }
             return audioSource;
         }
@@ -44,24 +51,24 @@ namespace RimGPT
             var asyncOperation = request.SendWebRequest();
             while (!asyncOperation.isDone)
                 await Task.Yield();
+            // Log.Warning($"Status DispatchFormPost {request.responseCode}");
             return JsonConvert.DeserializeObject<T>(request.downloadHandler.text);
         }
 
         public static async Task<AudioClip> AudioClipFromAzure(string path, string text, string voice, string style)
         {
-            var speakElement = new XElement("speak", new XAttribute("version", "1.0"), new XAttribute(XNamespace.Xml + "lang", "en-US"));
-            var voiceElement = new XElement("voice", new XAttribute(XNamespace.Xml + "lang", "en-US"), new XAttribute("name", voice), new XAttribute("style", style), new XText(text));
-            speakElement.Add(voiceElement);
-            using var request = UnityWebRequest.Put(path, Encoding.Default.GetBytes(speakElement.ToString()));
+            var xml = await new Ssml().Say(text).Emphasised().AsVoice(voice, style).ToStringAsync();
+            using var request = UnityWebRequest.Put(path, Encoding.Default.GetBytes(xml));
             using var downloadHandlerAudioClip = new DownloadHandlerAudioClip(path, AudioType.MPEG);
             request.method = "POST";
-            request.SetRequestHeader("Ocp-Apim-Subscription-Key", Environment.GetEnvironmentVariable("AZURE_SPEECH_KEY"));
+            request.SetRequestHeader("Ocp-Apim-Subscription-Key", Configuration.azureSpeechKey);
             request.SetRequestHeader("Content-Type", "application/ssml+xml");
             request.SetRequestHeader("X-Microsoft-OutputFormat", "audio-16khz-64kbitrate-mono-mp3");
             request.downloadHandler = downloadHandlerAudioClip;
             var asyncOperation = request.SendWebRequest();
             while (!asyncOperation.isDone)
                 await Task.Yield();
+            // Log.Warning($"Status AudioClipFromAzure {request.responseCode}");
             return downloadHandlerAudioClip.audioClip;
         }
 
@@ -71,6 +78,7 @@ namespace RimGPT
             var asyncOperation = request.SendWebRequest();
             while (!asyncOperation.isDone)
                 await Task.Yield();
+            // Log.Warning($"Status DownloadAudioClip {request.responseCode}");
             return DownloadHandlerAudioClip.GetContent(request);
         }
 
@@ -87,8 +95,7 @@ namespace RimGPT
 
         public static async Task PlayAzure(string text, string voice = "en-US-TonyNeural", string style = "Default")
         {
-            var region = Environment.GetEnvironmentVariable("AZURE_SPEECH_REGION");
-            var audioClip = await AudioClipFromAzure($"https://{region}.tts.speech.microsoft.com/cognitiveservices/v1", text, voice, style);
+            var audioClip = await AudioClipFromAzure($"https://{Configuration.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices/v1", text, voice, style);
             GetAudioSource().PlayOneShot(audioClip);
             await Task.Delay((int)(audioClip.length * 1000));
         }
