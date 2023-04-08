@@ -6,16 +6,13 @@ using System.Linq;
 using UnityEngine;
 using Verse;
 using Verse.AI;
+using static Verse.DamageWorker;
 
 // Things to report:
-// colonists breaking
 // injuries
 // raider ai
 // player changes to config
 // player designating (buttons & construction)
-// messages top left
-// messages right edge
-// X vs Y message in the log (when X is not a colonist)
 
 namespace RimGPT
 {
@@ -23,17 +20,6 @@ namespace RimGPT
     [HarmonyPatch(new Type[] { typeof(Job), typeof(JobCondition), typeof(ThinkNode), typeof(bool), typeof(bool), typeof(ThinkTreeDef), typeof(JobTag?), typeof(bool), typeof(bool), typeof(bool?), typeof(bool), typeof(bool) })]
     public static class Pawn_JobTracker_StartJob_Patch
     {
-        static string GetPawnType(Pawn pawn)
-        {
-            if (pawn.HostileTo(Faction.OfPlayer))
-            {
-                if (pawn.RaceProps.IsMechanoid) return "Mech";
-                else return "Enemy";
-            }
-            if (pawn.IsColonist) return "Colonist";
-            return "Visitor";
-        }
-
         static string GetTarget(Job job)
         {
             if (job.targetA.IsValid == false) return "";
@@ -51,12 +37,25 @@ namespace RimGPT
 
             var job = curDriver.job;
             if (job == null) return;
+
+            var workType = job.workGiverDef?.workType;
+            if (workType == WorkTypeDefOf.Hauling) return;
+            if (workType == WorkTypeDefOf.Construction) return;
+            if (workType == WorkTypeDefOf.PlantCutting) return;
+            if (workType == WorkTypeDefOf.Mining) return;
+            if (workType == Defs.Cleaning) return;
+
             var defName = job.def.defName;
             if (defName == null) return;
             if (defName.StartsWith("Wait")) return;
             if (defName.StartsWith("Goto")) return;
 
-            PhraseManager.Add($"{GetPawnType(pawn)} {pawn.LabelShortCap} {curDriver.GetReport()}");
+            var report = curDriver.GetReport();
+            report = report.Replace(pawn.LabelShortCap, pawn.NameAndType());
+            var target = job.targetA.Thing as Pawn;
+            if (target != null) report = report.Replace(target.LabelShortCap, target.NameAndType());
+
+            PhraseManager.Add($"{pawn.NameAndType()} {report}");
         }
 
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
@@ -74,27 +73,18 @@ namespace RimGPT
     {
         public static void Postfix(LogEntry entry)
         {
-            Pawn pawn = null;
+            Tools.ExtractPawnsFromLog(entry, out var from, out var to);
 
-            if (entry is BattleLogEntry_Event @event)
-                pawn = @event.initiatorPawn;
-            else if (entry is BattleLogEntry_DamageTaken damage)
-                pawn = damage.initiatorPawn;
-            else if (entry is BattleLogEntry_ExplosionImpact explosion)
-                pawn = explosion.initiatorPawn;
-            else if (entry is BattleLogEntry_MeleeCombat melee)
-                pawn = melee.initiator;
-            else if (entry is BattleLogEntry_RangedFire fire)
-                pawn = fire.initiatorPawn;
-            else if (entry is BattleLogEntry_RangedImpact impact)
-                pawn = impact.initiatorPawn;
-            else if (entry is BattleLogEntry_StateTransition transition)
-                pawn = transition.subjectPawn;
-
-            if (pawn == null || pawn.IsColonist == false) return;
-            var text = entry.ToGameStringFromPOV(pawn, false);
-            PhraseManager.Add(text);
-            return;
+            if (from?.IsColonist == true)
+            {
+                var text = entry.ToGameStringFromPOVWithType(from, to);
+                PhraseManager.Add(text);
+            }
+            if (to?.IsColonist == true)
+            {
+                var text = entry.ToGameStringFromPOVWithType(to, from);
+                PhraseManager.Add(text);
+            }
         }
     }
 
@@ -104,13 +94,18 @@ namespace RimGPT
     {
         public static void Postfix(LogEntry entry)
         {
-            if (entry is not PlayLogEntry_Interaction interaction)
-                return;
-            var pawn = interaction.initiator;
-            if (pawn == null || pawn.IsColonist == false)
-                return;
-            var text = entry.ToGameStringFromPOV(pawn, false);
-            PhraseManager.Add(text);
+            Tools.ExtractPawnsFromLog(entry, out var from, out var to);
+
+            if (from?.IsColonist == true)
+            {
+                var text = entry.ToGameStringFromPOVWithType(from, to);
+                PhraseManager.Add(text);
+            }
+            if (to?.IsColonist == true)
+            {
+                var text = entry.ToGameStringFromPOVWithType(to, from);
+                PhraseManager.Add(text);
+            }
         }
     }
 
@@ -125,7 +120,7 @@ namespace RimGPT
                 return;
             var pawn = pawns.First();
             text = text.Replace("\n", " ");
-            PhraseManager.Add($"{pawn.LabelShortCap} thought \"{text}\"");
+            PhraseManager.Add($"{pawn.NameAndType()}: \"{text}\"");
         }
     }
 
@@ -136,14 +131,63 @@ namespace RimGPT
         public static void Postfix(Letter let)
         {
             if (let.CanShowInLetterStack == false) return;
-            var c = let.def.color;
-            var d1 = c.r - c.g;
-            var a1 = Mathf.Abs(d1);
-            var d2 = c.r - c.b;
-            var a2 = Mathf.Abs(d2);
+            var label = let.Label;
             var text = let.GetMouseoverText().Replace("\n", " ");
-            var prefix = a1 < 0.125f && a2 < 0.125f ? "" : (d1 < 0 && d2 < 0 ? "Good news: " : "Bad news: ");
-            PhraseManager.Add(prefix + text);
+            PhraseManager.Add($"{Tools.Strings.information}: {label} - {text}");
+        }
+    }
+
+    [HarmonyPatch(typeof(AlertsReadout), nameof(AlertsReadout.CheckAddOrRemoveAlert))]
+    public static class AlertsReadout_CheckAddOrRemoveAlert_Patch
+    {
+        public static void Prefix(Alert alert, List<Alert> ___activeAlerts, out (bool, string) __state)
+        {
+            __state = (___activeAlerts.Contains(alert), alert.Label);
+        }
+
+        public static void Postfix(Alert alert, List<Alert> ___activeAlerts, (bool, string) __state)
+        {
+            var wasInList = __state.Item1;
+            var isInList = ___activeAlerts.Contains(alert);
+            if (wasInList == false && isInList)
+                PhraseManager.Add($"{Tools.Strings.information}: {alert.Label}");
+            if (wasInList && isInList == false)
+            {
+                var alertLabel = __state.Item2;
+                PhraseManager.Add($"{Tools.Strings.completed}: {alertLabel}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Messages), nameof(Messages.Message))]
+    [HarmonyPatch(new Type[] { typeof(Message), typeof(bool) })]
+    public static class Messages_Message_Patch
+    {
+        public static void Postfix(Message msg)
+        {
+            PhraseManager.Add(msg.text);
+        }
+    }
+
+    [HarmonyPatch(typeof(Frame), nameof(Frame.CompleteConstruction))]
+    public static class TaleRecorder_RecordTale_Patch
+    {
+        public static void Postfix(Frame __instance, Pawn worker)
+        {
+            var def = __instance.BuildDef;
+            if (def == Defs.Wall) return;
+            var makeStr = "RecipeMakeJobString".Translate(def.LabelCap);
+            PhraseManager.Add($"{worker.NameAndType()}: {Tools.Strings.finished} {makeStr}");
+        }
+    }
+
+    [HarmonyPatch(typeof(Pawn_WorkSettings), nameof(Pawn_WorkSettings.SetPriority))]
+    public static class Pawn_WorkSettings_SetPriority_Patch
+    {
+        public static void Postfix(Pawn ___pawn, WorkTypeDef w, int priority)
+        {
+            var workType = w.labelShort.CapitalizeFirst();
+            PhraseManager.Add($"{___pawn.NameAndType()}: {Tools.Strings.priority} {workType} = {priority}");
         }
     }
 }

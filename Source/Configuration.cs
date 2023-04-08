@@ -11,6 +11,8 @@ namespace RimGPT
             public string CHATGPT_API_KEY;
             public string AZURE_SPEECH_KEY;
             public string AZURE_SPEECH_REGION;
+            public string AZURE_VOICE;
+            public string AZURE_VOICE_STYLE;
             public int PHRASE_BATCH_SIZE;
             public int PHRASE_DELAY_MIN;
             public int PHRASE_DELAY_MAX;
@@ -22,12 +24,14 @@ namespace RimGPT
         public static string chatGPTKey => String("CHATGPT_API_KEY");
         public static string azureSpeechKey => String("AZURE_SPEECH_KEY");
         public static string azureSpeechRegion = String("AZURE_SPEECH_REGION");
-        public static int phraseBatchSize = Int("PHRASE_BATCH_SIZE", 50);
-        public static int phraseDelayMin = Int("PHRASE_DELAY_MIN", 5000);
-        public static int phraseDelayMax = Int("PHRASE_DELAY_MAX", 10000);
+        public static string azureVoice = String("AZURE_VOICE", "en-US-AriaNeural");
+        public static string azureVoiceStyle = String("AZURE_VOICE_STYLE", "Chat");
+        public static int phraseBatchSize = Int("PHRASE_BATCH_SIZE", 20);
+        public static int phraseDelayMin = Int("PHRASE_DELAY_MIN", 10000);
+        public static int phraseDelayMax = Int("PHRASE_DELAY_MAX", 20000);
         public static int phraseMaxWordCount = Int("PHRASE_MAX_WORD_COUNT", 60);
-        public static int historyMaxWordCount = Int("HISTORY_MAX_WORD_COUNT", 40);
-        public static int historyMaxItemCount = Int("HISTORY_MAX_ITEM_COUNT", 40);
+        public static int historyMaxWordCount = Int("HISTORY_MAX_WORD_COUNT", 20);
+        public static int historyMaxItemCount = Int("HISTORY_MAX_ITEM_COUNT", 10);
 
         public static string String(string key, string @default = "")
         {

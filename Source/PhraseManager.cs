@@ -45,7 +45,8 @@ namespace RimGPT
             }
             if (observations.Length == 0) return false;
             var result = await AI.Evaluate(observations);
-            await TTS.PlayAzure(result, "en-US-AriaNeural", "Chat");
+            if (result != null)
+                await TTS.PlayAzure(result, Configuration.azureVoice, Configuration.azureVoiceStyle);
             return true;
         }
 
@@ -56,7 +57,8 @@ namespace RimGPT
             {
                 while (true)
                 {
-                    await Task.Delay(delay);
+                    if (phrases.Count < Configuration.phraseBatchSize)
+                        await Task.Delay(delay);
                     delay += await Process() ? 1000 : -1000;
                     if (delay < Configuration.phraseDelayMin) delay = Configuration.phraseDelayMin;
                     if (delay > Configuration.phraseDelayMax) delay = Configuration.phraseDelayMax;

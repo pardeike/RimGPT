@@ -12,13 +12,19 @@ namespace RimGPT
             harmony.PatchAll();
             CrossPromotion.Install(76561197973010050);
 
-			if (Configuration.IsConfigured)
+            LongEventHandler.ExecuteWhenFinished(() =>
             {
-                PhraseManager.Add("Player has started the game and waits for a welcome message.");
-                PhraseManager.Start();
-            }
-			else
-	           Log.Error("You need to configure all API keys to use RimGPT");
+                Log.Warning($"ExecuteWhenFinished end");
+                Log.Warning($"Language: {Tools.Language}");
+
+                if (Configuration.IsConfigured)
+                {
+                    PhraseManager.Add("Player has started the game and waits for a message.");
+                    PhraseManager.Start();
+                }
+                else
+                    Log.Error("You need to configure all API keys to use RimGPT");
+            });
         }
     }
 }
