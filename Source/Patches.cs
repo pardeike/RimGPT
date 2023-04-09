@@ -1,9 +1,12 @@
 ﻿using HarmonyLib;
 using RimWorld;
+using RimWorld.Planet;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using UnityEngine;
 using Verse;
 using Verse.AI;
@@ -17,6 +20,37 @@ using static Verse.DamageWorker;
 
 namespace RimGPT
 {
+    [HarmonyPatch(typeof(MainMenuDrawer), nameof(MainMenuDrawer.MainMenuOnGUI))]
+    public static class MainMenuDrawer_MainMenuOnGUI_Patch
+    {
+        static bool showWelcome = true;
+        static readonly Color background = new Color(0f, 0f, 0f, 0.8f);
+
+        public static void Postfix()
+        {
+            if (showWelcome == false) return;
+            var (sw, sh) = (UI.screenWidth, UI.screenHeight);
+            var (w, h) = (360, 120);
+            var rect = new Rect((sw - w) / 2, (sh - h) / 2, w, h);
+            var welcome = "Welcome to RimGPT. You need to configure the mod before you can use it.";
+
+            var atlas = Widgets.ButtonBGAtlas;
+            Widgets.DrawBoxSolidWithOutline(rect, background, Color.white);
+            if (Mouse.IsOver(rect) && Input.GetMouseButton(0))
+            {
+                showWelcome = false;
+                Find.WindowStack.Add(new Dialog_ModSettings(RimGPTMod.self));
+            }
+            var anchor = Text.Anchor;
+            var font = Text.Font;
+            Text.Font = GameFont.Small;
+            Text.Anchor = TextAnchor.MiddleCenter;
+            Widgets.Label(rect.ExpandedBy(-20, 0), welcome);
+            Text.Anchor = anchor;
+            Text.Font = font;
+        }
+    }
+
     [HarmonyPatch(typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.StartJob))]
     [HarmonyPatch(new Type[] { typeof(Job), typeof(JobCondition), typeof(ThinkNode), typeof(bool), typeof(bool), typeof(ThinkTreeDef), typeof(JobTag?), typeof(bool), typeof(bool), typeof(bool?), typeof(bool), typeof(bool) })]
     public static class Pawn_JobTracker_StartJob_Patch

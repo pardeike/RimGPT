@@ -56,6 +56,12 @@ namespace RimGPT
             {
                 while (true)
                 {
+                    if (RimGPTMod.Settings.IsConfigured == false)
+                    {
+                        await Task.Delay(1000);
+                        continue;
+                    }
+
                     if (phrases.Count < RimGPTMod.Settings.phraseBatchSize)
                         await Task.Delay(delay);
                     delay += await Process() ? 1000 : -1000;

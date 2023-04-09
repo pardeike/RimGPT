@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Remoting.Messaging;
 using UnityEngine;
 using Verse;
 
@@ -24,6 +25,7 @@ namespace RimGPT
         public int phraseMaxWordCount = 60;
         public int historyMaxWordCount = 20;
         public int historyMaxItemCount = 10;
+        public string personality = AI.defaultPersonality;
 
         public override void ExposeData()
         {
@@ -43,6 +45,7 @@ namespace RimGPT
             Scribe_Values.Look(ref phraseMaxWordCount, "phraseMaxWordCount", 60);
             Scribe_Values.Look(ref historyMaxWordCount, "historyMaxWordCount", 20);
             Scribe_Values.Look(ref historyMaxItemCount, "historyMaxItemCount", 10);
+            Scribe_Values.Look(ref personality, "personality", AI.defaultPersonality);
         }
 
         public bool IsConfigured =>
@@ -85,7 +88,10 @@ namespace RimGPT
             prevKey = azureSpeechKey;
             list.TextField(ref azureSpeechKey, "API Key (paste only)", true);
             if (azureSpeechKey != "" && azureSpeechKey != prevKey || azureSpeechRegion != "" && azureSpeechRegion != prevRegion)
+            {
                 TTS.TestKey();
+                TTS.LoadVoiceInformation();
+            }
 
             list.Gap(16f);
 
@@ -107,6 +113,11 @@ namespace RimGPT
             list.NewColumn();
 
             list.Label("Commentary", "FFFF00");
+
+            if (list.ButtonText("Edit personality", null, 0.4f))
+                Dialog_Personality.Show();
+
+            list.Gap(16f);
 
             list.Label("Sending game information");
             list.Slider(ref phraseBatchSize, 1, 100, () => $"Maximum batch size: {phraseBatchSize}");
@@ -138,6 +149,7 @@ namespace RimGPT
                 phraseMaxWordCount = 60;
                 historyMaxWordCount = 20;
                 historyMaxItemCount = 10;
+                personality = AI.defaultPersonality;
             }
 
             list.End();

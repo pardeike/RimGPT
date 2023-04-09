@@ -41,9 +41,8 @@ namespace RimGPT
                 Text.Anchor = anchor;
                 Text.Font = font;
 
-                // TODO
                 if (Widgets.ButtonText(rect.RightPartPixels(24), "?"))
-                    Log.Warning($"HELP FOR {label}");
+                    Dialog_Help.Show(label);
             }
             if (isPassword && text != "")
             {

@@ -45,10 +45,11 @@ namespace RimGPT
         // Rule: Never say ""Looks like ..."" or ""Meanwhile ...""
         // Rule: '{commentName}' should add to the situation without repeating things that ar obvious
 
-        private static readonly string systemPrompt =
-@$"You are an experienced {RimGPTMod.Settings.CurrentStyle} player of the game RimWorld.
-You are funny and know the consequences of actions.
-You will repeatedly receive input from an ongoing Rimworld game.
+        public const string defaultPersonality = @"You are an experienced player of the game RimWorld.
+You are very {VOICESTYLE} and know the consequences of actions.
+You will repeatedly receive input from an ongoing Rimworld game.";
+
+        private static readonly string systemPrompt = RimGPTMod.Settings.personality.Replace("{VOICESTYLE}", RimGPTMod.Settings.CurrentStyle) + @$"
 Here are the rules you must follow:
 
 Rule: Your input is in json that matches this model:
@@ -164,7 +165,7 @@ Important rule: you ONLY answer in json as defined in the rules!";
             Task.Run(async () =>
             {
                 var prompt = "The player in Rimworld has just configured your API key in the mod " +
-                                "RimGPT that makes you do commentary on their gameplay. Give them feedback!";
+                 "RimGPT that makes you do commentary on their gameplay. Greet them with a short response!";
                 var output = await SimplePrompt(prompt);
                 if (output != null)
                     callback(output);

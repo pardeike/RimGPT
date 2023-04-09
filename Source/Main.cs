@@ -1,5 +1,6 @@
 ﻿using Brrainz;
 using HarmonyLib;
+using OpenAI;
 using UnityEngine;
 using Verse;
 
@@ -8,6 +9,7 @@ namespace RimGPT
     public class RimGPTMod : Mod
     {
         public static RimGPTSettings Settings;
+        public static Mod self;
 
         public RimGPTMod(ModContentPack content) : base(content)
         {
@@ -19,16 +21,13 @@ namespace RimGPT
 
             LongEventHandler.ExecuteWhenFinished(() =>
             {
+                TTS.LoadVoiceInformation();
                 if (RimGPTMod.Settings.IsConfigured)
-                {
-                    TTS.LoadVoiceInformation();
-
                     PhraseManager.Add("Player has started the game and waits for a message.");
-                    PhraseManager.Start();
-                }
-                else
-                    Log.Error("You need to configure all API keys to use RimGPT");
+                PhraseManager.Start();
             });
+
+            self = this;
         }
 
         public override void DoSettingsWindowContents(Rect inRect) => Settings.DoWindowContents(inRect);
