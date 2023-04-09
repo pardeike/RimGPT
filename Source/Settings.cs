@@ -15,7 +15,7 @@ namespace RimGPT
         public string azureVoice = "en-US-AriaNeural";
         public string azureVoiceStyle = "chat";
         public float azureVoiceStyleDegree = 1.5f;
-        public float speechVolume = 1f;
+        public float speechVolume = 4f;
         public float speechRate = 0.1f;
         public float speechPitch = -0.02f;
         public int phraseBatchSize = 20;
@@ -34,7 +34,7 @@ namespace RimGPT
             Scribe_Values.Look(ref azureVoice, "azureVoice", "en-US-AriaNeural");
             Scribe_Values.Look(ref azureVoiceStyle, "toggleKey", "chat");
             Scribe_Values.Look(ref azureVoiceStyleDegree, "azureVoiceStyleDegree", 1.5f);
-            Scribe_Values.Look(ref speechVolume, "speechVolume", 0.3f);
+            Scribe_Values.Look(ref speechVolume, "speechVolume", 4f);
             Scribe_Values.Look(ref speechRate, "speechRate", 0.1f);
             Scribe_Values.Look(ref speechPitch, "speechPitch", -0.02f);
             Scribe_Values.Look(ref phraseBatchSize, "phraseBatchSize", 20);
@@ -129,7 +129,7 @@ namespace RimGPT
                 azureVoice = "en-US-AriaNeural";
                 azureVoiceStyle = "chat";
                 azureVoiceStyleDegree = 1.5f;
-                speechVolume = 1f;
+                speechVolume = 4f;
                 speechRate = 0.1f;
                 speechPitch = -0.02f;
                 phraseBatchSize = 20;
