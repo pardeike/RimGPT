@@ -34,7 +34,7 @@ namespace RimGPT
             Scribe_Values.Look(ref azureSpeechKey, "azureSpeechKey");
             Scribe_Values.Look(ref azureSpeechRegion, "azureSpeechRegion");
             Scribe_Values.Look(ref azureVoice, "azureVoice", "en-US-AriaNeural");
-            Scribe_Values.Look(ref azureVoiceStyle, "toggleKey", "chat");
+            Scribe_Values.Look(ref azureVoiceStyle, "azureVoiceStyle", "chat");
             Scribe_Values.Look(ref azureVoiceStyleDegree, "azureVoiceStyleDegree", 1.5f);
             Scribe_Values.Look(ref speechVolume, "speechVolume", 4f);
             Scribe_Values.Look(ref speechRate, "speechRate", 0.1f);
