@@ -40,13 +40,12 @@ namespace RimGPT
             string[] observations;
             lock (phrases)
             {
-                observations = phrases.Take(Configuration.phraseBatchSize).ToArray();
-                phrases.RemoveFromStart(Configuration.phraseBatchSize);
+                observations = phrases.Take(RimGPTMod.Settings.phraseBatchSize).ToArray();
+                phrases.RemoveFromStart(RimGPTMod.Settings.phraseBatchSize);
             }
             if (observations.Length == 0) return false;
             var result = await AI.Evaluate(observations);
-            if (result != null)
-                await TTS.PlayAzure(result, Configuration.azureVoice, Configuration.azureVoiceStyle);
+            if (result != null) await TTS.PlayAzure(result);
             return true;
         }
 
@@ -57,11 +56,11 @@ namespace RimGPT
             {
                 while (true)
                 {
-                    if (phrases.Count < Configuration.phraseBatchSize)
+                    if (phrases.Count < RimGPTMod.Settings.phraseBatchSize)
                         await Task.Delay(delay);
                     delay += await Process() ? 1000 : -1000;
-                    if (delay < Configuration.phraseDelayMin) delay = Configuration.phraseDelayMin;
-                    if (delay > Configuration.phraseDelayMax) delay = Configuration.phraseDelayMax;
+                    if (delay < RimGPTMod.Settings.phraseDelayMin) delay = RimGPTMod.Settings.phraseDelayMin.Milliseconds();
+                    if (delay > RimGPTMod.Settings.phraseDelayMax) delay = RimGPTMod.Settings.phraseDelayMax.Milliseconds();
                 }
             });
         }

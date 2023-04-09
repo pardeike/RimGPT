@@ -5,7 +5,9 @@ namespace Kevsoft.Ssml
     public interface IFluentSay : ISsml
     {
         IFluentSay AsAlias(string alias);
-        IFluentSay AsVoice(string name, string style = "Default");
+        IFluentSay AsVoice(string name, string style = "Default", float styledegree = 1);
+
+        IFluentSay WithProsody(float rate = 0, float pitch = 0);
 
         IFluentSay Emphasised();
 

@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 
 namespace RimGPT
 {
+    /*
 	public static class Configuration
 	{
         public struct Settings
@@ -49,5 +50,5 @@ namespace RimGPT
         public static bool IsConfigured =>
             chatGPTKey?.Length > 0 && azureSpeechKey?.Length > 0 && azureSpeechRegion?.Length > 0;
     }
+    */
 }
-

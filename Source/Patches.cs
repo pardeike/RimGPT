@@ -3,6 +3,7 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using Verse;
 using Verse.AI;
@@ -181,11 +182,34 @@ namespace RimGPT
         }
     }
 
+    [HarmonyPatch]
+    public static class GameInitData_PrepForMapGen_Patch
+    {
+        public static IEnumerable<MethodBase> TargetMethods()
+        {
+            yield return SymbolExtensions.GetMethodInfo(() => StartingPawnUtility.NewGeneratedStartingPawn(0));
+            yield return SymbolExtensions.GetMethodInfo(() => new GameInitData().PrepForMapGen());
+        }
+
+        public static void Prefix()
+        {
+            Pawn_WorkSettings_SetPriority_Patch.ignore = true;
+        }
+
+        public static void Postfix()
+        {
+            Pawn_WorkSettings_SetPriority_Patch.ignore = false;
+        }
+    }
+    //
     [HarmonyPatch(typeof(Pawn_WorkSettings), nameof(Pawn_WorkSettings.SetPriority))]
     public static class Pawn_WorkSettings_SetPriority_Patch
     {
+        public static bool ignore = false;
+
         public static void Postfix(Pawn ___pawn, WorkTypeDef w, int priority)
         {
+            if (ignore) return;
             var workType = w.labelShort.CapitalizeFirst();
             PhraseManager.Add($"{___pawn.NameAndType()}: {Tools.Strings.priority} {workType} = {priority}");
         }

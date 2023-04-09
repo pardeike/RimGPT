@@ -4,6 +4,7 @@ using OpenAI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Remoting.Contexts;
 using System.Threading.Tasks;
 using Verse;
 
@@ -11,6 +12,8 @@ namespace RimGPT
 {
     public static class AI
     {
+        public static bool debug = false;
+
         struct Input
         {
             public string[] happenings;
@@ -26,7 +29,7 @@ namespace RimGPT
         // we need to assign the fields somewhere or the compiler will complain that they are not used
         private static readonly Output outputDummy = new Output() { comment = "", history = "" };
 
-        private static readonly OpenAIApi openAI = new(Configuration.chatGPTKey);
+        private static readonly OpenAIApi openAI = new(RimGPTMod.Settings.chatGPTKey);
         private static string commentName = "comment";
         private static string historyName = "history";
         private static string happeningsName = "happenings";
@@ -43,7 +46,7 @@ namespace RimGPT
         // Rule: '{commentName}' should add to the situation without repeating things that ar obvious
 
         private static readonly string systemPrompt =
-@$"You are an experienced player of the game RimWorld.
+@$"You are an experienced {RimGPTMod.Settings.CurrentStyle} player of the game RimWorld.
 You are funny and know the consequences of actions.
 You will repeatedly receive input from an ongoing Rimworld game.
 Here are the rules you must follow:
@@ -70,7 +73,7 @@ Rule: Items in '{happeningsName}' are machine generated from typical game output
 
 Rule: '{commentName}' should be funny and addressing the player directly
 
-Rule: '{commentName}' must not be longer than {Configuration.phraseMaxWordCount} words
+Rule: '{commentName}' must not be longer than {RimGPTMod.Settings.phraseMaxWordCount} words
 
 Rule: 'Input.{historyName}' is past information about the game
 
@@ -80,7 +83,7 @@ Rule: 'Output.{historyName}' should be a summary of the recent things that happe
 
 Rule: 'Output.{historyName}' must be written in past tense
 
-Rule: 'Output.{historyName}' must not be longer than {Configuration.historyMaxWordCount} words
+Rule: 'Output.{historyName}' must not be longer than {RimGPTMod.Settings.historyMaxWordCount} words
 
 Important rule: 'Output.{commentName}' MUST be in {Tools.Language} translated form!
 Important rule: you ONLY answer in json as defined in the rules!";
@@ -95,7 +98,7 @@ Important rule: you ONLY answer in json as defined in the rules!";
                     history = history.ToArray()
                 };
                 var content = JsonConvert.SerializeObject(input);
-                Log.Warning($"INPUT: {content}");
+                if (debug) Log.Warning($"INPUT: {content}");
 
                 var observationString = observations.Join(o => $"- {o}", "\n");
                 var completionResponse = await openAI.CreateChatCompletion(new CreateChatCompletionRequest()
@@ -119,10 +122,10 @@ Important rule: you ONLY answer in json as defined in the rules!";
                 if (completionResponse.Choices?.Count > 0)
                 {
                     var response = completionResponse.Choices[0].Message.Content;
-                    Log.Warning($"OUTPUT: {response}");
+                    if (debug) Log.Warning($"OUTPUT: {response}");
                     var output = JsonConvert.DeserializeObject<Output>(response);
                     history.Add(output.history);
-                    var oversize = history.Count - Configuration.historyMaxItemCount;
+                    var oversize = history.Count - RimGPTMod.Settings.historyMaxItemCount;
                     if (oversize > 0)
                         history.RemoveRange(0, oversize);
                     return output.comment; //.Replace("Looks like ", "");
@@ -134,6 +137,38 @@ Important rule: you ONLY answer in json as defined in the rules!";
                 Log.Error($"Exception while talking to ChatGPT: {ex}");
             }
             return null;
+        }
+
+        public static async Task<string> SimplePrompt(string input)
+        {
+            var completionResponse = await openAI.CreateChatCompletion(new CreateChatCompletionRequest()
+            {
+                Model = "gpt-3.5-turbo",
+                Messages = new List<ChatMessage>()
+                    {
+                        new ChatMessage()
+                        {
+                            Role = "user",
+                            Content = input
+                        }
+                    }
+            });
+
+            if (completionResponse.Choices?.Count > 0)
+                return completionResponse.Choices[0].Message.Content;
+            return null;
+        }
+
+        public static void TestKey(Action<string> callback)
+        {
+            Task.Run(async () =>
+            {
+                var prompt = "The player in Rimworld has just configured your API key in the mod " +
+                                "RimGPT that makes you do commentary on their gameplay. Give them feedback!";
+                var output = await SimplePrompt(prompt);
+                if (output != null)
+                    callback(output);
+            });
         }
     }
 }

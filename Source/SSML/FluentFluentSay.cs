@@ -29,9 +29,18 @@ namespace Kevsoft.Ssml
             return this;
         }
 
-        public IFluentSay AsVoice(string name, string style = "Default")
+        public IFluentSay AsVoice(string name, string style = "Default", float styledegree = 1)
         {
-            _ssmlWriter = new VoiceWriter(_ssmlWriter, name, style);
+            if (styledegree < 0.01f) styledegree = 0.01f;
+            if (styledegree > 2f) styledegree = 2f;
+            _ssmlWriter = new VoiceWriter(_ssmlWriter, name, style, styledegree);
+
+            return this;
+        }
+
+        public IFluentSay WithProsody(float rate = 0, float pitch = 0)
+        {
+            _ssmlWriter = new ProsodyWriter(_ssmlWriter, rate, pitch);
 
             return this;
         }
