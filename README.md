@@ -1,8 +1,12 @@
-# RimWorld RimGPT
+# RimGPT
 
-OpenAI runs your raids. Good luck.
+<img src="https://github.com/pardeike/RimGPT/raw/master/About/Preview.png"/>
 
-Powered by [Harmony](https://github.com/pardeike/Harmony)
-The runtime patch library for .NET
+ChatGPT commentator using Azure natural voices.
 
-![Harmony](https://s24.postimg.org/58bl1rz39/logo.png)
+Powered by
+- [Harmony](https://github.com/pardeike/Harmony)
+- [OpenAI](https://openai.com)
+- [Microsoft Azure](https://azure.microsoft.com)
+
+(c) 2023 Andreas Pardeike
