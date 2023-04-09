@@ -45,8 +45,8 @@ namespace RimGPT
             if (Widgets.ButtonText(rect, "Save"))
                 Save();
             rect.x += 140;
-            if (Widgets.ButtonText(rect, "Reset"))
-                RimGPTMod.Settings.personality = AI.defaultPersonality;
+            if (Widgets.ButtonText(rect, "Default"))
+                text = AI.defaultPersonality;
             rect.x += 140;
             if (Widgets.ButtonText(rect, "Cancel"))
                 Close();

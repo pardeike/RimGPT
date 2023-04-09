@@ -106,6 +106,9 @@ namespace RimGPT
             var currentVoice = Voice.From(RimGPTMod.Settings.azureVoice);
             if (Widgets.ButtonText(rect, currentVoice?.DisplayName ?? ""))
             {
+                if (TTS.voices.NullOrEmpty())
+                    return;
+
                 var options = new List<FloatMenuOption>();
                 var voices = TTS.voices.Where(voice => voice.LocaleName.Contains(Tools.Language)).OrderBy(voice => voice.DisplayName);
                 foreach (var voice in voices)

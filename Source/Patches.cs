@@ -29,6 +29,7 @@ namespace RimGPT
         public static void Postfix()
         {
             if (showWelcome == false) return;
+            if (RimGPTMod.Settings.IsConfigured) return;
             var (sw, sh) = (UI.screenWidth, UI.screenHeight);
             var (w, h) = (360, 120);
             var rect = new Rect((sw - w) / 2, (sh - h) / 2, w, h);

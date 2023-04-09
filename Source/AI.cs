@@ -49,7 +49,7 @@ namespace RimGPT
 You are very {VOICESTYLE} and know the consequences of actions.
 You will repeatedly receive input from an ongoing Rimworld game.";
 
-        private static readonly string systemPrompt = RimGPTMod.Settings.personality.Replace("{VOICESTYLE}", RimGPTMod.Settings.CurrentStyle) + @$"
+        private static string SystemPrompt => RimGPTMod.Settings.personality.Replace("{VOICESTYLE}", RimGPTMod.Settings.CurrentStyle) + @$"
 Here are the rules you must follow:
 
 Rule: Your input is in json that matches this model:
@@ -110,7 +110,7 @@ Important rule: you ONLY answer in json as defined in the rules!";
                         new ChatMessage()
                         {
                             Role = "system",
-                            Content = systemPrompt
+                            Content = SystemPrompt
                         },
                         new ChatMessage()
                         {

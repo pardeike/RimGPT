@@ -57,8 +57,9 @@ namespace RimGPT
             {
                 var currentStyle = VoiceStyle.From(RimGPTMod.Settings.azureVoiceStyle);
                 var value = currentStyle?.Value;
-                if (value == null || value == "default" || value == "chat" || value.Contains("-") || value.Contains("_")) return "";
-                return "";
+                if (value == null || value == "default" || value == "chat" || value.Contains("-") || value.Contains("_"))
+                    return "funny";
+                return value;
             }
         }
 
@@ -84,10 +85,12 @@ namespace RimGPT
             list.Label("Azure - Speech Services", "FFFF00");
             var prevRegion = azureSpeechRegion;
             list.TextField(ref azureSpeechRegion, "Region");
+            if (azureSpeechRegion != "" && azureSpeechRegion != prevRegion)
+                TTS.LoadVoiceInformation();
             list.Gap(6f);
             prevKey = azureSpeechKey;
             list.TextField(ref azureSpeechKey, "API Key (paste only)", true);
-            if (azureSpeechKey != "" && azureSpeechKey != prevKey || azureSpeechRegion != "" && azureSpeechRegion != prevRegion)
+            if (azureSpeechKey != "" && azureSpeechKey != prevKey)
             {
                 TTS.TestKey();
                 TTS.LoadVoiceInformation();
