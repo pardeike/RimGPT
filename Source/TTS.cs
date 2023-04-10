@@ -281,8 +281,11 @@ namespace RimGPT
         public static void LoadVoiceInformation()
         {
             voices = new Voice[0];
-            var url = $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices/voices/list";
-            _ = Task.Run(async () => voices = await DispatchFormPost<Voice[]>(url, null, true, null));
+            if (RimGPTMod.Settings.azureSpeechKey != "" && RimGPTMod.Settings.azureSpeechRegion != "")
+            {
+                var url = $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices/voices/list";
+                _ = Task.Run(async () => voices = await DispatchFormPost<Voice[]>(url, null, true, null));
+            }
         }
     }
 }

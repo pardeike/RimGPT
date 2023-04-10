@@ -87,7 +87,7 @@ namespace RimGPT
             list.Label("Azure - Speech Services", "FFFF00");
             var prevRegion = azureSpeechRegion;
             list.TextField(ref azureSpeechRegion, "Region");
-            if (azureSpeechKey != "" && azureSpeechRegion != "" && azureSpeechRegion != prevRegion)
+            if (azureSpeechRegion != prevRegion)
                 TTS.LoadVoiceInformation();
             list.Gap(6f);
             prevKey = azureSpeechKey;
