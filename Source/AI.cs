@@ -29,7 +29,7 @@ namespace RimGPT
         // we need to assign the fields somewhere or the compiler will complain that they are not used
         private static readonly Output outputDummy = new Output() { comment = "", history = "" };
 
-        private static readonly OpenAIApi openAI = new(RimGPTMod.Settings.chatGPTKey);
+        private static OpenAIApi OpenAI => new(RimGPTMod.Settings.chatGPTKey);
         private static readonly string commentName = "comment";
         private static readonly string historyName = "history";
         private static readonly string happeningsName = "happenings";
@@ -102,7 +102,7 @@ Important rule: you ONLY answer in json as defined in the rules!";
             if (debug) Log.Warning($"INPUT: {content}");
 
             var observationString = observations.Join(o => $"- {o}", "\n");
-            var completionResponse = await openAI.CreateChatCompletion(new CreateChatCompletionRequest()
+            var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
             {
                 Model = "gpt-3.5-turbo",
                 Messages = new List<ChatMessage>()
@@ -152,7 +152,7 @@ Important rule: you ONLY answer in json as defined in the rules!";
         public static async Task<(string, string)> SimplePrompt(string input)
         {
             string requestError = null;
-            var completionResponse = await openAI.CreateChatCompletion(new CreateChatCompletionRequest()
+            var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
             {
                 Model = "gpt-3.5-turbo",
                 Messages = new List<ChatMessage>()

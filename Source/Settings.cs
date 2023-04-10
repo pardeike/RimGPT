@@ -87,16 +87,13 @@ namespace RimGPT
             list.Label("Azure - Speech Services", "FFFF00");
             var prevRegion = azureSpeechRegion;
             list.TextField(ref azureSpeechRegion, "Region");
-            if (azureSpeechRegion != "" && azureSpeechRegion != prevRegion)
+            if (azureSpeechKey != "" && azureSpeechRegion != "" && azureSpeechRegion != prevRegion)
                 TTS.LoadVoiceInformation();
             list.Gap(6f);
             prevKey = azureSpeechKey;
             list.TextField(ref azureSpeechKey, "API Key (paste only)", true);
             if (azureSpeechKey != "" && azureSpeechKey != prevKey)
-            {
-                TTS.TestKey();
-                TTS.LoadVoiceInformation();
-            }
+                TTS.TestKey(() => TTS.LoadVoiceInformation());
 
             list.Gap(16f);
 
@@ -113,7 +110,7 @@ namespace RimGPT
             list.Slider(ref speechRate, -0.5f, 0.5f, () => $"Speech rate: {speechRate.ToPercentage()}", 0.01f);
             list.Slider(ref speechPitch, -0.5f, 0.5f, () => $"Speech pitch: {speechPitch.ToPercentage()}", 0.01f);
             if (list.ButtonText("Test", null, 0.2f))
-                TTS.TestKey();
+                TTS.TestKey(null);
 
             list.NewColumn();
 

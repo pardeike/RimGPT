@@ -251,7 +251,7 @@ namespace RimGPT
             if (delay) await Task.Delay((int)(audioClip.length * 1000));
         }
 
-        public static void TestKey()
+        public static void TestKey(Action successCallback)
         {
             Task.Run(async () =>
             {
@@ -271,6 +271,8 @@ namespace RimGPT
                         var dialog = new Dialog_MessageBox(error);
                         Find.WindowStack.Add(dialog);
                     });
+                else
+                    if (successCallback != null) successCallback();
             });
         }
 
@@ -278,7 +280,7 @@ namespace RimGPT
         {
             voices = new Voice[0];
             var url = $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices/voices/list";
-            _ = Task.Run(async () => voices = await DispatchFormPost<Voice[]>(url, null, true, error => Log.Error(error)));
+            _ = Task.Run(async () => voices = await DispatchFormPost<Voice[]>(url, null, true, null));
         }
     }
 }
