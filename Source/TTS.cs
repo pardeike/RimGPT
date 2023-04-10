@@ -194,14 +194,16 @@ namespace RimGPT
                 if (errorCallback != null) errorCallback(error);
                 return default;
             }
-            var response = request.downloadHandler.text;
             var code = request.responseCode;
+            if (debug) Log.Warning($"Azure => {code} {request.error}");
             if (code >= 300)
             {
-                var error = $"Got {code} response from Azure: {response}";
+                var response = request.downloadHandler.text;
+                var error = $"Got {code} {request.error} response from Azure: {response}";
                 if (errorCallback != null) errorCallback(error);
                 return default;
             }
+            if (debug) Log.Warning($"Azure => {downloadHandlerAudioClip.audioClip?.length} seconds");
             // SaveAudioClip.Save("/Users/ap/Desktop/test.wav", downloadHandlerAudioClip.audioClip);
             return downloadHandlerAudioClip.audioClip;
         }
