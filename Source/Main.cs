@@ -23,7 +23,7 @@ namespace RimGPT
             {
                 TTS.LoadVoiceInformation();
                 if (RimGPTMod.Settings.IsConfigured)
-                    PhraseManager.Add("Player has started the game and waits for a message.");
+                    PhraseManager.Add("Player has launched Rimworld.");
                 PhraseManager.Start();
             });
 

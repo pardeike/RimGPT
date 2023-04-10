@@ -60,7 +60,7 @@ namespace RimGPT
             AI.ResetHistory();
             PhraseManager.ResetHistory();
 
-            var colonists = __instance.World.worldPawns.AllPawnsAlive.Where(p => p.IsColonist).Join(c => c.LabelShortCap);
+            var colonists = __instance.Maps.SelectMany(m => m.mapPawns.FreeColonists).Join(c => c.LabelShortCap);
             PhraseManager.Add($"{"GeneratingWorld".Translate()}. {"ColonistsSection".Translate()}: {colonists}");
         }
     }
