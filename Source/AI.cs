@@ -30,9 +30,9 @@ namespace RimGPT
         private static readonly Output outputDummy = new Output() { comment = "", history = "" };
 
         private static readonly OpenAIApi openAI = new(RimGPTMod.Settings.chatGPTKey);
-        private static string commentName = "comment";
-        private static string historyName = "history";
-        private static string happeningsName = "happenings";
+        private static readonly string commentName = "comment";
+        private static readonly string historyName = "history";
+        private static readonly string happeningsName = "happenings";
         private static List<string> history = new();
 
         // disabled texts:
@@ -91,57 +91,67 @@ Important rule: you ONLY answer in json as defined in the rules!";
 
         public static async Task<string> Evaluate(string[] observations)
         {
-            try
+            string[] historyArray;
+            lock (history) historyArray = history.ToArray();
+            var input = new Input()
             {
-                var input = new Input()
-                {
-                    happenings = observations,
-                    history = history.ToArray()
-                };
-                var content = JsonConvert.SerializeObject(input);
-                if (debug) Log.Warning($"INPUT: {content}");
+                happenings = observations,
+                history = historyArray
+            };
+            var content = JsonConvert.SerializeObject(input);
+            if (debug) Log.Warning($"INPUT: {content}");
 
-                var observationString = observations.Join(o => $"- {o}", "\n");
-                var completionResponse = await openAI.CreateChatCompletion(new CreateChatCompletionRequest()
+            var observationString = observations.Join(o => $"- {o}", "\n");
+            var completionResponse = await openAI.CreateChatCompletion(new CreateChatCompletionRequest()
+            {
+                Model = "gpt-3.5-turbo",
+                Messages = new List<ChatMessage>()
                 {
-                    Model = "gpt-3.5-turbo",
-                    Messages = new List<ChatMessage>()
+                    new ChatMessage()
                     {
-                        new ChatMessage()
-                        {
-                            Role = "system",
-                            Content = SystemPrompt
-                        },
-                        new ChatMessage()
-                        {
-                            Role = "user",
-                            Content = content
-                        }
+                        Role = "system",
+                        Content = SystemPrompt
+                    },
+                    new ChatMessage()
+                    {
+                        Role = "user",
+                        Content = content
                     }
-                });
-
-                if (completionResponse.Choices?.Count > 0)
-                {
-                    var response = completionResponse.Choices[0].Message.Content;
-                    if (debug) Log.Warning($"OUTPUT: {response}");
-                    var output = JsonConvert.DeserializeObject<Output>(response);
-                    history.Add(output.history);
-                    var oversize = history.Count - RimGPTMod.Settings.historyMaxItemCount;
-                    if (oversize > 0)
-                        history.RemoveRange(0, oversize);
-                    return output.comment; //.Replace("Looks like ", "");
                 }
-                Log.Error("Unexpected answer from ChatGPT");
-            }
-            catch (Exception ex)
+            }, error => Log.Error(error));
+
+            if (completionResponse.Choices?.Count > 0)
             {
-                Log.Error($"Exception while talking to ChatGPT: {ex}");
+                var response = completionResponse.Choices[0].Message.Content;
+                if (debug) Log.Warning($"OUTPUT: {response}");
+                try
+                {
+                    var output = JsonConvert.DeserializeObject<Output>(response);
+                    lock (history)
+                    {
+                        history.Add(output.history);
+                        var oversize = history.Count - RimGPTMod.Settings.historyMaxItemCount;
+                        if (oversize > 0)
+                            history.RemoveRange(0, oversize);
+                    }
+                    return output.comment;
+                }
+                catch(Exception)
+                {
+                    Log.Error($"ChatGPT malformed output: {response}");
+                }
             }
             return null;
         }
 
-        public static async Task<string> SimplePrompt(string input)
+        public static void ResetHistory()
         {
+            lock(history) history.Clear();
+        }
+
+        public static async Task<(string, string)> SimplePrompt(string input)
+        {
+            string requestError = null;
             var completionResponse = await openAI.CreateChatCompletion(new CreateChatCompletionRequest()
             {
                 Model = "gpt-3.5-turbo",
@@ -153,11 +163,12 @@ Important rule: you ONLY answer in json as defined in the rules!";
                             Content = input
                         }
                     }
-            });
+            }, e => requestError = e);
 
             if (completionResponse.Choices?.Count > 0)
-                return completionResponse.Choices[0].Message.Content;
-            return null;
+                return (completionResponse.Choices[0].Message.Content, null);
+
+            return (null, requestError);
         }
 
         public static void TestKey(Action<string> callback)
@@ -167,8 +178,7 @@ Important rule: you ONLY answer in json as defined in the rules!";
                 var prompt = "The player in Rimworld has just configured your API key in the mod " +
                  "RimGPT that makes you do commentary on their gameplay. Greet them with a short response!";
                 var output = await SimplePrompt(prompt);
-                if (output != null)
-                    callback(output);
+                callback(output.Item1 ?? output.Item2);
             });
         }
     }

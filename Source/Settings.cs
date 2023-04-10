@@ -74,11 +74,13 @@ namespace RimGPT
             prevKey = chatGPTKey;
             list.TextField(ref chatGPTKey, "API Key (paste only)", true);
             if (chatGPTKey != "" && chatGPTKey != prevKey)
-                AI.TestKey(response => LongEventHandler.ExecuteWhenFinished(() =>
-                {
-                    var dialog = new Dialog_MessageBox(response);
-                    Find.WindowStack.Add(dialog);
-                }));
+                AI.TestKey(
+                    response => LongEventHandler.ExecuteWhenFinished(() =>
+                    {
+                        var dialog = new Dialog_MessageBox(response);
+                        Find.WindowStack.Add(dialog);
+                    })
+                );
 
             list.Gap(16f);
 

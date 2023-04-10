@@ -7,6 +7,9 @@ using UnityEngine.Networking;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json.Serialization;
+using System;
+using HarmonyLib;
+using Mono.Unix.Native;
 
 namespace OpenAI
 {
@@ -51,6 +54,42 @@ namespace OpenAI
 			Culture = CultureInfo.InvariantCulture
 		};
 
+		private async Task<T> ProcessRequest<T>(UnityWebRequest request, Action<string> errorCallback)
+		{
+            try
+            {
+                var asyncOperation = request.SendWebRequest();
+                while (!asyncOperation.isDone)
+                    await Task.Yield();
+            }
+            catch (Exception exception)
+            {
+				var error = $"Error communicating with OpenAI: {exception}";
+				if (errorCallback != null) errorCallback(error);
+                return default;
+            }
+
+            var response = request.downloadHandler.text;
+			var code = request.responseCode;
+			if (code >= 300)
+			{
+				var error = $"Got {code} response from OpenAI: {response}";
+                if (errorCallback != null) errorCallback(error);
+                return default;
+            }
+
+            try
+            {
+                return JsonConvert.DeserializeObject<T>(response, jsonSerializerSettings);
+            }
+            catch (Exception)
+            {
+                var error = $"Error while decoding response from OpenAI: {response}";
+                if (errorCallback != null) errorCallback(error);
+                return default;
+            }
+        }
+
 		/// <summary>
 		///     Dispatches an HTTP request to the specified path with the specified method and optional payload.
 		/// </summary>
@@ -59,31 +98,13 @@ namespace OpenAI
 		/// <param name="payload">An optional byte array of json payload to include in the request.</param>
 		/// <typeparam name="T">Response type of the request.</typeparam>
 		/// <returns>A Task containing the response from the request as the specified type.</returns>
-		private async Task<T> DispatchRequest<T>(string path, string method, byte[] payload = null) where T : IResponse
+		private async Task<T> DispatchRequest<T>(string path, string method, byte[] payload, Action<string> errorCallback) where T : IResponse
 		{
-			T data;
-
-			using (var request = UnityWebRequest.Put(path, payload))
-			{
-				request.method = method;
-				request.SetHeaders(Configuration, ContentType.ApplicationJson);
-
-				var asyncOperation = request.SendWebRequest();
-
-				while (!asyncOperation.isDone)
-					await Task.Yield();
-
-				data = JsonConvert.DeserializeObject<T>(request.downloadHandler.text, jsonSerializerSettings);
-			}
-
-			if (data?.Error != null)
-			{
-				ApiError error = data.Error;
-				Debug.LogError($"Error Message: {error.Message}\nError Type: {error.Type}\n");
-			}
-
-			return data;
-		}
+			using var request = UnityWebRequest.Put(path, payload);
+            request.method = method;
+            request.SetHeaders(Configuration, ContentType.ApplicationJson);
+			return await ProcessRequest<T>(request, errorCallback);
+        }
 
 		/// <summary>
 		///     Dispatches an HTTP request to the specified path with a multi-part data form.
@@ -92,34 +113,17 @@ namespace OpenAI
 		/// <param name="form">A multi-part data form to upload with the request.</param>
 		/// <typeparam name="T">Response type of the request.</typeparam>
 		/// <returns>A Task containing the response from the request as the specified type.</returns>
-		private async Task<T> DispatchRequest<T>(string path, List<IMultipartFormSection> form) where T : IResponse
+		private async Task<T> DispatchRequest<T>(string path, List<IMultipartFormSection> form, Action<string> errorCallback) where T : IResponse
 		{
-			T data;
-
-			using (var request = new UnityWebRequest(path, "POST"))
-			{
-				request.SetHeaders(Configuration);
-				var boundary = UnityWebRequest.GenerateBoundary();
-				var formSections = UnityWebRequest.SerializeFormSections(form, boundary);
-				var contentType = $"{ContentType.MultipartFormData}; boundary={Encoding.UTF8.GetString(boundary)}";
-				request.uploadHandler = new UploadHandlerRaw(formSections) { contentType = contentType };
-				request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
-				var asyncOperation = request.SendWebRequest();
-
-				while (!asyncOperation.isDone)
-					await Task.Yield();
-
-				data = JsonConvert.DeserializeObject<T>(request.downloadHandler.text, jsonSerializerSettings);
-			}
-
-			if (data != null && data.Error != null)
-			{
-				ApiError error = data.Error;
-				Debug.LogError($"Error Message: {error.Message}\nError Type: {error.Type}\n");
-			}
-
-			return data;
-		}
+			using var request = new UnityWebRequest(path, "POST");
+            request.SetHeaders(Configuration);
+            var boundary = UnityWebRequest.GenerateBoundary();
+            var formSections = UnityWebRequest.SerializeFormSections(form, boundary);
+            var contentType = $"{ContentType.MultipartFormData}; boundary={Encoding.UTF8.GetString(boundary)}";
+            request.uploadHandler = new UploadHandlerRaw(formSections) { contentType = contentType };
+            request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
+            return await ProcessRequest<T>(request, errorCallback);
+        }
 
 		/// <summary>
 		///     Create byte array payload from the given request object that contains the parameters.
@@ -139,7 +143,7 @@ namespace OpenAI
 		public async Task<ListModelsResponse> ListModels()
 		{
 			var path = $"{BASE_PATH}/models";
-			return await DispatchRequest<ListModelsResponse>(path, UnityWebRequest.kHttpVerbGET);
+			return await DispatchRequest<ListModelsResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
 		/// <summary>
@@ -150,7 +154,7 @@ namespace OpenAI
 		public async Task<OpenAIModel> RetrieveModel(string id)
 		{
 			var path = $"{BASE_PATH}/models/{id}";
-			return await DispatchRequest<OpenAIModelResponse>(path, UnityWebRequest.kHttpVerbGET);
+			return await DispatchRequest<OpenAIModelResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
 		/// <summary>
@@ -162,7 +166,7 @@ namespace OpenAI
 		{
 			var path = $"{BASE_PATH}/completions";
 			var payload = CreatePayload(request);
-			return await DispatchRequest<CreateCompletionResponse>(path, UnityWebRequest.kHttpVerbPOST, payload);
+			return await DispatchRequest<CreateCompletionResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, null);
 		}
 
 		/// <summary>
@@ -170,11 +174,11 @@ namespace OpenAI
 		/// </summary>
 		/// <param name="request">See <see cref="CreateChatCompletionRequest"/></param>
 		/// <returns>See <see cref="CreateChatCompletionResponse"/></returns>
-		public async Task<CreateChatCompletionResponse> CreateChatCompletion(CreateChatCompletionRequest request)
+		public async Task<CreateChatCompletionResponse> CreateChatCompletion(CreateChatCompletionRequest request, Action<string> errorCallback)
 		{
 			var path = $"{BASE_PATH}/chat/completions";
 			var payload = CreatePayload(request);
-			return await DispatchRequest<CreateChatCompletionResponse>(path, UnityWebRequest.kHttpVerbPOST, payload);
+			return await DispatchRequest<CreateChatCompletionResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, errorCallback);
 		}
 
 		/// <summary>
@@ -186,7 +190,7 @@ namespace OpenAI
 		{
 			var path = $"{BASE_PATH}/edits";
 			var payload = CreatePayload(request);
-			return await DispatchRequest<CreateEditResponse>(path, UnityWebRequest.kHttpVerbPOST, payload);
+			return await DispatchRequest<CreateEditResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, null);
 		}
 
 		/// <summary>
@@ -198,7 +202,7 @@ namespace OpenAI
 		{
 			var path = $"{BASE_PATH}/images/generations";
 			var payload = CreatePayload(request);
-			return await DispatchRequest<CreateImageResponse>(path, UnityWebRequest.kHttpVerbPOST, payload);
+			return await DispatchRequest<CreateImageResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, null);
 		}
 
 		/// <summary>
@@ -218,7 +222,7 @@ namespace OpenAI
 			form.AddValue(request.Size, "size");
 			form.AddValue(request.ResponseFormat, "response_format");
 
-			return await DispatchRequest<CreateImageResponse>(path, form);
+			return await DispatchRequest<CreateImageResponse>(path, form, null);
 		}
 
 		/// <summary>
@@ -237,7 +241,7 @@ namespace OpenAI
 			form.AddValue(request.ResponseFormat, "response_format");
 			form.AddValue(request.User, "user");
 
-			return await DispatchRequest<CreateImageResponse>(path, form);
+			return await DispatchRequest<CreateImageResponse>(path, form, null);
 		}
 
 		/// <summary>
@@ -249,7 +253,7 @@ namespace OpenAI
 		{
 			var path = $"{BASE_PATH}/embeddings";
 			var payload = CreatePayload(request);
-			return await DispatchRequest<CreateEmbeddingsResponse>(path, UnityWebRequest.kHttpVerbPOST, payload);
+			return await DispatchRequest<CreateEmbeddingsResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, null);
 		}
 
 		/// <summary>
@@ -276,7 +280,7 @@ namespace OpenAI
 			form.AddValue(request.Temperature, "temperature");
 			form.AddValue(request.Language, "language");
 
-			return await DispatchRequest<CreateAudioResponse>(path, form);
+			return await DispatchRequest<CreateAudioResponse>(path, form, null);
 		}
 
 		/// <summary>
@@ -302,7 +306,7 @@ namespace OpenAI
 			form.AddValue(request.ResponseFormat, "response_format");
 			form.AddValue(request.Temperature, "temperature");
 
-			return await DispatchRequest<CreateAudioResponse>(path, form);
+			return await DispatchRequest<CreateAudioResponse>(path, form, null);
 		}
 
 		/// <summary>
@@ -312,7 +316,7 @@ namespace OpenAI
 		public async Task<ListFilesResponse> ListFiles()
 		{
 			var path = $"{BASE_PATH}/files";
-			return await DispatchRequest<ListFilesResponse>(path, UnityWebRequest.kHttpVerbGET);
+			return await DispatchRequest<ListFilesResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
 		/// <summary>
@@ -330,7 +334,7 @@ namespace OpenAI
 			form.AddFile(request.File, "file", "application/json");
 			form.AddValue(request.Purpose, "purpose");
 
-			return await DispatchRequest<OpenAIFileResponse>(path, form);
+			return await DispatchRequest<OpenAIFileResponse>(path, form, null);
 		}
 
 		/// <summary>
@@ -341,7 +345,7 @@ namespace OpenAI
 		public async Task<DeleteResponse> DeleteFile(string id)
 		{
 			var path = $"{BASE_PATH}/files/{id}";
-			return await DispatchRequest<DeleteResponse>(path, UnityWebRequest.kHttpVerbDELETE);
+			return await DispatchRequest<DeleteResponse>(path, UnityWebRequest.kHttpVerbDELETE, null, null);
 		}
 
 		/// <summary>
@@ -352,7 +356,7 @@ namespace OpenAI
 		public async Task<OpenAIFile> RetrieveFile(string id)
 		{
 			var path = $"{BASE_PATH}/files/{id}";
-			return await DispatchRequest<OpenAIFileResponse>(path, UnityWebRequest.kHttpVerbGET);
+			return await DispatchRequest<OpenAIFileResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
 		/// <summary>
@@ -363,7 +367,7 @@ namespace OpenAI
 		public async Task<OpenAIFile> DownloadFile(string id)
 		{
 			var path = $"{BASE_PATH}/files/{id}/content";
-			return await DispatchRequest<OpenAIFileResponse>(path, UnityWebRequest.kHttpVerbGET);
+			return await DispatchRequest<OpenAIFileResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
 		/// <summary>
@@ -376,7 +380,7 @@ namespace OpenAI
 		{
 			var path = $"{BASE_PATH}/fine-tunes";
 			var payload = CreatePayload(request);
-			return await DispatchRequest<FineTuneResponse>(path, UnityWebRequest.kHttpVerbPOST, payload);
+			return await DispatchRequest<FineTuneResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, null);
 		}
 
 		/// <summary>
@@ -386,7 +390,7 @@ namespace OpenAI
 		public async Task<ListFineTunesResponse> ListFineTunes()
 		{
 			var path = $"{BASE_PATH}/fine-tunes";
-			return await DispatchRequest<ListFineTunesResponse>(path, UnityWebRequest.kHttpVerbGET);
+			return await DispatchRequest<ListFineTunesResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
 		/// <summary>
@@ -397,7 +401,7 @@ namespace OpenAI
 		public async Task<FineTune> RetrieveFineTune(string id)
 		{
 			var path = $"{BASE_PATH}/fine-tunes/{id}";
-			return await DispatchRequest<FineTuneResponse>(path, UnityWebRequest.kHttpVerbGET);
+			return await DispatchRequest<FineTuneResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
 		/// <summary>
@@ -408,7 +412,7 @@ namespace OpenAI
 		public async Task<FineTune> CancelFineTune(string id)
 		{
 			var path = $"{BASE_PATH}/fine-tunes/{id}/cancel";
-			return await DispatchRequest<FineTuneResponse>(path, UnityWebRequest.kHttpVerbPOST);
+			return await DispatchRequest<FineTuneResponse>(path, UnityWebRequest.kHttpVerbPOST, null, null);
 		}
 
 		/// <summary>
@@ -423,7 +427,7 @@ namespace OpenAI
 		public async Task<ListFineTuneEventsResponse> ListFineTuneEvents(string id, bool stream = false)
 		{
 			var path = $"{BASE_PATH}/fine-tunes/{id}/events?stream={stream}";
-			return await DispatchRequest<ListFineTuneEventsResponse>(path, UnityWebRequest.kHttpVerbGET);
+			return await DispatchRequest<ListFineTuneEventsResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
 		/// <summary>
@@ -434,7 +438,7 @@ namespace OpenAI
 		public async Task<DeleteResponse> DeleteFineTunedModel(string model)
 		{
 			var path = $"{BASE_PATH}/models/{model}";
-			return await DispatchRequest<DeleteResponse>(path, UnityWebRequest.kHttpVerbDELETE);
+			return await DispatchRequest<DeleteResponse>(path, UnityWebRequest.kHttpVerbDELETE, null, null);
 		}
 
 		/// <summary>
@@ -446,7 +450,7 @@ namespace OpenAI
 		{
 			var path = $"{BASE_PATH}/moderations";
 			var payload = CreatePayload(request);
-			return await DispatchRequest<CreateModerationResponse>(path, UnityWebRequest.kHttpVerbPOST, payload);
+			return await DispatchRequest<CreateModerationResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, null);
 		}
 	}
 }

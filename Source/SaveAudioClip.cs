@@ -10,13 +10,9 @@ public static class SaveAudioClip
     public static bool Save(string filename, AudioClip clip)
     {
         if (!filename.ToLower().EndsWith(".wav"))
-        {
             filename += ".wav";
-        }
 
         var filepath = Path.Combine(Application.persistentDataPath, filename);
-
-        Debug.Log(filepath);
 
         // Make sure directory exists if user is saving to sub dir.
         Directory.CreateDirectory(Path.GetDirectoryName(filepath));

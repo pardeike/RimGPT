@@ -52,6 +52,19 @@ namespace RimGPT
         }
     }
 
+    [HarmonyPatch(typeof(Game), nameof(Game.FinalizeInit))]
+    public static class Game_FinalizeInit_Patch
+    {
+        public static void Postfix(Game __instance)
+        {
+            AI.ResetHistory();
+            PhraseManager.ResetHistory();
+
+            var colonists = __instance.World.worldPawns.AllPawnsAlive.Where(p => p.IsColonist).Join(c => c.LabelShortCap);
+            PhraseManager.Add($"{"GeneratingWorld".Translate()}. {"ColonistsSection".Translate()}: {colonists}");
+        }
+    }
+
     [HarmonyPatch(typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.StartJob))]
     [HarmonyPatch(new Type[] { typeof(Job), typeof(JobCondition), typeof(ThinkNode), typeof(bool), typeof(bool), typeof(ThinkTreeDef), typeof(JobTag?), typeof(bool), typeof(bool), typeof(bool?), typeof(bool), typeof(bool) })]
     public static class Pawn_JobTracker_StartJob_Patch
@@ -224,6 +237,7 @@ namespace RimGPT
         {
             yield return SymbolExtensions.GetMethodInfo(() => StartingPawnUtility.NewGeneratedStartingPawn(0));
             yield return SymbolExtensions.GetMethodInfo(() => new GameInitData().PrepForMapGen());
+            yield return SymbolExtensions.GetMethodInfo(() => new PostLoadIniter().DoAllPostLoadInits());
         }
 
         public static void Prefix()

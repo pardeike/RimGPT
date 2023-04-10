@@ -35,6 +35,11 @@ namespace RimGPT
             }
         }
 
+        public static void ResetHistory()
+        {
+            phrases.Clear();
+        }
+
         public static async Task<bool> Process()
         {
             string[] observations;
@@ -45,7 +50,7 @@ namespace RimGPT
             }
             if (observations.Length == 0) return false;
             var result = await AI.Evaluate(observations);
-            if (result != null) await TTS.PlayAzure(result);
+            if (result != null) await TTS.PlayAzure(result, true, error => Log.Error(error));
             return true;
         }
 
