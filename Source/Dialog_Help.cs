@@ -9,11 +9,9 @@ namespace RimGPT
         Vector2 scrollPosition;
         string topic = "";
 
-        const string helpText = @"This mod utilizes two external APIs: openai.com for ChatGPT and Microsoft Azure for Text-to-Speech services. You must provide both keys yourself, as the overall demand for this free mod would be too costly.
+        const string helpText = @"This mod utilizes two external APIs: openai.com for ChatGPT and Microsoft Azure for Text-to-Speech services. You must provide both keys yourself, as the overall demand for this free mod would be too costly. Your task is to create both accounts, connect them with a credit card and add a minimum amount to their balance.
 
-Your task is to create both accounts, connect them with a credit card and add a minimum amount to their balance.
-
-#   OpenAI
+# OpenAI
 
 To enable ChatGPT functionality, visit https://platform.openai.com/account/api-keys and create a new secret key. Paste the key into the mod settings. If you're unable to create an account, try multiple times. Using API keys does in fact require a paid membership but its costs are minimal. For more information, refer to https://platform.openai.com/docs/api-reference/authentication and https://platform.openai.com/account/usage.
 
