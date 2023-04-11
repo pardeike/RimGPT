@@ -13,13 +13,12 @@ namespace RimGPT
 		public float azureVoiceStyleDegree = 1f;
 		public float speechVolume = 4f;
 		public float speechRate = 0f;
-		public float speechPitch = -0.15f;
+		public float speechPitch = -0.1f;
 		public int phraseBatchSize = 20;
 		public float phraseDelayMin = 2f;
 		public float phraseDelayMax = 10f;
 		public int phraseMaxWordCount = 50;
-		public int historyMaxWordCount = 20;
-		public int historyMaxItemCount = 10;
+		public int historyMaxWordCount = 200;
 		public string personality = AI.defaultPersonality;
 
 		public override void ExposeData()
@@ -33,14 +32,15 @@ namespace RimGPT
 			Scribe_Values.Look(ref azureVoiceStyleDegree, "azureVoiceStyleDegree", 1f);
 			Scribe_Values.Look(ref speechVolume, "speechVolume", 4f);
 			Scribe_Values.Look(ref speechRate, "speechRate", 0f);
-			Scribe_Values.Look(ref speechPitch, "speechPitch", -0.15f);
+			Scribe_Values.Look(ref speechPitch, "speechPitch", -0.1f);
 			Scribe_Values.Look(ref phraseBatchSize, "phraseBatchSize", 20);
 			Scribe_Values.Look(ref phraseDelayMin, "phraseDelayMin", 2f);
 			Scribe_Values.Look(ref phraseDelayMax, "phraseDelayMax", 10f);
 			Scribe_Values.Look(ref phraseMaxWordCount, "phraseMaxWordCount", 50);
-			Scribe_Values.Look(ref historyMaxWordCount, "historyMaxWordCount", 20);
-			Scribe_Values.Look(ref historyMaxItemCount, "historyMaxItemCount", 10);
+			Scribe_Values.Look(ref historyMaxWordCount, "historyMaxWordCount", 400);
 			Scribe_Values.Look(ref personality, "personality", AI.defaultPersonality);
+
+			if (historyMaxWordCount < 200) historyMaxWordCount = 400;
 		}
 
 		public bool IsConfigured =>
@@ -112,11 +112,10 @@ namespace RimGPT
 			list.Slider(ref phraseDelayMax, 1f, 100f, () => $"Maximum: {phraseDelayMax}");
 			list.Gap(16f);
 			_ = list.Label("Comments");
-			list.Slider(ref phraseMaxWordCount, 1, 160, () => $"Phrase maximum words: {phraseMaxWordCount}");
+			list.Slider(ref phraseMaxWordCount, 1, 160, () => $"Maximum word count: {phraseMaxWordCount}");
 			list.Gap(16f);
-			_ = list.Label("History limits");
-			list.Slider(ref historyMaxWordCount, 1, 160, () => $"Words: {historyMaxWordCount}");
-			list.Slider(ref historyMaxItemCount, 1, 100, () => $"Total items: {historyMaxItemCount}");
+			_ = list.Label("History");
+			list.Slider(ref historyMaxWordCount, 200, 1200, () => $"Maximum word count: {historyMaxWordCount}");
 
 			list.Gap(16f);
 
@@ -127,13 +126,12 @@ namespace RimGPT
 				azureVoiceStyleDegree = 1f;
 				speechVolume = 4f;
 				speechRate = 0f;
-				speechPitch = -0.15f;
+				speechPitch = -0.1f;
 				phraseBatchSize = 20;
 				phraseDelayMin = 2f;
 				phraseDelayMax = 10f;
 				phraseMaxWordCount = 50;
-				historyMaxWordCount = 20;
-				historyMaxItemCount = 10;
+				historyMaxWordCount = 400;
 				personality = AI.defaultPersonality;
 			}
 

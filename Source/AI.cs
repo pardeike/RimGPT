@@ -4,6 +4,7 @@ using OpenAI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Verse;
 
@@ -11,15 +12,9 @@ namespace RimGPT
 {
 	public static class AI
 	{
-		public static bool debug = true;
+		public static bool debug = false;
 
 #pragma warning disable CS0649
-		struct Input
-		{
-			public string[] happenings;
-			public string[] history;
-		}
-
 		struct Output
 		{
 			public string comment;
@@ -30,8 +25,7 @@ namespace RimGPT
 		private static OpenAIApi OpenAI => new(RimGPTMod.Settings.chatGPTKey);
 		private static readonly string commentName = "comment";
 		private static readonly string historyName = "history";
-		private static readonly string happeningsName = "happenings";
-		private static readonly List<string> history = new();
+		private static string history = "Nothing yet";
 
 		public const string defaultPersonality = @"You are an expert player of the game Rimworld. You are always {VOICESTYLE}.
 You will repeatedly receive input from an ongoing Rimworld game.
@@ -48,14 +42,6 @@ Typical things you say:
 
 Here are more rules you must follow:
 
-Rule: Your input is in json that matches this model:
-```cs
-struct Input {{
-  public string[] {happeningsName};
-  public string[] {historyName};
-}}
-```
-
 Rule: Your output is in json that matches this model:
 ```cs
 struct Output {{
@@ -64,40 +50,32 @@ struct Output {{
 }}
 ```
 
-Rule: 'Input.{happeningsName}' are things that happened in the current game
+Rule: Your input is machine generated from typical game output
 
-Rule: Items in 'Input.{happeningsName}' are machine generated from typical game output
+Rule: '{commentName}' must not be longer than {RimGPTMod.Settings.phraseMaxWordCount} words
 
-Rule: 'Output.{commentName}' must not be longer than {RimGPTMod.Settings.phraseMaxWordCount} words
+Rule: '{commentName}' should be {{VOICESTYLE}}
 
-Rule: 'Output.{commentName}' should be {{VOICESTYLE}}
+Rule: '{historyName}' should be the summary over the past things that happened in the game so far
 
-Rule: 'Input.{historyName}' is past information about the game
+Rule: '{historyName}' must be written in past tense
 
-Rule: Do not refer to 'Input.{historyName}' directly. It happened in the past.
+Rule: '{historyName}' must not be longer than {RimGPTMod.Settings.historyMaxWordCount} words
 
-Rule: 'Output.{historyName}' should be a summary of the recent things that happened
-
-Rule: 'Output.{historyName}' must be written in past tense
-
-Rule: 'Output.{historyName}' must not be longer than {RimGPTMod.Settings.historyMaxWordCount} words
-
-Important rule: 'Output.{commentName}' MUST be in {Tools.Language} translated form!
+Important rule: '{commentName}' MUST be in {Tools.Language} translated form!
 Important rule: you ONLY answer in json as defined in the rules!").ApplyVoiceStyle();
 
 		public static async Task<string> Evaluate(string[] observations)
 		{
-			string[] historyArray;
-			lock (history)
-				historyArray = history.ToArray();
-			var input = new Input()
-			{
-				happenings = observations,
-				history = historyArray
-			};
-			var content = JsonConvert.SerializeObject(input);
+			var input = new StringBuilder();
+			_ = input.AppendLine($"What has happened in the past in the game:");
+			_ = input.AppendLine(history);
+			_ = input.AppendLine("What has happened just now:");
+			for (var i = 0; i < observations.Length; i++)
+				_ = input.AppendLine($"- {observations[i]}");
+
 			if (debug)
-				Log.Warning($"INPUT: {content}");
+				Log.Warning($"INPUT: {input}");
 
 			var observationString = observations.Join(o => $"- {o}", "\n");
 			var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
@@ -113,7 +91,7 @@ Important rule: you ONLY answer in json as defined in the rules!").ApplyVoiceSty
 						  new ChatMessage()
 						  {
 								Role = "user",
-								Content = content
+								Content = input.ToString()
 						  }
 					 }
 			}, error => Log.Error(error));
@@ -126,13 +104,7 @@ Important rule: you ONLY answer in json as defined in the rules!").ApplyVoiceSty
 				try
 				{
 					var output = JsonConvert.DeserializeObject<Output>(response);
-					lock (history)
-					{
-						history.Add(output.history);
-						var oversize = history.Count - RimGPTMod.Settings.historyMaxItemCount;
-						if (oversize > 0)
-							history.RemoveRange(0, oversize);
-					}
+					history = output.history;
 					return output.comment.Cleanup();
 				}
 				catch (Exception exception)
@@ -140,13 +112,15 @@ Important rule: you ONLY answer in json as defined in the rules!").ApplyVoiceSty
 					Log.Error($"ChatGPT malformed output: {response} [{exception.Message}]");
 				}
 			}
+			else if (debug)
+				Log.Warning($"OUTPUT: null");
+
 			return null;
 		}
 
 		public static void ResetHistory()
 		{
-			lock (history)
-				history.Clear();
+			history = "Nothing yet";
 		}
 
 		public static async Task<(string, string)> SimplePrompt(string input)

@@ -237,38 +237,21 @@ namespace RimGPT
 		}
 	}
 
-	[HarmonyPatch]
-	public static class GameInitData_PrepForMapGen_Patch
+	[HarmonyPatch(typeof(WidgetsWork), nameof(WidgetsWork.DrawWorkBoxFor))]
+	public static class WidgetsWork_DrawWorkBoxFor_Patch
 	{
-		public static IEnumerable<MethodBase> TargetMethods()
+		public static void SetPriority(Pawn_WorkSettings instance, WorkTypeDef w, int priority)
 		{
-			yield return SymbolExtensions.GetMethodInfo(() => StartingPawnUtility.NewGeneratedStartingPawn(0));
-			yield return SymbolExtensions.GetMethodInfo(() => new GameInitData().PrepForMapGen());
-			yield return SymbolExtensions.GetMethodInfo(() => new PostLoadIniter().DoAllPostLoadInits());
-		}
-
-		public static void Prefix()
-		{
-			Pawn_WorkSettings_SetPriority_Patch.ignore = true;
-		}
-
-		public static void Postfix()
-		{
-			Pawn_WorkSettings_SetPriority_Patch.ignore = false;
-		}
-	}
-	//
-	[HarmonyPatch(typeof(Pawn_WorkSettings), nameof(Pawn_WorkSettings.SetPriority))]
-	public static class Pawn_WorkSettings_SetPriority_Patch
-	{
-		public static bool ignore = false;
-
-		public static void Postfix(Pawn ___pawn, WorkTypeDef w, int priority)
-		{
-			if (ignore)
-				return;
+			instance.SetPriority(w, priority);
 			var workType = w.labelShort.CapitalizeFirst();
-			PhraseManager.Add($"{___pawn.NameAndType()}: {Tools.Strings.priority} {workType} = {priority}");
+			PhraseManager.Add($"{instance.pawn.NameAndType()}: {Tools.Strings.priority} {workType} = {priority}");
+		}
+
+		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+		{
+			var from = SymbolExtensions.GetMethodInfo(() => new Pawn_WorkSettings().SetPriority(null, 0));
+			var to = SymbolExtensions.GetMethodInfo(() => SetPriority(null, null, 0));
+			return instructions.MethodReplacer(from, to);
 		}
 	}
 
