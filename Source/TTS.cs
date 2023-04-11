@@ -105,6 +105,7 @@ namespace RimGPT
 			if (audioSource == null)
 			{
 				var gameObject = new GameObject("HarmonyOneShotSourcesWorldContainer");
+				UnityEngine.Object.DontDestroyOnLoad(gameObject);
 				gameObject.transform.position = Vector3.zero;
 				var gameObject2 = new GameObject("HarmonyOneShotSource");
 				gameObject2.transform.parent = gameObject.transform;
@@ -277,19 +278,22 @@ namespace RimGPT
 
 		public static void LoadVoiceInformation()
 		{
-			var currentVoice = Voice.From(RimGPTMod.Settings.azureVoice);
-			if (currentVoice != null && currentVoice.LocaleName.Contains(Tools.Language) == false)
-			{
-				currentVoice = voices.Where(voice => voice.LocaleName.Contains(Tools.Language)).OrderBy(voice => voice.DisplayName).FirstOrDefault();
-				RimGPTMod.Settings.azureVoice = currentVoice?.ShortName ?? "";
-				RimGPTMod.Settings.azureVoiceStyle = "default";
-			}
-
 			voices = new Voice[0];
 			if (RimGPTMod.Settings.azureSpeechKey != "" && RimGPTMod.Settings.azureSpeechRegion != "")
 			{
 				var url = $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices/voices/list";
-				_ = Task.Run(async () => voices = await DispatchFormPost<Voice[]>(url, null, true, null));
+				_ = Task.Run(async () =>
+				{
+					voices = await DispatchFormPost<Voice[]>(url, null, true, null);
+
+					var currentVoice = Voice.From(RimGPTMod.Settings.azureVoice);
+					if (currentVoice != null && currentVoice.LocaleName.Contains(Tools.Language) == false)
+					{
+						currentVoice = voices.Where(voice => voice.LocaleName.Contains(Tools.Language)).OrderBy(voice => voice.DisplayName).FirstOrDefault();
+						RimGPTMod.Settings.azureVoice = currentVoice?.ShortName ?? "";
+						RimGPTMod.Settings.azureVoiceStyle = "default";
+					}
+				});
 			}
 		}
 	}

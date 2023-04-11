@@ -2,8 +2,10 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Verse;
+using static Verse.HediffCompProperties_RandomizeSeverityPhases;
 
 namespace RimGPT
 {
@@ -23,6 +25,8 @@ namespace RimGPT
 	{
 		public static OrderedHashSet<string> phrases = new();
 		public static readonly Regex tagRemover = new("<color.+?>(.+?)</(?:color)?>", RegexOptions.Singleline);
+		public static CancellationTokenSource cancelTokenSource = new();
+		public static void CancelWaiting() => cancelTokenSource?.Cancel();
 
 		public static void Add(string phrase)
 		{
@@ -33,6 +37,18 @@ namespace RimGPT
 					return;
 				phrases.Add(phrase);
 				Log.Message(phrase);
+			}
+		}
+
+		public static void Immediate(string phrase)
+		{
+			phrase = tagRemover.Replace(phrase, "$1");
+			lock (phrases)
+			{
+				phrases.Clear();
+				phrases.Add(phrase);
+				Log.Message(phrase);
+				CancelWaiting();
 			}
 		}
 
@@ -71,7 +87,13 @@ namespace RimGPT
 					}
 
 					if (phrases.Count < RimGPTMod.Settings.phraseBatchSize)
-						await Task.Delay(delay);
+					{
+						try { await Task.Delay(delay, cancelTokenSource.Token); }
+						catch (TaskCanceledException) { delay = 0; }
+						cancelTokenSource.Dispose();
+						cancelTokenSource = new();
+					}
+
 					delay += await Process() ? 1000 : -1000;
 					if (delay < RimGPTMod.Settings.phraseDelayMin)
 						delay = RimGPTMod.Settings.phraseDelayMin.Milliseconds();

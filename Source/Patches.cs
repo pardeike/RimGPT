@@ -4,9 +4,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using UnityEngine;
 using Verse;
 using Verse.AI;
+using static Verse.HediffCompProperties_RandomizeSeverityPhases;
 
 // Things to report:
 // injuries
@@ -49,14 +51,28 @@ namespace RimGPT
 		}
 	}
 
+	[HarmonyPatch]
+	public static class InitGameStart_LoadGame_Patch
+	{
+		public static IEnumerable<MethodBase> TargetMethods()
+		{
+			yield return AccessTools.DeclaredConstructor(typeof(Page_SelectScenario), new Type[0]);
+			yield return SymbolExtensions.GetMethodInfo(() => GameDataSaveLoader.LoadGame(""));
+		}
+
+		public static void Postfix()
+		{
+			Log.Message("* resetting chat history");
+			AI.ResetHistory();
+			PhraseManager.ResetHistory();
+		}
+	}
+
 	[HarmonyPatch(typeof(Game), nameof(Game.FinalizeInit))]
 	public static class Game_FinalizeInit_Patch
 	{
 		public static void Postfix(Game __instance)
 		{
-			AI.ResetHistory();
-			PhraseManager.ResetHistory();
-
 			var colonists = __instance.Maps.SelectMany(m => m.mapPawns.FreeColonists).Join(c => c.LabelShortCap);
 			PhraseManager.Add($"{"GeneratingWorld".Translate()}. {"ColonistsSection".Translate()}: {colonists}");
 		}
@@ -214,7 +230,7 @@ namespace RimGPT
 		public static void Postfix(Frame __instance, Pawn worker)
 		{
 			var def = __instance.BuildDef;
-			if (def == Defs.Wall)
+			if (def == null || def == Defs.Wall || worker == null)
 				return;
 			var makeStr = "RecipeMakeJobString".Translate(def.LabelCap);
 			PhraseManager.Add($"{worker.NameAndType()}: {Tools.Strings.finished} {makeStr}");
@@ -253,6 +269,41 @@ namespace RimGPT
 				return;
 			var workType = w.labelShort.CapitalizeFirst();
 			PhraseManager.Add($"{___pawn.NameAndType()}: {Tools.Strings.priority} {workType} = {priority}");
+		}
+	}
+
+	[HarmonyPatch(typeof(Page_ConfigureStartingPawns), nameof(Page_ConfigureStartingPawns.DrawPortraitArea))]
+	public static class Page_ConfigureStartingPawns_DrawPortraitArea_Patch
+	{
+		static Pawn pawn = null;
+		static readonly Debouncer debouncer = new(1000);
+
+		public static void Postfix(Pawn ___curPawn)
+		{
+			if (___curPawn == pawn)
+				return;
+			pawn = ___curPawn;
+
+			debouncer.Debounce(() =>
+			{
+				var backstory = pawn.story.GetBackstory(BackstorySlot.Adulthood) ?? pawn.story.GetBackstory(BackstorySlot.Childhood);
+				var allTraits = pawn.story.traits.allTraits;
+				var traits = allTraits.Count > 0 ? ", " + allTraits.Select(t => t.LabelCap).ToCommaList() : "";
+
+				var disabled = CharacterCardUtility.WorkTagsFrom(pawn.CombinedDisabledWorkTags).Select(t => t.ToString()).ToCommaList();
+				if (disabled.Any())
+					disabled = $"{"IncapableOf".Translate(pawn)} {disabled}";
+				if (disabled.Any())
+					disabled = $", {disabled}";
+
+				static string SkillName(SkillDef def, int level) => level == 0 ? $"No {def.LabelCap}" : $"{def.LabelCap}:{pawn.skills.GetSkill(def).Level}";
+				var skills = pawn.skills.skills.Select(s => SkillName(s.def, pawn.skills.GetSkill(s.def).Level)).ToCommaList();
+				if (skills.Any())
+					skills = $", {skills}";
+
+				var stats = $"{pawn.gender}, {pawn.ageTracker.AgeBiologicalYears}, {backstory.TitleCapFor(pawn.gender)}{traits}{disabled}{skills}";
+				PhraseManager.Immediate($"Should I choose {___curPawn.LabelShortCap} ({stats}) for this new game?");
+			});
 		}
 	}
 }

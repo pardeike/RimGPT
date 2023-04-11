@@ -49,6 +49,32 @@ namespace RimGPT
 			return $"{pawn.Type()} '{pawn.LabelShortCap}'";
 		}
 
+		public static string ApplyVoiceStyle(this string text)
+		{
+			var voiceStyle = "very funny";
+
+			var value = VoiceStyle.From(RimGPTMod.Settings.azureVoiceStyle)?.Value;
+			if (value != null && value != "default" && value != "chat" && value.Contains("-") == false && value.Contains("_") == false)
+				voiceStyle = $"very {value}";
+
+			return text.Replace("{VOICESTYLE}", voiceStyle);
+		}
+
+		public static string RemovePrefix(this string text, string prefix)
+		{
+			prefix = prefix.ToLower();
+			if (text.ToLower().StartsWith(prefix))
+				text = text.Substring(prefix.Length).CapitalizeFirst();
+			return text;
+		}
+
+		public static string Cleanup(this string text)
+		{
+			text = text.RemovePrefix("Looks like ");
+			text = text.RemovePrefix("Well, well, well ");
+			return text;
+		}
+
 		public static string ToGameStringFromPOVWithType(this LogEntry entry, Pawn pawn)
 		{
 			if (pawn == null)

@@ -8,16 +8,16 @@ namespace RimGPT
 		public string chatGPTKey = "";
 		public string azureSpeechKey = "";
 		public string azureSpeechRegion = "";
-		public string azureVoice = "en-US-AriaNeural";
-		public string azureVoiceStyle = "chat";
-		public float azureVoiceStyleDegree = 1.5f;
+		public string azureVoice = "en-CA-LiamNeural";
+		public string azureVoiceStyle = "default";
+		public float azureVoiceStyleDegree = 1f;
 		public float speechVolume = 4f;
-		public float speechRate = 0.1f;
-		public float speechPitch = -0.02f;
+		public float speechRate = 0f;
+		public float speechPitch = -0.15f;
 		public int phraseBatchSize = 20;
-		public float phraseDelayMin = 10f;
-		public float phraseDelayMax = 20f;
-		public int phraseMaxWordCount = 60;
+		public float phraseDelayMin = 2f;
+		public float phraseDelayMax = 10f;
+		public int phraseMaxWordCount = 50;
 		public int historyMaxWordCount = 20;
 		public int historyMaxItemCount = 10;
 		public string personality = AI.defaultPersonality;
@@ -28,16 +28,16 @@ namespace RimGPT
 			Scribe_Values.Look(ref chatGPTKey, "chatGPTKey");
 			Scribe_Values.Look(ref azureSpeechKey, "azureSpeechKey");
 			Scribe_Values.Look(ref azureSpeechRegion, "azureSpeechRegion");
-			Scribe_Values.Look(ref azureVoice, "azureVoice", "en-US-AriaNeural");
-			Scribe_Values.Look(ref azureVoiceStyle, "azureVoiceStyle", "chat");
-			Scribe_Values.Look(ref azureVoiceStyleDegree, "azureVoiceStyleDegree", 1.5f);
+			Scribe_Values.Look(ref azureVoice, "azureVoice", "en-CA-LiamNeural");
+			Scribe_Values.Look(ref azureVoiceStyle, "azureVoiceStyle", "default");
+			Scribe_Values.Look(ref azureVoiceStyleDegree, "azureVoiceStyleDegree", 1f);
 			Scribe_Values.Look(ref speechVolume, "speechVolume", 4f);
-			Scribe_Values.Look(ref speechRate, "speechRate", 0.1f);
-			Scribe_Values.Look(ref speechPitch, "speechPitch", -0.02f);
+			Scribe_Values.Look(ref speechRate, "speechRate", 0f);
+			Scribe_Values.Look(ref speechPitch, "speechPitch", -0.15f);
 			Scribe_Values.Look(ref phraseBatchSize, "phraseBatchSize", 20);
-			Scribe_Values.Look(ref phraseDelayMin, "phraseDelayMin", 10f);
-			Scribe_Values.Look(ref phraseDelayMax, "phraseDelayMax", 20f);
-			Scribe_Values.Look(ref phraseMaxWordCount, "phraseMaxWordCount", 60);
+			Scribe_Values.Look(ref phraseDelayMin, "phraseDelayMin", 2f);
+			Scribe_Values.Look(ref phraseDelayMax, "phraseDelayMax", 10f);
+			Scribe_Values.Look(ref phraseMaxWordCount, "phraseMaxWordCount", 50);
 			Scribe_Values.Look(ref historyMaxWordCount, "historyMaxWordCount", 20);
 			Scribe_Values.Look(ref historyMaxItemCount, "historyMaxItemCount", 10);
 			Scribe_Values.Look(ref personality, "personality", AI.defaultPersonality);
@@ -45,18 +45,6 @@ namespace RimGPT
 
 		public bool IsConfigured =>
 			 chatGPTKey?.Length > 0 && azureSpeechKey?.Length > 0 && azureSpeechRegion?.Length > 0;
-
-		public string CurrentStyle
-		{
-			get
-			{
-				var currentStyle = VoiceStyle.From(RimGPTMod.Settings.azureVoiceStyle);
-				var value = currentStyle?.Value;
-				if (value == null || value == "default" || value == "chat" || value.Contains("-") || value.Contains("_"))
-					return "funny";
-				return value;
-			}
-		}
 
 		public void DoWindowContents(Rect inRect)
 		{
@@ -134,16 +122,16 @@ namespace RimGPT
 
 			if (list.ButtonText("Restore Defaults"))
 			{
-				azureVoice = "en-US-AriaNeural";
-				azureVoiceStyle = "chat";
-				azureVoiceStyleDegree = 1.5f;
+				azureVoice = "en-CA-LiamNeural";
+				azureVoiceStyle = "default";
+				azureVoiceStyleDegree = 1f;
 				speechVolume = 4f;
-				speechRate = 0.1f;
-				speechPitch = -0.02f;
+				speechRate = 0f;
+				speechPitch = -0.15f;
 				phraseBatchSize = 20;
-				phraseDelayMin = 10f;
-				phraseDelayMax = 20f;
-				phraseMaxWordCount = 60;
+				phraseDelayMin = 2f;
+				phraseDelayMax = 10f;
+				phraseMaxWordCount = 50;
 				historyMaxWordCount = 20;
 				historyMaxItemCount = 10;
 				personality = AI.defaultPersonality;

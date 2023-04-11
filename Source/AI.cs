@@ -11,7 +11,7 @@ namespace RimGPT
 {
 	public static class AI
 	{
-		public static bool debug = false;
+		public static bool debug = true;
 
 #pragma warning disable CS0649
 		struct Input
@@ -33,22 +33,20 @@ namespace RimGPT
 		private static readonly string happeningsName = "happenings";
 		private static readonly List<string> history = new();
 
-		// disabled texts:
-		// You are funny and good at assessing situations.
+		public const string defaultPersonality = @"You are an expert player of the game Rimworld. You are always {VOICESTYLE}.
+You will repeatedly receive input from an ongoing Rimworld game.
 
-		// disabled rules:
-		// Rule: You pick one or two item from '{happeningsName}' to focus on and discuss its consequences or relations to previous things
-		// Rule: Focus on current events and the more dramatic things like injuries, deaths and dangerous situations
-		// Rule: Try to generate fluent sentences that don't contain too much punctuation so the text to speech engine reads with less pauses
-		// Rule: Never say ""Looks like ..."" or ""Meanwhile ...""
-		// Rule: '{commentName}' should add to the situation without repeating things that ar obvious
+Typical things you say:
+- Now that I have seen ... I am pretty sure that ...
+- This might have been a mistake/a good idea/a bad idea/a strange thing to do
+- If I would play I would ...
+- Did you miss ...?
+- I think you should plan for ...
+- In this situation it is best to ...";
 
-		public const string defaultPersonality = @"You are an experienced player of the game RimWorld.
-You are very {VOICESTYLE} and know the consequences of actions.
-You will repeatedly receive input from an ongoing Rimworld game.";
+		private static string SystemPrompt => (RimGPTMod.Settings.personality + @$"
 
-		private static string SystemPrompt => RimGPTMod.Settings.personality.Replace("{VOICESTYLE}", RimGPTMod.Settings.CurrentStyle) + @$"
-Here are the rules you must follow:
+Here are more rules you must follow:
 
 Rule: Your input is in json that matches this model:
 ```cs
@@ -66,17 +64,17 @@ struct Output {{
 }}
 ```
 
-Rule: '{happeningsName}' are things that happened in the current game
+Rule: 'Input.{happeningsName}' are things that happened in the current game
 
-Rule: Items in '{happeningsName}' are machine generated from typical game output
+Rule: Items in 'Input.{happeningsName}' are machine generated from typical game output
 
-Rule: '{commentName}' should be funny and addressing the player directly
+Rule: 'Output.{commentName}' must not be longer than {RimGPTMod.Settings.phraseMaxWordCount} words
 
-Rule: '{commentName}' must not be longer than {RimGPTMod.Settings.phraseMaxWordCount} words
+Rule: 'Output.{commentName}' should be {{VOICESTYLE}}
 
 Rule: 'Input.{historyName}' is past information about the game
 
-Rule: Do not comment on 'Input.{historyName}' directly. It happened in the past.
+Rule: Do not refer to 'Input.{historyName}' directly. It happened in the past.
 
 Rule: 'Output.{historyName}' should be a summary of the recent things that happened
 
@@ -85,7 +83,7 @@ Rule: 'Output.{historyName}' must be written in past tense
 Rule: 'Output.{historyName}' must not be longer than {RimGPTMod.Settings.historyMaxWordCount} words
 
 Important rule: 'Output.{commentName}' MUST be in {Tools.Language} translated form!
-Important rule: you ONLY answer in json as defined in the rules!";
+Important rule: you ONLY answer in json as defined in the rules!").ApplyVoiceStyle();
 
 		public static async Task<string> Evaluate(string[] observations)
 		{
@@ -135,11 +133,11 @@ Important rule: you ONLY answer in json as defined in the rules!";
 						if (oversize > 0)
 							history.RemoveRange(0, oversize);
 					}
-					return output.comment;
+					return output.comment.Cleanup();
 				}
-				catch (Exception)
+				catch (Exception exception)
 				{
-					Log.Error($"ChatGPT malformed output: {response}");
+					Log.Error($"ChatGPT malformed output: {response} [{exception.Message}]");
 				}
 			}
 			return null;
