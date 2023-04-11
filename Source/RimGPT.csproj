@@ -10,10 +10,10 @@
 		<OutputPath>..\Assemblies\</OutputPath>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-		<Version>1.0.1.0</Version>
+		<Version>1.0.2.0</Version>
 		<Copyright>Copyright Andreas Pardeike</Copyright>
 		<Configurations>Release;Debug</Configurations>
-		<ReleaseVersion>1.0.1</ReleaseVersion>
+		<ReleaseVersion>1.0.2</ReleaseVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -35,7 +35,7 @@
 		<PackageReference Include="Brrainz.RimWorld.CrossPromotion" Version="1.0.0" />
 		<PackageReference Include="Krafs.Rimworld.Ref" Version="1.4.3682" GeneratePathProperty="true" />
 		<PackageReference Include="Lib.Harmony" Version="2.2.2" ExcludeAssets="runtime" />
-		<PackageReference Include="Microsoft.NETCore.Platforms" Version="7.0.1" />
+		<PackageReference Include="Microsoft.NETCore.Platforms" Version="7.0.2" />
 		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -76,14 +76,15 @@
 	</Target>
 
 	<PropertyGroup>
-		<!--<PostBuildEvent>echo Postprocessing
+		<PostBuildEvent>echo Postprocessing
 where ModBuilder 2&gt; nul | find /i "ModBuilder.exe"
 if not errorlevel 1 (
 	ModBuilder AssemblyVersion -file "$(MSBuildProjectDirectory)\$(OutputPath)$(AssemblyName).dll" -save "$(MSBuildProjectName)-version"
 )
 if defined INSTALL_MOD (
 	"%INSTALL_MOD%" "$(Configuration)" "$(MSBuildProjectDirectory)\..\" "$(MSBuildProjectName)" "About Assemblies" ""
-)</PostBuildEvent>-->
+)
+		</PostBuildEvent>
 		<Company>Brrainz</Company>
 		<Authors>Andreas Pardeike</Authors>
 		<Description></Description>

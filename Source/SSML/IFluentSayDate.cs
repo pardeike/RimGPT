@@ -1,7 +1,7 @@
 ﻿namespace Kevsoft.Ssml
 {
-    public interface IFluentSayDate : ISsml
-    {
-        ISsml As(DateFormat dateFormat);
-    }
+	public interface IFluentSayDate : ISsml
+	{
+		ISsml As(DateFormat dateFormat);
+	}
 }

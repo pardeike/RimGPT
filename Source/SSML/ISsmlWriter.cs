@@ -3,8 +3,8 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-    public interface ISsmlWriter
-    {
-        Task WriteAsync(XmlWriter writer);
-    }
+	public interface ISsmlWriter
+	{
+		Task WriteAsync(XmlWriter writer);
+	}
 }

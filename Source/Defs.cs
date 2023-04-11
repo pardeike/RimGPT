@@ -1,5 +1,4 @@
-﻿using System;
-using RimWorld;
+﻿using RimWorld;
 using Verse;
 
 namespace RimGPT
@@ -8,7 +7,6 @@ namespace RimGPT
 	public static class Defs
 	{
 		public static ThingDef Wall;
-
 		public static WorkTypeDef Cleaning;
 	}
 }

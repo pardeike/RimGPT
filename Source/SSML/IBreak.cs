@@ -2,10 +2,10 @@
 
 namespace Kevsoft.Ssml
 {
-    public interface IBreak : ISsml
-    {
-        IBreak For(TimeSpan duration);
+	public interface IBreak : ISsml
+	{
+		IBreak For(TimeSpan duration);
 
-        IBreak WithStrength(BreakStrength strength);
-    }
+		IBreak WithStrength(BreakStrength strength);
+	}
 }

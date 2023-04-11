@@ -1,6 +1,6 @@
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine.Networking;
-using System.Collections.Generic;
 
 namespace OpenAI
 {

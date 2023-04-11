@@ -1,15 +1,12 @@
-using UnityEngine;
-using System.Text;
 using Newtonsoft.Json;
-using System.Globalization;
-using System.Threading.Tasks;
-using UnityEngine.Networking;
-using System.Collections.Generic;
-using System.IO;
 using Newtonsoft.Json.Serialization;
 using System;
-using HarmonyLib;
-using Mono.Unix.Native;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
+using UnityEngine.Networking;
 
 namespace OpenAI
 {
@@ -56,39 +53,39 @@ namespace OpenAI
 
 		private async Task<T> ProcessRequest<T>(UnityWebRequest request, Action<string> errorCallback)
 		{
-            try
-            {
-                var asyncOperation = request.SendWebRequest();
-                while (!asyncOperation.isDone)
-                    await Task.Yield();
-            }
-            catch (Exception exception)
-            {
+			try
+			{
+				var asyncOperation = request.SendWebRequest();
+				while (!asyncOperation.isDone)
+					await Task.Yield();
+			}
+			catch (Exception exception)
+			{
 				var error = $"Error communicating with OpenAI: {exception}";
-				if (errorCallback != null) errorCallback(error);
-                return default;
-            }
+				errorCallback?.Invoke(error);
+				return default;
+			}
 
-            var response = request.downloadHandler.text;
+			var response = request.downloadHandler.text;
 			var code = request.responseCode;
 			if (code >= 300)
 			{
 				var error = $"Got {code} response from OpenAI: {response}";
-                if (errorCallback != null) errorCallback(error);
-                return default;
-            }
+				errorCallback?.Invoke(error);
+				return default;
+			}
 
-            try
-            {
-                return JsonConvert.DeserializeObject<T>(response, jsonSerializerSettings);
-            }
-            catch (Exception)
-            {
-                var error = $"Error while decoding response from OpenAI: {response}";
-                if (errorCallback != null) errorCallback(error);
-                return default;
-            }
-        }
+			try
+			{
+				return JsonConvert.DeserializeObject<T>(response, jsonSerializerSettings);
+			}
+			catch (Exception)
+			{
+				var error = $"Error while decoding response from OpenAI: {response}";
+				errorCallback?.Invoke(error);
+				return default;
+			}
+		}
 
 		/// <summary>
 		///     Dispatches an HTTP request to the specified path with the specified method and optional payload.
@@ -101,10 +98,10 @@ namespace OpenAI
 		private async Task<T> DispatchRequest<T>(string path, string method, byte[] payload, Action<string> errorCallback) where T : IResponse
 		{
 			using var request = UnityWebRequest.Put(path, payload);
-            request.method = method;
-            request.SetHeaders(Configuration, ContentType.ApplicationJson);
+			request.method = method;
+			request.SetHeaders(Configuration, ContentType.ApplicationJson);
 			return await ProcessRequest<T>(request, errorCallback);
-        }
+		}
 
 		/// <summary>
 		///     Dispatches an HTTP request to the specified path with a multi-part data form.
@@ -116,14 +113,14 @@ namespace OpenAI
 		private async Task<T> DispatchRequest<T>(string path, List<IMultipartFormSection> form, Action<string> errorCallback) where T : IResponse
 		{
 			using var request = new UnityWebRequest(path, "POST");
-            request.SetHeaders(Configuration);
-            var boundary = UnityWebRequest.GenerateBoundary();
-            var formSections = UnityWebRequest.SerializeFormSections(form, boundary);
-            var contentType = $"{ContentType.MultipartFormData}; boundary={Encoding.UTF8.GetString(boundary)}";
-            request.uploadHandler = new UploadHandlerRaw(formSections) { contentType = contentType };
-            request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
-            return await ProcessRequest<T>(request, errorCallback);
-        }
+			request.SetHeaders(Configuration);
+			var boundary = UnityWebRequest.GenerateBoundary();
+			var formSections = UnityWebRequest.SerializeFormSections(form, boundary);
+			var contentType = $"{ContentType.MultipartFormData}; boundary={Encoding.UTF8.GetString(boundary)}";
+			request.uploadHandler = new UploadHandlerRaw(formSections) { contentType = contentType };
+			request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
+			return await ProcessRequest<T>(request, errorCallback);
+		}
 
 		/// <summary>
 		///     Create byte array payload from the given request object that contains the parameters.
