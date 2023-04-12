@@ -10,10 +10,10 @@
 		<OutputPath>..\Assemblies\</OutputPath>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-		<Version>1.0.2.0</Version>
+		<Version>1.1.0.0</Version>
 		<Copyright>Copyright Andreas Pardeike</Copyright>
 		<Configurations>Release;Debug</Configurations>
-		<ReleaseVersion>1.0.2</ReleaseVersion>
+		<ReleaseVersion>1.1.0</ReleaseVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

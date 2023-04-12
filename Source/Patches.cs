@@ -26,10 +26,12 @@ namespace RimGPT
 
 		public static void Postfix()
 		{
-			if (showWelcome == false)
+			if (showWelcome == false || RimGPTMod.Settings.IsConfigured)
+			{
+				UIRoot_Play_UIRootOnGUI_Patch.Postfix();
 				return;
-			if (RimGPTMod.Settings.IsConfigured)
-				return;
+			}
+
 			var (sw, sh) = (UI.screenWidth, UI.screenHeight);
 			var (w, h) = (360, 120);
 			var rect = new Rect((sw - w) / 2, (sh - h) / 2, w, h);
@@ -44,6 +46,31 @@ namespace RimGPT
 			var anchor = Text.Anchor;
 			var font = Text.Font;
 			Text.Font = GameFont.Small;
+			Text.Anchor = TextAnchor.MiddleCenter;
+			Widgets.Label(rect.ExpandedBy(-20, 0), welcome);
+			Text.Anchor = anchor;
+			Text.Font = font;
+		}
+	}
+
+	[HarmonyPatch(typeof(UIRoot_Play), nameof(UIRoot_Play.UIRootOnGUI))]
+	public static class UIRoot_Play_UIRootOnGUI_Patch
+	{
+		static readonly Color background = new(0f, 0f, 0f, 0.4f);
+
+		public static void Postfix()
+		{
+			var welcome = TTS.currentText;
+			if (welcome == "") return;
+
+			var (sw, sh) = (UI.screenWidth, UI.screenHeight);
+			var (w, h) = (768, 160);
+			var rect = new Rect((sw - w) / 2, (sh - h) / 2 + sh / 3, w, h);
+
+			Widgets.DrawBoxSolid(rect, background);
+			var anchor = Text.Anchor;
+			var font = Text.Font;
+			Text.Font = GameFont.Medium;
 			Text.Anchor = TextAnchor.MiddleCenter;
 			Widgets.Label(rect.ExpandedBy(-20, 0), welcome);
 			Text.Anchor = anchor;

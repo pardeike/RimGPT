@@ -27,7 +27,7 @@ namespace RimGPT
 			list.Gap(6f);
 		}
 
-		public static void TextField(this Listing_Standard list, ref string text, string label = null, bool isPassword = false)
+		public static void TextField(this Listing_Standard list, ref string text, string label = null, bool isPassword = false, Action resetCallback = null)
 		{
 			var rect = list.GetRect(20f);
 			if (label != null)
@@ -46,7 +46,7 @@ namespace RimGPT
 			if (isPassword && text != "")
 			{
 				if (list.ButtonText("Clear"))
-					text = "";
+					Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("Do you want to reset the key?", resetCallback));
 			}
 			else
 				text = list.TextEntry(text);

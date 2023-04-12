@@ -99,6 +99,7 @@ namespace RimGPT
 		public static bool debug = false;
 		public static AudioSource audioSource = null;
 		public static Voice[] voices = new Voice[0];
+		public static string currentText = "";
 
 		public static AudioSource GetAudioSource()
 		{
@@ -194,8 +195,7 @@ namespace RimGPT
 				Log.Warning($"Azure => {code} {request.error}");
 			if (code >= 300)
 			{
-				var response = request.downloadHandler.text;
-				var error = $"Got {code} {request.error} response from Azure: {response}";
+				var error = $"Got {code} response from Azure: {request.error}";
 				errorCallback?.Invoke(error);
 				return default;
 			}
@@ -244,14 +244,31 @@ namespace RimGPT
 
 		public static async Task PlayAzure(string text, bool delay, Action<string> errorCallback)
 		{
-			var url = $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices/v1";
-			var audioClip = await AudioClipFromAzure(url, text, errorCallback);
-			GetAudioSource().PlayOneShot(audioClip, RimGPTMod.Settings.speechVolume);
-			if (delay)
-				await Task.Delay((int)(audioClip.length * 1000));
+			var showText = RimGPTMod.Settings.showAsText || RimGPTMod.Settings.azureSpeechRegion == "" || RimGPTMod.Settings.azureSpeechKey == "";
+			if (showText)
+				currentText = text;
+
+			if (RimGPTMod.Settings.azureSpeechKey != "" && RimGPTMod.Settings.azureSpeechRegion != "")
+			{
+				var url = $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices/v1";
+				var audioClip = await AudioClipFromAzure(url, text, errorCallback);
+				if (audioClip != null)
+				{
+					GetAudioSource().PlayOneShot(audioClip, RimGPTMod.Settings.speechVolume);
+					if (delay)
+						await Task.Delay((int)(audioClip.length * 1000));
+				}
+				currentText = "";
+			}
+			else if (showText)
+			{
+				var ms = 1000 * (int)(text.Length / 20f);
+				await Task.Delay(ms);
+				currentText = "";
+			}
 		}
 
-		public static void TestKey(Action successCallback)
+		public static void TestKey(Action callback)
 		{
 			_ = Task.Run(async () =>
 			{
@@ -268,11 +285,11 @@ namespace RimGPT
 				if (error != null)
 					LongEventHandler.ExecuteWhenFinished(() =>
 						{
-							var dialog = new Dialog_MessageBox(error);
+							var dialog = new Dialog_MessageBox(error, null, null, null, null, null, false, callback, callback);
 							Find.WindowStack.Add(dialog);
 						});
 				else
-					successCallback?.Invoke();
+					callback?.Invoke();
 			});
 		}
 

@@ -1,10 +1,58 @@
-﻿using UnityEngine;
+﻿using HarmonyLib;
+using System;
+using System.IO;
+using System.Text;
+using System.Xml;
+using System.Xml.Serialization;
+using UnityEngine;
 using Verse;
 
 namespace RimGPT
 {
 	public class RimGPTSettings : ModSettings
 	{
+		[Serializable]
+		public class Personality
+		{
+			public string azureVoice;
+			public string azureVoiceStyle;
+			public float azureVoiceStyleDegree;
+			public float speechRate;
+			public float speechPitch;
+			public int phraseBatchSize;
+			public float phraseDelayMin;
+			public float phraseDelayMax;
+			public int phraseMaxWordCount;
+			public int historyMaxWordCount;
+			public string personality;
+
+			public Personality() { }
+
+			public Personality(RimGPTSettings settings)
+			{
+				Traverse.IterateFields(this, settings, (to, from) => to.SetValue(from.GetValue()));
+			}
+
+			public string ToXml()
+			{
+				var serializer = new XmlSerializer(typeof(Personality));
+				var stringBuilder = new StringBuilder();
+				var settings = new XmlWriterSettings { Indent = true, OmitXmlDeclaration = true };
+				using var writer = XmlWriter.Create(stringBuilder, settings);
+				var ns = new XmlSerializerNamespaces();
+				ns.Add("", "");
+				serializer.Serialize(writer, this, ns);
+				return stringBuilder.ToString();
+			}
+
+			public static Personality FromXml(string xml)
+			{
+				var serializer = new XmlSerializer(typeof(Personality));
+				using var reader = new StringReader(xml);
+				return (Personality)serializer.Deserialize(reader);
+			}
+		}
+
 		public string chatGPTKey = "";
 		public string azureSpeechKey = "";
 		public string azureSpeechRegion = "";
@@ -20,6 +68,7 @@ namespace RimGPT
 		public int phraseMaxWordCount = 50;
 		public int historyMaxWordCount = 200;
 		public string personality = AI.defaultPersonality;
+		public bool showAsText = false;
 
 		public override void ExposeData()
 		{
@@ -39,12 +88,13 @@ namespace RimGPT
 			Scribe_Values.Look(ref phraseMaxWordCount, "phraseMaxWordCount", 50);
 			Scribe_Values.Look(ref historyMaxWordCount, "historyMaxWordCount", 400);
 			Scribe_Values.Look(ref personality, "personality", AI.defaultPersonality);
+			Scribe_Values.Look(ref showAsText, "showAsText", false);
 
 			if (historyMaxWordCount < 200) historyMaxWordCount = 400;
 		}
 
 		public bool IsConfigured =>
-			 chatGPTKey?.Length > 0 && azureSpeechKey?.Length > 0 && azureSpeechRegion?.Length > 0;
+			 chatGPTKey?.Length > 0 && ((azureSpeechKey?.Length > 0 && azureSpeechRegion?.Length > 0) || showAsText);
 
 		public void DoWindowContents(Rect inRect)
 		{
@@ -55,7 +105,7 @@ namespace RimGPT
 
 			list.Label("OpenAI - ChatGPT", "FFFF00");
 			prevKey = chatGPTKey;
-			list.TextField(ref chatGPTKey, "API Key (paste only)", true);
+			list.TextField(ref chatGPTKey, "API Key (paste only)", true, () => chatGPTKey = "");
 			if (chatGPTKey != "" && chatGPTKey != prevKey)
 				AI.TestKey(
 					 response => LongEventHandler.ExecuteWhenFinished(() =>
@@ -74,7 +124,7 @@ namespace RimGPT
 				TTS.LoadVoiceInformation();
 			list.Gap(6f);
 			prevKey = azureSpeechKey;
-			list.TextField(ref azureSpeechKey, "API Key (paste only)", true);
+			list.TextField(ref azureSpeechKey, "API Key (paste only)", true, () => azureSpeechKey = "");
 			if (azureSpeechKey != "" && azureSpeechKey != prevKey)
 				TTS.TestKey(() => TTS.LoadVoiceInformation());
 
@@ -116,10 +166,37 @@ namespace RimGPT
 			list.Gap(16f);
 			_ = list.Label("History");
 			list.Slider(ref historyMaxWordCount, 200, 1200, () => $"Maximum word count: {historyMaxWordCount}");
+			list.Gap(16f);
+
+			list.ColumnWidth -= 16f;
+			list.CheckboxLabeled("Show as text", ref showAsText);
+			list.ColumnWidth += 16f;
 
 			list.Gap(16f);
 
-			if (list.ButtonText("Restore Defaults"))
+			var width = (list.ColumnWidth - 16 - 2 * 20) / 3;
+			var rect = list.GetRect(30f);
+			rect.width = width;
+			var offset = width + 20;
+			if (Widgets.ButtonText(rect, "Copy"))
+			{
+				var share = new Personality(this).ToXml();
+				if (share.NullOrEmpty() == false)
+					GUIUtility.systemCopyBuffer = share;
+			}
+			rect.x += offset;
+			if (Widgets.ButtonText(rect, "Paste"))
+			{
+				var text = GUIUtility.systemCopyBuffer;
+				if (text.NullOrEmpty() == false)
+				{
+					var share = Personality.FromXml(text);
+					if (share != null)
+						Traverse.IterateFields(share, this, (from, to) => to.SetValue(from.GetValue()));
+				}
+			}
+			rect.x += offset;
+			if (Widgets.ButtonText(rect, "Defaults"))
 			{
 				azureVoice = "en-CA-LiamNeural";
 				azureVoiceStyle = "default";
@@ -133,6 +210,7 @@ namespace RimGPT
 				phraseMaxWordCount = 50;
 				historyMaxWordCount = 400;
 				personality = AI.defaultPersonality;
+				showAsText = false;
 			}
 
 			list.End();
