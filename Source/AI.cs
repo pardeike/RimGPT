@@ -88,6 +88,14 @@ Important rule: you ONLY answer in json as defined in the rules!").ApplyVoiceSty
 			if (completionResponse.Choices?.Count > 0)
 			{
 				var response = (completionResponse.Choices[0].Message.Content ?? "").Trim();
+				var firstIdx = response.IndexOf("{");
+				if (firstIdx >= 0)
+				{
+					var lastIndex = response.LastIndexOf("}");
+					if (lastIndex >= 0)
+						response = response.Substring(firstIdx, lastIndex - firstIdx + 1);
+				}
+
 				if (debug)
 					Log.Warning($"OUTPUT: {response}");
 				try
