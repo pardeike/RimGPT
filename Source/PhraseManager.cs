@@ -5,7 +5,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Verse;
-using static Verse.HediffCompProperties_RandomizeSeverityPhases;
 
 namespace RimGPT
 {
@@ -15,6 +14,7 @@ namespace RimGPT
 
 		public void RemoveFromStart(int max)
 		{
+			if (max <= 0) return;
 			var count = Math.Min(max, Count);
 			for (int i = 0; i < count; i++)
 				RemoveAt(0);
@@ -23,31 +23,67 @@ namespace RimGPT
 
 	public static class PhraseManager
 	{
-		public static OrderedHashSet<string> phrases = new();
+		public struct Phrase: IEquatable<Phrase>
+		{
+			public string text;
+			public int priority;
+
+			public Phrase(string text, int priority = 0)
+			{
+				this.text = text;
+				this.priority = priority;
+			}
+
+			public bool Equals(Phrase other) => text == other.text;
+		}
+
+		public static OrderedHashSet<Phrase> phrases = new();
 		public static readonly Regex tagRemover = new("<color.+?>(.+?)</(?:color)?>", RegexOptions.Singleline);
 		public static CancellationTokenSource cancelTokenSource = new();
 		public static void CancelWaiting() => cancelTokenSource?.Cancel();
 
-		public static void Add(string phrase)
+		public static void Add(string text, int priority = 0)
 		{
-			phrase = tagRemover.Replace(phrase, "$1");
+			text = tagRemover.Replace(text, "$1");
+			var phrase = new Phrase(text, priority);
+			Log.Message($"PRIO-{phrase.priority} {phrase.text}");
+
 			lock (phrases)
 			{
 				if (phrases.Contains(phrase))
 					return;
 				phrases.Add(phrase);
-				Log.Message(phrase);
+				for (var i = 0; i <= 5 && phrases.Count > RimGPTMod.Settings.phrasesLimit; i++)
+				{
+					var jOffset = 0;
+					var stop = false;
+					for (var j = 0; j < phrases.Count; j++)
+						if (phrases[j].priority == i)
+						{
+							phrases.RemoveAt(j + jOffset);
+							jOffset--;
+							if (phrases.Count <= RimGPTMod.Settings.phrasesLimit)
+							{
+								stop = true;
+								break;
+							}
+						}
+					if (stop)
+						break;
+				}
 			}
 		}
 
-		public static void Immediate(string phrase)
+		public static void Immediate(string text)
 		{
-			phrase = tagRemover.Replace(phrase, "$1");
+			text = tagRemover.Replace(text, "$1");
+			var phrase = new Phrase(text);
+			Log.Message($"PRIO-{phrase.priority} {phrase.text}");
+
 			lock (phrases)
 			{
 				phrases.Clear();
 				phrases.Add(phrase);
-				Log.Message(phrase);
 				CancelWaiting();
 			}
 		}
@@ -59,13 +95,15 @@ namespace RimGPT
 
 		public static async Task<bool> Process()
 		{
-			string[] observations;
+			Phrase[] observations;
 			lock (phrases)
 			{
 				observations = phrases.Take(RimGPTMod.Settings.phraseBatchSize).ToArray();
 				phrases.RemoveFromStart(RimGPTMod.Settings.phraseBatchSize);
 			}
 			if (observations.Length == 0)
+				return false;
+			if (RimGPTMod.Settings.enabled == false)
 				return false;
 			var result = await AI.Evaluate(observations);
 			if (result != null)
@@ -80,25 +118,32 @@ namespace RimGPT
 			{
 				while (true)
 				{
-					if (RimGPTMod.Settings.IsConfigured == false)
+					try
 					{
-						await Task.Delay(1000);
-						continue;
-					}
+						if (RimGPTMod.Settings.IsConfigured == false)
+						{
+							await Task.Delay(1000);
+							continue;
+						}
 
-					if (phrases.Count < RimGPTMod.Settings.phraseBatchSize)
+						if (phrases.Count < RimGPTMod.Settings.phraseBatchSize)
+						{
+							try { await Task.Delay(delay, cancelTokenSource.Token); }
+							catch (TaskCanceledException) { delay = 0; }
+							cancelTokenSource.Dispose();
+							cancelTokenSource = new();
+						}
+
+						delay += await Process() ? 1000 : -1000;
+						if (delay < RimGPTMod.Settings.phraseDelayMin)
+							delay = RimGPTMod.Settings.phraseDelayMin.Milliseconds();
+						if (delay > RimGPTMod.Settings.phraseDelayMax)
+							delay = RimGPTMod.Settings.phraseDelayMax.Milliseconds();
+					}
+					catch (Exception exception)
 					{
-						try { await Task.Delay(delay, cancelTokenSource.Token); }
-						catch (TaskCanceledException) { delay = 0; }
-						cancelTokenSource.Dispose();
-						cancelTokenSource = new();
+						Log.Error($"Main task error caught: {exception}");
 					}
-
-					delay += await Process() ? 1000 : -1000;
-					if (delay < RimGPTMod.Settings.phraseDelayMin)
-						delay = RimGPTMod.Settings.phraseDelayMin.Milliseconds();
-					if (delay > RimGPTMod.Settings.phraseDelayMax)
-						delay = RimGPTMod.Settings.phraseDelayMax.Milliseconds();
 				}
 			});
 		}

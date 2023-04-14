@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Verse;
+using static RimGPT.PhraseManager;
 
 namespace RimGPT
 {
@@ -27,16 +28,7 @@ namespace RimGPT
 		private static readonly string historyName = "history";
 		private static string history = "Nothing yet";
 
-		public const string defaultPersonality = @"You are an expert player of the game Rimworld. You are always {VOICESTYLE}.
-You will repeatedly receive input from an ongoing Rimworld game.
-
-Typical things you say:
-- Now that I have seen ... I am pretty sure that ...
-- This might have been a mistake/a good idea/a bad idea/a strange thing to do
-- If I would play I would ...
-- Did you miss ...?
-- I think you should plan for ...
-- In this situation it is best to ...";
+		public const string defaultPersonality = @"You play the role an experienced companion assisting a player currently playing Rimworld. Your input will be generated from in-game text. You advice the player with {VOICESTYLE} responses.";
 
 		private static string SystemPrompt => (RimGPTMod.Settings.personality + @$"
 
@@ -50,34 +42,30 @@ struct Output {{
 }}
 ```
 
-Rule: Your input is machine generated from typical game output
-
 Rule: '{commentName}' must not be longer than {RimGPTMod.Settings.phraseMaxWordCount} words
 
+Rule: '{historyName}' should be a summary over the past things that happened in the game so far
+
 Rule: '{commentName}' should be {{VOICESTYLE}}
-
-Rule: '{historyName}' should be the summary over the past things that happened in the game so far
-
-Rule: '{historyName}' must be written in past tense
 
 Rule: '{historyName}' must not be longer than {RimGPTMod.Settings.historyMaxWordCount} words
 
 Important rule: '{commentName}' MUST be in {Tools.Language} translated form!
 Important rule: you ONLY answer in json as defined in the rules!").ApplyVoiceStyle();
 
-		public static async Task<string> Evaluate(string[] observations)
+		public static async Task<string> Evaluate(Phrase[] observations)
 		{
 			var input = new StringBuilder();
 			_ = input.AppendLine($"What has happened in the past in the game:");
 			_ = input.AppendLine(history);
 			_ = input.AppendLine("What has happened just now:");
 			for (var i = 0; i < observations.Length; i++)
-				_ = input.AppendLine($"- {observations[i]}");
+				_ = input.AppendLine($"- {observations[i].text}");
 
 			if (debug)
 				Log.Warning($"INPUT: {input}");
 
-			var observationString = observations.Join(o => $"- {o}", "\n");
+			var observationString = observations.Join(o => $"- {o.text}", "\n");
 			var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
 			{
 				Model = "gpt-3.5-turbo",
@@ -95,10 +83,11 @@ Important rule: you ONLY answer in json as defined in the rules!").ApplyVoiceSty
 						  }
 					 }
 			}, error => Log.Error(error));
+			RimGPTMod.Settings.charactersSentOpenAI += SystemPrompt.Length + input.Length;
 
 			if (completionResponse.Choices?.Count > 0)
 			{
-				var response = completionResponse.Choices[0].Message.Content;
+				var response = (completionResponse.Choices[0].Message.Content ?? "").Trim();
 				if (debug)
 					Log.Warning($"OUTPUT: {response}");
 				try
@@ -138,6 +127,7 @@ Important rule: you ONLY answer in json as defined in the rules!").ApplyVoiceSty
 								}
 						  }
 			}, e => requestError = e);
+			RimGPTMod.Settings.charactersSentOpenAI += input.Length;
 
 			if (completionResponse.Choices?.Count > 0)
 				return (completionResponse.Choices[0].Message.Content, null);

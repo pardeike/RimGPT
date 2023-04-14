@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
+using static HarmonyLib.Code;
 
 namespace RimGPT
 {
@@ -20,10 +21,17 @@ namespace RimGPT
 			Text.Font = font;
 		}
 
-		public static void Label(this Listing_Standard list, string text, string hexColor)
+		public static void Label(this Listing_Standard list, string hexColor, string textLeft, string textRight = "")
 		{
-			var tagged = new TaggedString($"<color=#{hexColor}>{text}</color>");
-			_ = list.Label(tagged);
+			var size = Text.CalcSize(textLeft);
+			var rect = list.GetRect(size.y);
+			var anchor = Text.Anchor;
+			Text.Anchor = TextAnchor.MiddleLeft;
+			Widgets.Label(rect.LeftPartPixels(size.x), new TaggedString($"<color=#{hexColor}>{textLeft}</color>"));
+			size = Text.CalcSize(textRight);
+			Text.Anchor = TextAnchor.MiddleRight;
+			Widgets.Label(rect.RightPartPixels(size.x), textRight);
+			Text.Anchor = anchor;
 			list.Gap(6f);
 		}
 
@@ -85,6 +93,19 @@ namespace RimGPT
 			if (roundTo > 0f)
 				value = Mathf.RoundToInt(value / roundTo) * roundTo;
 			return 4f + label != null ? 18f : 0f;
+		}
+
+		public static string TextAreaScrollable(Rect rect, string text, ref Vector2 scrollbarPosition)
+		{
+			Rect rect2 = new Rect(0f, 0f, rect.width - 16f, Mathf.Max(Text.CalcHeight(text, rect.width) + 10f, rect.height));
+			Widgets.BeginScrollView(rect, ref scrollbarPosition, rect2, true);
+			var style = Text.textAreaStyles[1];
+			style.padding = new RectOffset(8, 8, 8, 8);
+			style.active.background = Texture2D.blackTexture;
+			style.active.textColor = Color.white;
+			var result = GUI.TextArea(rect2, text, style);
+			Widgets.EndScrollView();
+			return result;
 		}
 
 		public static string Float(this int value, int decimals, string unit = null)

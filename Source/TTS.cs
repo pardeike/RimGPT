@@ -183,6 +183,7 @@ namespace RimGPT
 				var asyncOperation = request.SendWebRequest();
 				while (!asyncOperation.isDone)
 					await Task.Yield();
+				RimGPTMod.Settings.charactersSentAzure += text.Length;
 			}
 			catch (Exception exception)
 			{

@@ -13,12 +13,13 @@ namespace RimGPT
 		public Dialog_Personality()
 		{
 			this.text = RimGPTMod.Settings.personality;
-			doCloseX = true;
+			doCloseX = false;
+			doCloseButton = false;
 			forcePause = true;
 			absorbInputAroundWindow = true;
 			onlyOneOfTypeAllowed = true;
-			closeOnAccept = true;
-			closeOnCancel = true;
+			closeOnAccept = false;
+			closeOnCancel = false;
 		}
 
 		public static void Show() => Find.WindowStack?.Add(new Dialog_Personality());
@@ -27,6 +28,10 @@ namespace RimGPT
 		{
 			RimGPTMod.Settings.personality = text;
 			Close();
+		}
+
+		public override void OnAcceptKeyPressed()
+		{
 		}
 
 		public override void DoWindowContents(Rect inRect)
@@ -40,7 +45,7 @@ namespace RimGPT
 			var textRect = new Rect(inRect.x, y, inRect.width, inRect.height - y);
 			var rect = textRect.BottomPartPixels(44).LeftPartPixels(120);
 			textRect.yMax -= 60;
-			text = Widgets.TextAreaScrollable(textRect, text, ref scrollPosition);
+			text = UX.TextAreaScrollable(textRect, text, ref scrollPosition);
 			if (Widgets.ButtonText(rect, "Save"))
 				Save();
 			rect.x += 140;

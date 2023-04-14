@@ -51,7 +51,7 @@ namespace RimGPT
 
 		public static string ApplyVoiceStyle(this string text)
 		{
-			var voiceStyle = "very funny";
+			var voiceStyle = "funny";
 
 			var value = VoiceStyle.From(RimGPTMod.Settings.azureVoiceStyle)?.Value;
 			if (value != null && value != "default" && value != "chat" && value.Contains("-") == false && value.Contains("_") == false)

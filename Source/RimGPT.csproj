@@ -10,10 +10,10 @@
 		<OutputPath>..\Assemblies\</OutputPath>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-		<Version>1.1.0.0</Version>
+		<Version>1.2.0.0</Version>
 		<Copyright>Copyright Andreas Pardeike</Copyright>
 		<Configurations>Release;Debug</Configurations>
-		<ReleaseVersion>1.1.0</ReleaseVersion>
+		<ReleaseVersion>1.2.0</ReleaseVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -82,7 +82,7 @@ if not errorlevel 1 (
 	ModBuilder AssemblyVersion -file "$(MSBuildProjectDirectory)\$(OutputPath)$(AssemblyName).dll" -save "$(MSBuildProjectName)-version"
 )
 if defined INSTALL_MOD (
-	"%INSTALL_MOD%" "$(Configuration)" "$(MSBuildProjectDirectory)\..\" "$(MSBuildProjectName)" "About Assemblies" ""
+	"%INSTALL_MOD%" "$(Configuration)" "$(MSBuildProjectDirectory)\..\" "$(MSBuildProjectName)" "About Assemblies Textures" ""
 )
 		</PostBuildEvent>
 		<Company>Brrainz</Company>

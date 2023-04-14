@@ -53,6 +53,21 @@ namespace RimGPT
 		}
 	}
 
+	[StaticConstructorOnStartup]
+	[HarmonyPatch(typeof(PlaySettings), nameof(PlaySettings.DoPlaySettingsGlobalControls))]
+	public static class PlaySettings_DoPlaySettingsGlobalControls_Patch
+	{
+		static readonly Texture2D icon = ContentFinder<Texture2D>.Get("ToggleAI");
+		public static void Postfix(WidgetRow row, bool worldView)
+		{
+			if (worldView) return;
+			var previousState = RimGPTMod.Settings.enabled;
+			row.ToggleableIcon(ref RimGPTMod.Settings.enabled, icon, $"RimGPT is {(RimGPTMod.Settings.enabled ? "ON" : "OFF")}".Translate(), SoundDefOf.Mouseover_ButtonToggle);
+			if (previousState != RimGPTMod.Settings.enabled)
+				RimGPTMod.Settings.Write();
+		}
+	}
+
 	[HarmonyPatch(typeof(UIRoot_Play), nameof(UIRoot_Play.UIRootOnGUI))]
 	public static class UIRoot_Play_UIRootOnGUI_Patch
 	{
@@ -64,7 +79,7 @@ namespace RimGPT
 			if (welcome == "") return;
 
 			var (sw, sh) = (UI.screenWidth, UI.screenHeight);
-			var (w, h) = (768, 160);
+			var (w, h) = (800, 180);
 			var rect = new Rect((sw - w) / 2, (sh - h) / 2 + sh / 3, w, h);
 
 			Widgets.DrawBoxSolid(rect, background);
@@ -101,7 +116,7 @@ namespace RimGPT
 		public static void Postfix(Game __instance)
 		{
 			var colonists = __instance.Maps.SelectMany(m => m.mapPawns.FreeColonists).Join(c => c.LabelShortCap);
-			PhraseManager.Add($"{"GeneratingWorld".Translate()}. {"ColonistsSection".Translate()}: {colonists}");
+			PhraseManager.Add($"{"GeneratingWorld".Translate()}. {"ColonistsSection".Translate()}: {colonists}", 5);
 		}
 	}
 
@@ -156,7 +171,7 @@ namespace RimGPT
 			if (job.targetA.Thing is Pawn target)
 				report = report.Replace(target.LabelShortCap, target.NameAndType());
 
-			PhraseManager.Add($"{pawn.NameAndType()} {report}");
+			PhraseManager.Add($"{pawn.NameAndType()} {report}", 3);
 		}
 
 		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
@@ -183,10 +198,10 @@ namespace RimGPT
 			Tools.ExtractPawnsFromLog(entry, out var from, out var to);
 			text = entry.ToGameStringFromPOVWithType(from);
 			if (text != null)
-				PhraseManager.Add(text);
+				PhraseManager.Add(text, 1);
 			text = entry.ToGameStringFromPOVWithType(to);
 			if (text != null)
-				PhraseManager.Add(text);
+				PhraseManager.Add(text, 1);
 		}
 	}
 
@@ -215,7 +230,7 @@ namespace RimGPT
 				return;
 			var label = let.Label;
 			var text = let.GetMouseoverText().Replace("\n", " ");
-			PhraseManager.Add($"{Tools.Strings.information}: {label} - {text}");
+			PhraseManager.Add($"{Tools.Strings.information}: {label} - {text}", 3);
 		}
 	}
 
@@ -232,11 +247,11 @@ namespace RimGPT
 			var wasInList = __state.Item1;
 			var isInList = ___activeAlerts.Contains(alert);
 			if (wasInList == false && isInList)
-				PhraseManager.Add($"{Tools.Strings.information}: {alert.Label}");
+				PhraseManager.Add($"{Tools.Strings.information}: {alert.Label}", 4);
 			if (wasInList && isInList == false)
 			{
 				var alertLabel = __state.Item2;
-				PhraseManager.Add($"{Tools.Strings.completed}: {alertLabel}");
+				PhraseManager.Add($"{Tools.Strings.completed}: {alertLabel}", 5);
 			}
 		}
 	}
@@ -247,7 +262,7 @@ namespace RimGPT
 	{
 		public static void Postfix(Message msg)
 		{
-			PhraseManager.Add(msg.text);
+			PhraseManager.Add(msg.text, 2);
 		}
 	}
 
@@ -260,7 +275,7 @@ namespace RimGPT
 			if (def == null || def == Defs.Wall || worker == null)
 				return;
 			var makeStr = "RecipeMakeJobString".Translate(def.LabelCap);
-			PhraseManager.Add($"{worker.NameAndType()}: {Tools.Strings.finished} {makeStr}");
+			PhraseManager.Add($"{worker.NameAndType()}: {Tools.Strings.finished} {makeStr}", 1);
 		}
 	}
 
@@ -271,7 +286,7 @@ namespace RimGPT
 		{
 			instance.SetPriority(w, priority);
 			var workType = w.labelShort.CapitalizeFirst();
-			PhraseManager.Add($"{instance.pawn.NameAndType()}: {Tools.Strings.priority} {workType} = {priority}");
+			PhraseManager.Add($"{instance.pawn.NameAndType()}: {Tools.Strings.priority} {workType} = {priority}", 2);
 		}
 
 		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
