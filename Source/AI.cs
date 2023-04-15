@@ -30,6 +30,8 @@ namespace RimGPT
 
 		public const string defaultPersonality = @"You play the role an experienced companion assisting a player currently playing Rimworld. Your input will be generated from in-game text. You advice the player with {VOICESTYLE} responses.";
 
+		// Rule: '{commentName}' should be {{VOICESTYLE}}
+
 		private static string SystemPrompt => (RimGPTMod.Settings.personality + @$"
 
 Here are more rules you must follow:
@@ -45,8 +47,6 @@ struct Output {{
 Rule: '{commentName}' must not be longer than {RimGPTMod.Settings.phraseMaxWordCount} words
 
 Rule: '{historyName}' should be a summary over the past things that happened in the game so far
-
-Rule: '{commentName}' should be {{VOICESTYLE}}
 
 Rule: '{historyName}' must not be longer than {RimGPTMod.Settings.historyMaxWordCount} words
 
