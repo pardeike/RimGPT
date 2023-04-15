@@ -269,7 +269,7 @@ namespace RimGPT
 			}
 		}
 
-		public static void TestKey(Action callback)
+		public static void TestKey(string language, Action callback)
 		{
 			_ = Task.Run(async () =>
 			{
@@ -277,7 +277,9 @@ namespace RimGPT
 				string error = null;
 				if (RimGPTMod.Settings.chatGPTKey != "")
 				{
-					var result = await AI.SimplePrompt("Tell me something random in 15 words or less.");
+					var prompt = "Tell me something random in 15 words or less.";
+					if (language != "-") prompt += $" Your response must be in {language}.";
+					var result = await AI.SimplePrompt(prompt);
 					text = result.Item1;
 					error = result.Item2;
 				}
@@ -305,9 +307,9 @@ namespace RimGPT
 					voices = await DispatchFormPost<Voice[]>(url, null, true, null);
 
 					var currentVoice = Voice.From(RimGPTMod.Settings.azureVoice);
-					if (currentVoice != null && currentVoice.LocaleName.Contains(Tools.Language) == false)
+					if (currentVoice != null && currentVoice.LocaleName.Contains(Tools.VoiceLanguage) == false)
 					{
-						currentVoice = voices.Where(voice => voice.LocaleName.Contains(Tools.Language)).OrderBy(voice => voice.DisplayName).FirstOrDefault();
+						currentVoice = voices.Where(voice => voice.LocaleName.Contains(Tools.VoiceLanguage)).OrderBy(voice => voice.DisplayName).FirstOrDefault();
 						RimGPTMod.Settings.azureVoice = currentVoice?.ShortName ?? "";
 						RimGPTMod.Settings.azureVoiceStyle = "default";
 					}

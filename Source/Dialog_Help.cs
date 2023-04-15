@@ -17,7 +17,7 @@ To enable ChatGPT functionality, visit https://platform.openai.com/account/api-k
 
 This mod uses Microsoft Azure's Cognitive Services to enable TTS (Text-to-Speech) through their Speech service API. Although account creation requires a credit card, 500,000 characters per month are free. To begin, go to https://azure.microsoft.com/en-gb/free/cognitive-services/ and click 'Start free'. Sign up or log in using your Microsoft or GitHub account. Locate 'Speech Services' and configure the settings. Create a resource group and a subscription (maybe use 'Budget' to set a monthly cost limit). Within the resource group, find 'Keys and Endpoint' where you can create a key and a location (e.g., centralus). Enter both into the mod settings.";
 
-		public override Vector2 InitialSize => new(640f, 460f);
+		public override Vector2 InitialSize => new(640f, 520f);
 
 		public Dialog_Help()
 		{

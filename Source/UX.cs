@@ -121,9 +121,32 @@ namespace RimGPT
 			return $"{percentageValue:0.##;-0.##;0}%";
 		}
 
-		public static void Voices(this Listing_Standard list)
+		public static void LanguageChoiceMenu<T>(IEnumerable<T> languages, Func<T, string> itemFunc, Action<T> action)
 		{
-			var rect = list.GetRect(22f);
+			var options = new List<FloatMenuOption> { new FloatMenuOption("Game Language", () => action(default)) };
+			foreach (var language in languages)
+				options.Add(new FloatMenuOption(itemFunc(language), () => action(language)));
+			Find.WindowStack.Add(new FloatMenu(options));
+		}
+
+		public static void Languages<T>(this Listing_Standard list, IEnumerable<T> languages, string label, Func<T, string> itemFunc, Action<T> action, float width, int column)
+		{
+			var rect = list.GetRect(30f);
+			list.Gap(-30f);
+			rect.width = width;
+			rect.x += column * (width + 20);
+
+			if (Widgets.ButtonText(rect, label == "-" ? "Game Language" : label))
+				LanguageChoiceMenu(languages, itemFunc, action);
+		}
+
+		public static void Voices(this Listing_Standard list, float width, int column)
+		{
+			var rect = list.GetRect(30f);
+			list.Gap(-30f);
+			rect.width = width;
+			rect.x += column * (width + 20);
+
 			var currentVoice = Voice.From(RimGPTMod.Settings.azureVoice);
 			if (Widgets.ButtonText(rect, currentVoice?.DisplayName ?? ""))
 			{
@@ -131,7 +154,7 @@ namespace RimGPT
 					return;
 
 				var options = new List<FloatMenuOption>();
-				var voices = TTS.voices.Where(voice => voice.LocaleName.Contains(Tools.Language)).OrderBy(voice => voice.DisplayName);
+				var voices = TTS.voices.Where(voice => voice.LocaleName.Contains(Tools.VoiceLanguage)).OrderBy(voice => voice.DisplayName);
 				foreach (var voice in voices)
 				{
 					var hasStyles = voice.StyleList.NullOrEmpty() == false;
@@ -155,9 +178,13 @@ namespace RimGPT
 			return availableStyles.NullOrEmpty() == false;
 		}
 
-		public static void VoiceStyles(this Listing_Standard list)
+		public static void VoiceStyles(this Listing_Standard list, float width, int column)
 		{
-			var rect = list.GetRect(22f);
+			var rect = list.GetRect(30f);
+			list.Gap(-30f);
+			rect.width = width;
+			rect.x += column * (width + 20);
+
 			var currentVoice = Voice.From(RimGPTMod.Settings.azureVoice);
 			var availableStyles = currentVoice?.StyleList;
 			if (availableStyles.NullOrEmpty())

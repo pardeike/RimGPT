@@ -19,11 +19,24 @@ namespace RimGPT
 			public static readonly string priority = "Priority".TranslateSimple();
 		}
 
-		public static string Language
+		public static string VoiceLanguage
 		{
 			get
 			{
-				var language = LanguageDatabase.activeLanguage.FriendlyNameEnglish;
+				var language = RimGPTMod.Settings.azureVoiceLanguage;
+				if (language == "-") language = LanguageDatabase.activeLanguage.FriendlyNameEnglish;
+				var idx = language.IndexOf(" ");
+				if (idx< 0) return language;
+				return language.Substring(0, idx);
+			}
+		}
+
+		public static string PersonalityLanguage
+		{
+			get
+			{
+				var language = RimGPTMod.Settings.personalityLanguage;
+				if (language == "-") language = LanguageDatabase.activeLanguage.FriendlyNameEnglish;
 				var idx = language.IndexOf(" ");
 				if (idx< 0) return language;
 				return language.Substring(0, idx);
@@ -130,6 +143,14 @@ namespace RimGPT
 			else if (entry is BattleLogEntry_StateTransition transition)
 				from = transition.subjectPawn;
 		}
+
+		public static readonly string[] commonLanguages = new string[]
+		{
+			"Alien", "Arabic", "Bengali", "Bulgarian", "Catalan", "Chinese", "Croatian", "Czech", "Danish", "Dutch", "English", 
+			"Estonian", "Finnish", "French", "German", "Greek", "Hebrew", "Hindi", "Hungarian", "Icelandic", "Indonesian", 
+			"Italian", "Japanese", "Korean", "Latvian", "Lithuanian", "Malay", "Norwegian", "Persian", "Polish", "Portuguese",
+			"Punjabi", "Romanian", "Russian", "Serbian", "Slovak", "Slovenian", "Spanish", "Swedish", "Tamil", "Telugu",
+			"Thai", "Turkish", "Ukrainian", "Urdu", "Vietnamese", "Welsh", "Yiddish"
+		};
 	}
 }
-

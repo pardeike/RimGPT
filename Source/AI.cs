@@ -13,52 +13,39 @@ namespace RimGPT
 {
 	public static class AI
 	{
-		public static bool debug = false;
+		public static bool debug = true;
 
 #pragma warning disable CS0649
 		struct Output
 		{
-			public string comment;
+			public string response;
 			public string history;
 		}
 #pragma warning restore CS0649
 
 		private static OpenAIApi OpenAI => new(RimGPTMod.Settings.chatGPTKey);
-		private static readonly string commentName = "comment";
+		private static readonly string responseName = "response";
 		private static readonly string historyName = "history";
 		private static string history = "Nothing yet";
 
-		public const string defaultPersonality = @"You play the role an experienced companion assisting a player currently playing Rimworld. Your input will be generated from in-game text. You advice the player with {VOICESTYLE} responses.";
+		public const string defaultPersonality = @"An experienced companion assisting the player. You advice is aways {VOICESTYLE}.";
 
-		// Rule: '{commentName}' should be {{VOICESTYLE}}
-
-		private static string SystemPrompt => (RimGPTMod.Settings.personality + @$"
-
-Here are more rules you must follow:
-
-Rule: Your output is in json that matches this model:
-```cs
-struct Output {{
-  public string {commentName};
-  public string {historyName};
-}}
-```
-
-Rule: '{commentName}' must not be longer than {RimGPTMod.Settings.phraseMaxWordCount} words
-
-Rule: '{historyName}' should be a summary over the past things that happened in the game so far
-
-Rule: '{historyName}' must not be longer than {RimGPTMod.Settings.historyMaxWordCount} words
-
-Important rule: '{commentName}' MUST be in {Tools.Language} translated form!
-Important rule: you ONLY answer in json as defined in the rules!").ApplyVoiceStyle();
+		private static string SystemPrompt => @$"Your input will be generated from in-game content of the game Rimworld. That includes a summary of the past.
+Create responses in two steps:
+1) Your response called '{responseName}' must be in {Tools.PersonalityLanguage}
+2) A summary of what happened in the game so far called '{historyName}'
+Limit that to:
+1) {responseName} - never have more than {RimGPTMod.Settings.phraseMaxWordCount} words
+2) {historyName} - never have more than {RimGPTMod.Settings.historyMaxWordCount} words
+Your output must only consist of json like {{""{responseName}"": ""..."", ""{historyName}"": ""...""}}.
+You play the following role: {RimGPTMod.Settings.personality}".ApplyVoiceStyle();
 
 		public static async Task<string> Evaluate(Phrase[] observations)
 		{
 			var input = new StringBuilder();
-			_ = input.AppendLine($"What has happened in the past in the game:");
+			_ = input.AppendLine($"Summary of the past:");
 			_ = input.AppendLine(history);
-			_ = input.AppendLine("What has happened just now:");
+			_ = input.AppendLine("Just happened:");
 			for (var i = 0; i < observations.Length; i++)
 				_ = input.AppendLine($"- {observations[i].text}");
 
@@ -102,7 +89,7 @@ Important rule: you ONLY answer in json as defined in the rules!").ApplyVoiceSty
 				{
 					var output = JsonConvert.DeserializeObject<Output>(response);
 					history = output.history;
-					return output.comment.Cleanup();
+					return output.response.Cleanup();
 				}
 				catch (Exception exception)
 				{
@@ -147,8 +134,8 @@ Important rule: you ONLY answer in json as defined in the rules!").ApplyVoiceSty
 		{
 			_ = Task.Run(async () =>
 			{
-				var prompt = "The player in Rimworld has just configured your API key in the mod " +
-					 "RimGPT that makes you do commentary on their gameplay. Greet them with a short response!";
+				var prompt = "The player has just configured your OpenAI API key in the mod " +
+					 "RimGPT for Rimworld. Greet them with a short response!";
 				var output = await SimplePrompt(prompt);
 				callback(output.Item1 ?? output.Item2);
 			});
