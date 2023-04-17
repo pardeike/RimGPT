@@ -4,11 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 using UnityEngine;
 using Verse;
 using Verse.AI;
-using static Verse.HediffCompProperties_RandomizeSeverityPhases;
 
 // Things to report:
 // injuries
@@ -329,6 +327,47 @@ namespace RimGPT
 				var stats = $"{pawn.gender}, {pawn.ageTracker.AgeBiologicalYears}, {backstory.TitleCapFor(pawn.gender)}{traits}{disabled}{skills}";
 				PhraseManager.Immediate($"Should I choose {___curPawn.LabelShortCap} ({stats}) for this new game?");
 			});
+		}
+	}
+
+	[HarmonyPatch(typeof(TickManager), nameof(TickManager.DoSingleTick))]
+	public static class TickManager_DoSingleTick_Patch
+	{
+		static int lastTicks = 0;
+		static int lastTotal = -1;
+		static readonly HashSet<ThingCategoryDef> thingCategories = new()
+		{
+			ThingCategoryDefOf.Foods,
+			ThingCategoryDefOf.FoodMeals,
+			ThingCategoryDefOf.Medicine,
+			ThingCategoryDefOf.StoneBlocks,
+			ThingCategoryDefOf.Manufactured,
+			ThingCategoryDefOf.ResourcesRaw
+		};
+
+		public static bool Reportable(this KeyValuePair<ThingDef, int> pair)
+		{
+			if (pair.Value == 0) return false;
+			var hashSet = pair.Key.thingCategories.ToHashSet();
+			return hashSet.Intersect(thingCategories).Any();
+		}
+
+		public static void Postfix()
+		{
+			lastTicks++;
+			if (lastTicks >= 12000)
+			{
+				lastTicks = 0;
+				var amounts = Find.CurrentMap.resourceCounter.AllCountedAmounts.Where(Reportable).ToArray();
+				var total = amounts.Sum(pair => pair.Value);
+				if (amounts.Any() && total != lastTotal)
+				{
+					lastTotal = total;
+					var colonistCount = Find.CurrentMap.mapPawns.FreeColonistsCount;
+					var amountList = amounts.Join(pair => $"{pair.Value} {pair.Key.LabelCap}");
+					PhraseManager.Add($"Minor update: total {colonistCount} colonists, {amountList}", 2);
+				}
+			}
 		}
 	}
 }

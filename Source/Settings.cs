@@ -1,11 +1,6 @@
 ﻿using HarmonyLib;
 using System;
-using System.IO;
-using System.Reflection;
-using System.Text;
-using System.Xml;
 using System.Xml.Linq;
-using System.Xml.Serialization;
 using UnityEngine;
 using Verse;
 

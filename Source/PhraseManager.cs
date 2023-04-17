@@ -134,11 +134,11 @@ namespace RimGPT
 							cancelTokenSource = new();
 						}
 
+						var min = RimGPTMod.Settings.phraseDelayMin.Milliseconds();
+						var max = RimGPTMod.Settings.phraseDelayMax.Milliseconds();
 						delay += await Process() ? 1000 : -1000;
-						if (delay < RimGPTMod.Settings.phraseDelayMin)
-							delay = RimGPTMod.Settings.phraseDelayMin.Milliseconds();
-						if (delay > RimGPTMod.Settings.phraseDelayMax)
-							delay = RimGPTMod.Settings.phraseDelayMax.Milliseconds();
+						if (delay < min) delay = min;
+						if (delay > max) delay = max;
 					}
 					catch (Exception exception)
 					{
