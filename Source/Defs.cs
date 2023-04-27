@@ -8,5 +8,6 @@ namespace RimGPT
 	{
 		public static ThingDef Wall;
 		public static WorkTypeDef Cleaning;
+		public static KeyBindingDef Command_OpenRimGPT;
 	}
 }

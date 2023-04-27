@@ -370,4 +370,23 @@ namespace RimGPT
 			}
 		}
 	}
+
+	[HarmonyPatch(typeof(GlobalControls), nameof(GlobalControls.GlobalControlsOnGUI))]
+	public static class GlobalControls_GlobalControlsOnGUI_Patch
+	{
+		public static void Postfix()
+		{
+			if (Event.current.type == EventType.KeyDown && Defs.Command_OpenRimGPT.KeyDownEvent)
+			{
+				var stack = Find.WindowStack;
+				if (stack.IsOpen<Dialog_ModSettings>() == false)
+				{
+					var me = LoadedModManager.GetMod<RimGPTMod>();
+					var dialog = new Dialog_ModSettings(me);
+					stack.Add(dialog);
+				}
+				Event.current.Use();
+			}
+		}
+	}
 }

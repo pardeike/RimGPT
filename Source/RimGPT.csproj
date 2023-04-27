@@ -82,7 +82,7 @@ if not errorlevel 1 (
 	ModBuilder AssemblyVersion -file "$(MSBuildProjectDirectory)\$(OutputPath)$(AssemblyName).dll" -save "$(MSBuildProjectName)-version"
 )
 if defined INSTALL_MOD (
-	"%INSTALL_MOD%" "$(Configuration)" "$(MSBuildProjectDirectory)\..\" "$(MSBuildProjectName)" "About Assemblies Textures" ""
+	"%INSTALL_MOD%" "$(Configuration)" "$(MSBuildProjectDirectory)\..\" "$(MSBuildProjectName)" "About Assemblies Defs Textures" ""
 )
 		</PostBuildEvent>
 		<Company>Brrainz</Company>
