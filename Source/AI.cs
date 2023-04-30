@@ -1,19 +1,22 @@
 ﻿using HarmonyLib;
 using Newtonsoft.Json;
 using OpenAI;
+using RimWorld;
+using RimWorld.Planet;
+using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Verse;
-using static RimGPT.PhraseManager;
+using Verse.Steam;
 
 namespace RimGPT
 {
-	public static class AI
+	public class AI
 	{
-		public static bool debug = true;
+		public const string modelVersion = "gpt-3.5-turbo";
 
 #pragma warning disable CS0649
 		struct Output
@@ -23,45 +26,87 @@ namespace RimGPT
 		}
 #pragma warning restore CS0649
 
-		private static OpenAIApi OpenAI => new(RimGPTMod.Settings.chatGPTKey);
-		private static readonly string responseName = "response";
-		private static readonly string historyName = "history";
-		private static string history = "Nothing yet";
+		private OpenAIApi OpenAI => new(RimGPTMod.Settings.chatGPTKey);
+		private readonly string responseName = "response";
+		private readonly string historyName = "history";
+		private string history = "Nothing yet";
 
-		public const string defaultPersonality = @"An experienced companion assisting the player. You advice is aways {VOICESTYLE}.";
+		public const string defaultPersonality = "You are a {VOICESTYLE} e-sports commentator. You address everyone directly.";
 
-		private static string SystemPrompt => @$"Your input will be generated from in-game content of the game Rimworld. That includes a summary of the past.
+		public string PlayerName
+		{
+			get
+			{
+				if (SteamManager.Initialized == false) return "a player";
+				return $"the player called '{SteamFriends.GetPersonaName()}'";
+			}
+		}
+
+		public string Who(Persona persona)
+		{
+			var n = Personas.personas.Length - 1;
+			if (n <= 0)
+				return $"You are role playing, watching {PlayerName} play Rimworld. Your name is '{persona.name}'";
+
+			var s = $"You are role playing with {n} others participant{(n == 1 ? "" : "s")}, watching {PlayerName} play Rimworld. Your name is '{persona.name}'";
+			if (n == 1)
+				s += $" and the other participant is named {Personas.personas.First(p => p != persona).name}";
+			else
+				s += $" and the others participants are {Personas.personas.Where(p => p != persona).Join(p => p.name)}";
+
+			return s;
+		}
+
+		public string SystemPrompt(Persona persona) => @$"{Who(persona)}. Your input will be generated from a game of Rimworld. You also get what the other role playing participants said (in form of 'X said: ...') and a list of past key facts.
 Create responses in two steps:
-1) Your response called '{responseName}' must be in {Tools.PersonalityLanguage}
-2) A summary of what happened in the game so far called '{historyName}'
-Limit that to:
-1) {responseName} - never have more than {RimGPTMod.Settings.phraseMaxWordCount} words
-2) {historyName} - never have more than {RimGPTMod.Settings.historyMaxWordCount} words
+1) Your response called '{responseName}' must be in {Tools.PersonalityLanguage(persona)}
+2) A list of key facts of what happened in the game so far called '{historyName}'
+Important limits:
+1) '{responseName}' - never have more than {persona.phraseMaxWordCount} words
+2) '{historyName}' - never have more than {persona.historyMaxWordCount} words
 Your output must only consist of json like {{""{responseName}"": ""..."", ""{historyName}"": ""...""}}.
-You play the following role: {RimGPTMod.Settings.personality}".ApplyVoiceStyle();
+Your role: {persona.personality}".ApplyVoiceStyle(persona);
 
-		public static async Task<string> Evaluate(Phrase[] observations)
+		public async Task<string> Evaluate(Persona persona, IEnumerable<Phrase> observations)
 		{
 			var input = new StringBuilder();
-			_ = input.AppendLine($"Summary of the past:");
+			var windowStack = Find.WindowStack;
+			if (Current.Game == null && windowStack != null)
+			{
+				if (windowStack.focusedWindow is not Page page || page == null)
+				{
+					if (WorldRendererUtility.WorldRenderedNow)
+						_ = input.AppendLine("The player is selecting the start site");
+					else
+						_ = input.AppendLine("The player is at the start screen");
+				}
+				else
+				{
+					var dialogType = page.GetType().Name.Replace("Page_", "");
+					_ = input.AppendLine($"The player is at the dialog {dialogType}");
+				}
+			}
+			_ = input.AppendLine($"Key facts of the past:");
 			_ = input.AppendLine(history);
+			if (persona.lastSpokenText != "")
+				_ = input.AppendLine($"The last thing you said: {persona.lastSpokenText}");
 			_ = input.AppendLine("Just happened:");
-			for (var i = 0; i < observations.Length; i++)
-				_ = input.AppendLine($"- {observations[i].text}");
+			foreach (var observation in observations)
+				_ = input.AppendLine($"- {observation.text}");
 
-			if (debug)
-				Log.Warning($"INPUT: {input}");
+			if (Tools.DEBUG)
+				Logger.Warning($"INPUT: {input}");
 
-			var observationString = observations.Join(o => $"- {o.text}", "\n");
+			var systemPrompt = SystemPrompt(persona);
 			var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
 			{
-				Model = "gpt-3.5-turbo",
+				Model = modelVersion,
 				Messages = new List<ChatMessage>()
 					 {
 						  new ChatMessage()
 						  {
 								Role = "system",
-								Content = SystemPrompt
+								Content = systemPrompt
 						  },
 						  new ChatMessage()
 						  {
@@ -69,8 +114,8 @@ You play the following role: {RimGPTMod.Settings.personality}".ApplyVoiceStyle()
 								Content = input.ToString()
 						  }
 					 }
-			}, error => Log.Error(error));
-			RimGPTMod.Settings.charactersSentOpenAI += SystemPrompt.Length + input.Length;
+			}, error => Logger.Error(error));
+			RimGPTMod.Settings.charactersSentOpenAI += systemPrompt.Length + input.Length;
 
 			if (completionResponse.Choices?.Count > 0)
 			{
@@ -83,8 +128,8 @@ You play the following role: {RimGPTMod.Settings.personality}".ApplyVoiceStyle()
 						response = response.Substring(firstIdx, lastIndex - firstIdx + 1);
 				}
 
-				if (debug)
-					Log.Warning($"OUTPUT: {response}");
+				if (Tools.DEBUG)
+					Logger.Warning($"OUTPUT: {response}");
 				try
 				{
 					var output = JsonConvert.DeserializeObject<Output>(response);
@@ -93,21 +138,21 @@ You play the following role: {RimGPTMod.Settings.personality}".ApplyVoiceStyle()
 				}
 				catch (Exception exception)
 				{
-					Log.Error($"ChatGPT malformed output: {response} [{exception.Message}]");
+					Logger.Error($"ChatGPT malformed output: {response} [{exception.Message}]");
 				}
 			}
-			else if (debug)
-				Log.Warning($"OUTPUT: null");
+			else if (Tools.DEBUG)
+				Logger.Warning($"OUTPUT: null");
 
 			return null;
 		}
 
-		public static void ResetHistory()
+		public void ReplaceHistory(string reason)
 		{
-			history = "Nothing yet";
+			history = reason;
 		}
 
-		public static async Task<(string, string)> SimplePrompt(string input)
+		public async Task<(string, string)> SimplePrompt(string input)
 		{
 			string requestError = null;
 			var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
@@ -132,11 +177,12 @@ You play the following role: {RimGPTMod.Settings.personality}".ApplyVoiceStyle()
 
 		public static void TestKey(Action<string> callback)
 		{
-			_ = Task.Run(async () =>
+			Tools.SafeAsync(async () =>
 			{
 				var prompt = "The player has just configured your OpenAI API key in the mod " +
 					 "RimGPT for Rimworld. Greet them with a short response!";
-				var output = await SimplePrompt(prompt);
+				var dummyAI = new AI();
+				var output = await dummyAI.SimplePrompt(prompt);
 				callback(output.Item1 ?? output.Item2);
 			});
 		}

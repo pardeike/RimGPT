@@ -1,35 +1,15 @@
-﻿using HarmonyLib;
-using System;
-using System.Xml.Linq;
-using UnityEngine;
+﻿using UnityEngine;
 using Verse;
 
 namespace RimGPT
 {
-	public class ExternalSettingAttribute: Attribute { }
-
 	public class RimGPTSettings : ModSettings
 	{
 		public bool enabled = true;
 		public string chatGPTKey = "";
 		public string azureSpeechKey = "";
 		public string azureSpeechRegion = "";
-		[ExternalSetting] public string azureVoiceLanguage = "-";
-		[ExternalSetting] public string azureVoice = "en-CA-LiamNeural";
-		[ExternalSetting] public string azureVoiceStyle = "default";
-		[ExternalSetting] public float azureVoiceStyleDegree = 1f;
-		[ExternalSetting] public string speechLanguage = "";
 		public float speechVolume = 4f;
-		[ExternalSetting] public float speechRate = 0f;
-		[ExternalSetting] public float speechPitch = -0.1f;
-		[ExternalSetting] public int phrasesLimit = 40;
-		[ExternalSetting] public int phraseBatchSize = 20;
-		[ExternalSetting] public float phraseDelayMin = 2f;
-		[ExternalSetting] public float phraseDelayMax = 10f;
-		[ExternalSetting] public int phraseMaxWordCount = 50;
-		[ExternalSetting] public int historyMaxWordCount = 200;
-		[ExternalSetting] public string personality = AI.defaultPersonality;
-		[ExternalSetting] public string personalityLanguage = "-";
 		public bool showAsText = true;
 		public long charactersSentOpenAI = 0;
 		public long charactersSentAzure = 0;
@@ -41,61 +21,8 @@ namespace RimGPT
 			Scribe_Values.Look(ref chatGPTKey, "chatGPTKey");
 			Scribe_Values.Look(ref azureSpeechKey, "azureSpeechKey");
 			Scribe_Values.Look(ref azureSpeechRegion, "azureSpeechRegion");
-			Scribe_Values.Look(ref azureVoiceLanguage, "azureVoiceLanguage", "-");
-			Scribe_Values.Look(ref azureVoice, "azureVoice", "en-CA-LiamNeural");
-			Scribe_Values.Look(ref azureVoiceStyle, "azureVoiceStyle", "default");
-			Scribe_Values.Look(ref azureVoiceStyleDegree, "azureVoiceStyleDegree", 1f);
-			Scribe_Values.Look(ref speechLanguage, "speechLanguage", "");
 			Scribe_Values.Look(ref speechVolume, "speechVolume", 4f);
-			Scribe_Values.Look(ref speechRate, "speechRate", 0f);
-			Scribe_Values.Look(ref speechPitch, "speechPitch", -0.1f);
-			Scribe_Values.Look(ref phrasesLimit, "phrasesLimit", 40);
-			Scribe_Values.Look(ref phraseBatchSize, "phraseBatchSize", 20);
-			Scribe_Values.Look(ref phraseDelayMin, "phraseDelayMin", 2f);
-			Scribe_Values.Look(ref phraseDelayMax, "phraseDelayMax", 10f);
-			Scribe_Values.Look(ref phraseMaxWordCount, "phraseMaxWordCount", 50);
-			Scribe_Values.Look(ref historyMaxWordCount, "historyMaxWordCount", 400);
-			Scribe_Values.Look(ref personality, "personality", AI.defaultPersonality);
-			Scribe_Values.Look(ref personalityLanguage, "personalityLanguage", "-");
 			Scribe_Values.Look(ref showAsText, "showAsText", true);
-
-			if (historyMaxWordCount < 200) historyMaxWordCount = 400;
-			if (phraseBatchSize > phrasesLimit) phraseBatchSize = phrasesLimit;
-			if (phraseDelayMin > phraseDelayMax) phraseDelayMin = phraseDelayMax;
-			if (phraseDelayMax < phraseDelayMin) phraseDelayMax = phraseDelayMin;
-		}
-
-		public string ToXml()
-		{
-			var personalityElement = new XElement("Personality");
-			var fields = AccessTools.GetDeclaredFields(GetType());
-			foreach (var field in fields)
-			{
-				if (Attribute.IsDefined(field, typeof(ExternalSettingAttribute)) == false) continue;
-				var fieldElement = new XElement(field.Name, field.GetValue(this));
-				personalityElement.Add(fieldElement);
-			}
-			return personalityElement.ToString();
-		}
-
-		public void UpdatePersonalityFromXML(string xml)
-		{
-			var xDoc = XDocument.Parse(xml);
-			var root = xDoc.Root;
-			foreach (var element in root.Elements())
-			{
-				var field = AccessTools.DeclaredField(typeof(RimGPTSettings), element.Name.LocalName);
-				if (Attribute.IsDefined(field, typeof(ExternalSettingAttribute)) == false) continue;
-				field?.SetValue(this, field.FieldType switch
-				{
-					Type t when t == typeof(float) => float.Parse(element.Value),
-					Type t when t == typeof(int) => int.Parse(element.Value),
-					Type t when t == typeof(long) => long.Parse(element.Value),
-					Type t when t == typeof(bool) => bool.Parse(element.Value),
-					Type t when t == typeof(string) => element.Value,
-					_ => null
-				});
-			}
 		}
 
 		public bool IsConfigured =>
@@ -104,7 +31,7 @@ namespace RimGPT
 		public void DoWindowContents(Rect inRect)
 		{
 			string prevKey;
-			Rect rect;
+			// Rect rect;
 
 			var list = new Listing_Standard { ColumnWidth = inRect.width / 2f };
 			list.Begin(inRect);
@@ -130,20 +57,21 @@ namespace RimGPT
 			var prevRegion = azureSpeechRegion;
 			list.TextField(ref azureSpeechRegion, "Region");
 			if (azureSpeechRegion != prevRegion)
-				TTS.LoadVoiceInformation();
+				Personas.UpdateVoiceInformation();
 			list.Gap(6f);
 			prevKey = azureSpeechKey;
 			list.TextField(ref azureSpeechKey, "API Key (paste only)", true, () => azureSpeechKey = "");
 			if (azureSpeechKey != "" && azureSpeechKey != prevKey)
-				TTS.TestKey(personalityLanguage, () => TTS.LoadVoiceInformation());
+				TTS.TestKey(new Persona(), () => Personas.UpdateVoiceInformation());
 
+			/*
 			list.Gap(16f);
 
 			list.Label("FFFF00", "Azure - Voice");
 			list.Languages(LanguageDatabase.AllLoadedLanguages, RimGPTMod.Settings.azureVoiceLanguage, l => l.DisplayName, l =>
 			{
 				RimGPTMod.Settings.azureVoiceLanguage = l == null ? "-" : l.FriendlyNameEnglish;
-				TTS.LoadVoiceInformation();
+				Personas.UpdateVoiceInformation();
 			}, width, 0);
 			list.Voices(width, 1);
 			if (UX.HasVoiceStyles())
@@ -244,6 +172,7 @@ namespace RimGPT
 				personalityLanguage = "-";
 				showAsText = true;
 			}
+			*/
 
 			list.End();
 		}

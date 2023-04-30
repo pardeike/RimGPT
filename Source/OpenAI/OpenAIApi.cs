@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using RimGPT;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -56,7 +57,7 @@ namespace OpenAI
 			try
 			{
 				var asyncOperation = request.SendWebRequest();
-				while (!asyncOperation.isDone)
+				while (!asyncOperation.isDone && RimGPTMod.Running)
 					await Task.Yield();
 			}
 			catch (Exception exception)

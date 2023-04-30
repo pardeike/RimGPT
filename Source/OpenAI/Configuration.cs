@@ -1,8 +1,8 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using RimGPT;
 using System;
 using System.IO;
-using Verse;
 
 namespace OpenAI
 {
@@ -34,7 +34,7 @@ namespace OpenAI
 				}
 				else
 				{
-					Log.Error("API Key is null and auth.json does not exist. Please check https://github.com/srcnalt/OpenAI-Unity#saving-your-credentials");
+					Logger.Error("API Key is null and auth.json does not exist. Please check https://github.com/srcnalt/OpenAI-Unity#saving-your-credentials");
 				}
 			}
 			else

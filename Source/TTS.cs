@@ -39,7 +39,8 @@ namespace RimGPT
 
 		public static Voice From(string shortName)
 		{
-			if (shortName == null || shortName == "") return null;
+			if (shortName == null || shortName == "")
+				return null;
 			return TTS.voices?.FirstOrDefault(v => v.ShortName == shortName);
 		}
 	}
@@ -94,12 +95,13 @@ namespace RimGPT
 		public static VoiceStyle From(string shortName) => Values.FirstOrDefault(s => s.Value == shortName);
 	}
 
-	public static class TTS
+	public class TTS
 	{
-		public static bool debug = false;
-		public static AudioSource audioSource = null;
+		public static string APIURL => $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices/v1";
+
 		public static Voice[] voices = new Voice[0];
-		public static string currentText = "";
+
+		public static AudioSource audioSource = null;
 
 		public static AudioSource GetAudioSource()
 		{
@@ -133,7 +135,7 @@ namespace RimGPT
 			try
 			{
 				var asyncOperation = request.SendWebRequest();
-				while (!asyncOperation.isDone)
+				while (!asyncOperation.isDone && RimGPTMod.Running)
 					await Task.Yield();
 			}
 			catch (Exception exception)
@@ -156,21 +158,21 @@ namespace RimGPT
 			}
 			catch (Exception)
 			{
-				Log.Error($"Azure malformed output: {response}");
+				Logger.Error($"Azure malformed output: {response}");
 			}
 			return default;
 		}
 
-		public static async Task<AudioClip> AudioClipFromAzure(string path, string text, Action<string> errorCallback)
+		public static async Task<AudioClip> AudioClipFromAzure(Persona persona, string path, string text, Action<string> errorCallback)
 		{
-			var voice = RimGPTMod.Settings.azureVoice;
-			var style = RimGPTMod.Settings.azureVoiceStyle;
-			var styledegree = RimGPTMod.Settings.azureVoiceStyleDegree;
-			var rate = RimGPTMod.Settings.speechRate;
-			var pitch = RimGPTMod.Settings.speechPitch;
+			var voice = persona.azureVoice;
+			var style = persona.azureVoiceStyle;
+			var styledegree = persona.azureVoiceStyleDegree;
+			var rate = persona.speechRate;
+			var pitch = persona.speechPitch;
 			var xml = await new Ssml().Say(text).WithProsody(rate, pitch).AsVoice(voice, style, styledegree).ToStringAsync();
-			if (debug)
-				Log.Warning($"[{voice}] [{style}] [{styledegree}] [{rate}] [{pitch}] => {xml}");
+			if (Tools.DEBUG)
+				Logger.Warning($"[{voice}] [{style}] [{styledegree}] [{rate}] [{pitch}] => {xml}");
 			using var request = UnityWebRequest.Put(path, Encoding.Default.GetBytes(xml));
 			using var downloadHandlerAudioClip = new DownloadHandlerAudioClip(path, AudioType.MPEG);
 			request.method = "POST";
@@ -181,7 +183,7 @@ namespace RimGPT
 			try
 			{
 				var asyncOperation = request.SendWebRequest();
-				while (!asyncOperation.isDone)
+				while (!asyncOperation.isDone && RimGPTMod.Running)
 					await Task.Yield();
 				RimGPTMod.Settings.charactersSentAzure += text.Length;
 			}
@@ -192,18 +194,20 @@ namespace RimGPT
 				return default;
 			}
 			var code = request.responseCode;
-			if (debug)
-				Log.Warning($"Azure => {code} {request.error}");
+			if (Tools.DEBUG)
+				Logger.Warning($"Azure => {code} {request.error}");
 			if (code >= 300)
 			{
 				var error = $"Got {code} response from Azure: {request.error}";
 				errorCallback?.Invoke(error);
 				return default;
 			}
-			if (debug)
-				Log.Warning($"Azure => {downloadHandlerAudioClip.audioClip?.length} seconds");
-			// SaveAudioClip.Save("/Users/ap/Desktop/test.wav", downloadHandlerAudioClip.audioClip);
-			return downloadHandlerAudioClip.audioClip;
+			return await Main.Perform(() =>
+			{
+				var audioClip = downloadHandlerAudioClip.audioClip;
+				// SaveAudioClip.Save("/Users/ap/Desktop/test.wav", audioClip);
+				return audioClip;
+			});
 		}
 
 		public static async Task<AudioClip> DownloadAudioClip(string path, Action<string> errorCallback)
@@ -212,7 +216,7 @@ namespace RimGPT
 			try
 			{
 				var asyncOperation = request.SendWebRequest();
-				while (!asyncOperation.isDone)
+				while (!asyncOperation.isDone && RimGPTMod.Running)
 					await Task.Yield();
 			}
 			catch (Exception exception)
@@ -243,48 +247,28 @@ namespace RimGPT
 		//    GetAudioSource().PlayOneShot(audioClip);
 		//}
 
-		public static async Task PlayAzure(string text, bool delay, Action<string> errorCallback)
+		public static void TestKey(Persona persona, Action callback)
 		{
-			var showText = RimGPTMod.Settings.showAsText || RimGPTMod.Settings.azureSpeechRegion == "" || RimGPTMod.Settings.azureSpeechKey == "";
-			if (showText)
-				currentText = text;
-
-			if (RimGPTMod.Settings.azureSpeechKey != "" && RimGPTMod.Settings.azureSpeechRegion != "")
-			{
-				var url = $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices/v1";
-				var audioClip = await AudioClipFromAzure(url, text, errorCallback);
-				if (audioClip != null)
-				{
-					GetAudioSource().PlayOneShot(audioClip, RimGPTMod.Settings.speechVolume);
-					if (delay)
-						await Task.Delay((int)(audioClip.length * 1000));
-				}
-				currentText = "";
-			}
-			else if (showText)
-			{
-				var ms = 1000 * (int)(text.Length / 20f);
-				await Task.Delay(ms);
-				currentText = "";
-			}
-		}
-
-		public static void TestKey(string language, Action callback)
-		{
-			_ = Task.Run(async () =>
+			Tools.SafeAsync(async () =>
 			{
 				var text = "This is a test message";
 				string error = null;
 				if (RimGPTMod.Settings.chatGPTKey != "")
 				{
 					var prompt = "Tell me something random in 15 words or less.";
-					if (language != "-") prompt += $" Your response must be in {language}.";
-					var result = await AI.SimplePrompt(prompt);
+					if (persona.azureVoiceLanguage != "-")
+						prompt += $" Your response must be in {persona.azureVoiceLanguage}.";
+					var dummyAI = new AI();
+					var result = await dummyAI.SimplePrompt(prompt);
 					text = result.Item1;
 					error = result.Item2;
 				}
 				if (text != null)
-					await PlayAzure(text, false, e => error = e);
+				{
+					var job = new SpeechJob(persona, text, e => error = e);
+					if (error == null && job.audioClip != null)
+						await job.Play();
+				}
 				if (error != null)
 					LongEventHandler.ExecuteWhenFinished(() =>
 						{
@@ -294,27 +278,6 @@ namespace RimGPT
 				else
 					callback?.Invoke();
 			});
-		}
-
-		public static void LoadVoiceInformation()
-		{
-			voices = new Voice[0];
-			if (RimGPTMod.Settings.azureSpeechKey != "" && RimGPTMod.Settings.azureSpeechRegion != "")
-			{
-				var url = $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices/voices/list";
-				_ = Task.Run(async () =>
-				{
-					voices = await DispatchFormPost<Voice[]>(url, null, true, null);
-
-					var currentVoice = Voice.From(RimGPTMod.Settings.azureVoice);
-					if (currentVoice != null && currentVoice.LocaleName.Contains(Tools.VoiceLanguage) == false)
-					{
-						currentVoice = voices.Where(voice => voice.LocaleName.Contains(Tools.VoiceLanguage)).OrderBy(voice => voice.DisplayName).FirstOrDefault();
-						RimGPTMod.Settings.azureVoice = currentVoice?.ShortName ?? "";
-						RimGPTMod.Settings.azureVoiceStyle = "default";
-					}
-				});
-			}
 		}
 	}
 }

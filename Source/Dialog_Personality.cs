@@ -5,14 +5,16 @@ namespace RimGPT
 {
 	public class Dialog_Personality : Window
 	{
+		public Persona persona;
 		public string text;
 		Vector2 scrollPosition;
 
 		public override Vector2 InitialSize => new(640f, 460f);
 
-		public Dialog_Personality()
+		public Dialog_Personality(Persona persona)
 		{
-			this.text = RimGPTMod.Settings.personality;
+			this.persona = persona;
+			text = persona.personality;
 			doCloseX = false;
 			doCloseButton = false;
 			forcePause = true;
@@ -22,11 +24,11 @@ namespace RimGPT
 			closeOnCancel = false;
 		}
 
-		public static void Show() => Find.WindowStack?.Add(new Dialog_Personality());
+		public static void Show() => Find.WindowStack?.Add(new Dialog_Personality(new Persona()));
 
 		public void Save()
 		{
-			RimGPTMod.Settings.personality = text;
+			persona.personality = text;
 			Close();
 		}
 

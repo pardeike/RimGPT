@@ -1,11 +1,17 @@
 ﻿using RimWorld;
+using System;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Verse;
 
 namespace RimGPT
 {
 	public static class Tools
 	{
-		public struct Strings
+		public static bool DEBUG = false;
+		public static readonly Regex tagRemover = new("<color.+?>(.+?)</(?:color)?>", RegexOptions.Singleline);
+
+		public readonly struct Strings
 		{
 			public static readonly string colonist = "Colonist".TranslateSimple();
 			public static readonly string enemy = "Enemy".TranslateSimple().CapitalizeFirst();
@@ -19,28 +25,115 @@ namespace RimGPT
 			public static readonly string priority = "Priority".TranslateSimple();
 		}
 
-		public static string VoiceLanguage
+		public static void SafeAsync(Func<Task> function)
 		{
-			get
+			_ = Task.Run(async () =>
 			{
-				var language = RimGPTMod.Settings.azureVoiceLanguage;
-				if (language == "-") language = LanguageDatabase.activeLanguage.FriendlyNameEnglish;
-				var idx = language.IndexOf(" ");
-				if (idx< 0) return language;
-				return language.Substring(0, idx);
+				try
+				{
+					await function();
+				}
+				catch (Exception ex)
+				{
+					Logger.Error(ex.ToString());
+				}
+			});
+		}
+
+		public static async Task SafeWait(int milliseconds)
+		{
+			if (milliseconds == 0)
+				return;
+			try
+			{
+				await Task.Delay(milliseconds, RimGPTMod.onQuit.Token);
+			}
+			catch (TaskCanceledException)
+			{
 			}
 		}
 
-		public static string PersonalityLanguage
+		public static void SafeLoop(Action action, int loopDelay = 0)
 		{
-			get
+			_ = Task.Run(async () =>
 			{
-				var language = RimGPTMod.Settings.personalityLanguage;
-				if (language == "-") language = LanguageDatabase.activeLanguage.FriendlyNameEnglish;
-				var idx = language.IndexOf(" ");
-				if (idx< 0) return language;
-				return language.Substring(0, idx);
-			}
+				while (RimGPTMod.Running)
+				{
+					await SafeWait(loopDelay);
+					try
+					{
+						action();
+					}
+					catch (Exception ex)
+					{
+						Logger.Error(ex.ToString());
+						await SafeWait(1000);
+					}
+				}
+			});
+		}
+
+		public static void SafeLoop(Func<Task> function, int loopDelay = 0)
+		{
+			_ = Task.Run(async () =>
+			{
+				while (RimGPTMod.Running)
+				{
+					await SafeWait(loopDelay);
+					try
+					{
+						await function();
+					}
+					catch (Exception ex)
+					{
+						Logger.Error(ex.ToString());
+						await SafeWait(1000);
+					}
+				}
+			});
+		}
+
+		public static void SafeLoop(Func<Task<bool>> function, int loopDelay = 0)
+		{
+			_ = Task.Run(async () =>
+			{
+				while (RimGPTMod.Running)
+				{
+					await SafeWait(loopDelay);
+					try
+					{
+						if (await function())
+							continue;
+					}
+					catch (Exception ex)
+					{
+						Logger.Error(ex.ToString());
+						await SafeWait(1000);
+					}
+				}
+			});
+		}
+
+		public static string VoiceLanguage(Persona persona)
+		{
+			var language = persona.azureVoiceLanguage;
+			if (language == "-")
+				language = LanguageDatabase.activeLanguage.FriendlyNameEnglish;
+			var idx = language.IndexOf(" ");
+			if (idx < 0)
+				return language;
+			return language.Substring(0, idx);
+		}
+
+		public static string PersonalityLanguage(Persona persona)
+		{
+			var language = persona.personalityLanguage;
+			if (language == "-")
+				language = LanguageDatabase.activeLanguage.FriendlyNameEnglish;
+			var idx = language.IndexOf(" ");
+			if (idx < 0)
+				return language;
+			return language.Substring(0, idx);
 		}
 
 		public static string Type(this Pawn pawn)
@@ -62,11 +155,11 @@ namespace RimGPT
 			return $"{pawn.Type()} '{pawn.LabelShortCap}'";
 		}
 
-		public static string ApplyVoiceStyle(this string text)
+		public static string ApplyVoiceStyle(this string text, Persona persona)
 		{
 			var voiceStyle = "funny";
 
-			var value = VoiceStyle.From(RimGPTMod.Settings.azureVoiceStyle)?.Value;
+			var value = VoiceStyle.From(persona.azureVoiceStyle)?.Value;
 			if (value != null && value != "default" && value != "chat" && value.Contains("-") == false && value.Contains("_") == false)
 				voiceStyle = $"very {value}";
 
@@ -146,8 +239,8 @@ namespace RimGPT
 
 		public static readonly string[] commonLanguages = new string[]
 		{
-			"Alien", "Arabic", "Bengali", "Bulgarian", "Catalan", "Chinese", "Croatian", "Czech", "Danish", "Dutch", "English", 
-			"Estonian", "Finnish", "French", "German", "Greek", "Hebrew", "Hindi", "Hungarian", "Icelandic", "Indonesian", 
+			"Alien", "Arabic", "Bengali", "Bulgarian", "Catalan", "Chinese", "Croatian", "Czech", "Danish", "Dutch", "English",
+			"Estonian", "Finnish", "French", "German", "Greek", "Hebrew", "Hindi", "Hungarian", "Icelandic", "Indonesian",
 			"Italian", "Japanese", "Korean", "Latvian", "Lithuanian", "Malay", "Norwegian", "Persian", "Polish", "Portuguese",
 			"Punjabi", "Romanian", "Russian", "Serbian", "Slovak", "Slovenian", "Spanish", "Swedish", "Tamil", "Telugu",
 			"Thai", "Turkish", "Ukrainian", "Urdu", "Vietnamese", "Welsh", "Yiddish"

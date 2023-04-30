@@ -139,28 +139,28 @@ namespace RimGPT
 				LanguageChoiceMenu(languages, itemFunc, action);
 		}
 
-		public static void Voices(this Listing_Standard list, float width, int column)
+		public static void Voices(this Listing_Standard list, Persona persona, float width, int column)
 		{
 			var rect = list.GetRect(30f);
 			list.Gap(-30f);
 			rect.width = width;
 			rect.x += column * (width + 20);
 
-			var currentVoice = Voice.From(RimGPTMod.Settings.azureVoice);
+			var currentVoice = Voice.From(persona.azureVoice);
 			if (Widgets.ButtonText(rect, currentVoice?.DisplayName ?? ""))
 			{
 				if (TTS.voices.NullOrEmpty())
 					return;
 
 				var options = new List<FloatMenuOption>();
-				var voices = TTS.voices.Where(voice => voice.LocaleName.Contains(Tools.VoiceLanguage)).OrderBy(voice => voice.DisplayName);
+				var voices = TTS.voices.Where(voice => voice.LocaleName.Contains(Tools.VoiceLanguage(persona))).OrderBy(voice => voice.DisplayName);
 				foreach (var voice in voices)
 				{
 					var hasStyles = voice.StyleList.NullOrEmpty() == false;
 					var floatMenuOption = new FloatMenuOption(voice.DisplayName + (hasStyles ? " *" : ""), () =>
 					{
-						RimGPTMod.Settings.azureVoice = voice.ShortName;
-						RimGPTMod.Settings.azureVoiceStyle = VoiceStyle.Values[0].Value;
+						persona.azureVoice = voice.ShortName;
+						persona.azureVoiceStyle = VoiceStyle.Values[0].Value;
 					});
 					var tooltip = $"{voice.Gender}, {voice.WordsPerMinute} Words/min, {voice.LocaleName}";
 					floatMenuOption.tooltip = new TipSignal?(tooltip);
@@ -170,32 +170,32 @@ namespace RimGPT
 			}
 		}
 
-		public static bool HasVoiceStyles()
+		public static bool HasVoiceStyles(Persona persona)
 		{
-			var currentVoice = Voice.From(RimGPTMod.Settings.azureVoice);
+			var currentVoice = Voice.From(persona.azureVoice);
 			var availableStyles = currentVoice?.StyleList;
 			return availableStyles.NullOrEmpty() == false;
 		}
 
-		public static void VoiceStyles(this Listing_Standard list, float width, int column)
+		public static void VoiceStyles(this Listing_Standard list, Persona persona, float width, int column)
 		{
 			var rect = list.GetRect(30f);
 			list.Gap(-30f);
 			rect.width = width;
 			rect.x += column * (width + 20);
 
-			var currentVoice = Voice.From(RimGPTMod.Settings.azureVoice);
+			var currentVoice = Voice.From(persona.azureVoice);
 			var availableStyles = currentVoice?.StyleList;
 			if (availableStyles.NullOrEmpty())
 				availableStyles = new[] { "default" };
-			var currentStyle = VoiceStyle.From(RimGPTMod.Settings.azureVoiceStyle);
+			var currentStyle = VoiceStyle.From(persona.azureVoiceStyle);
 			if (Widgets.ButtonText(rect, currentStyle?.Name ?? ""))
 			{
 				var options = new List<FloatMenuOption>();
 				foreach (var styleName in availableStyles)
 				{
 					var style = VoiceStyle.From(styleName);
-					var floatMenuOption = new FloatMenuOption(style.Name, () => RimGPTMod.Settings.azureVoiceStyle = style.Value);
+					var floatMenuOption = new FloatMenuOption(style.Name, () => persona.azureVoiceStyle = style.Value);
 					if (style.Tooltip != null)
 						floatMenuOption.tooltip = new TipSignal?(style.Tooltip);
 					options.Add(floatMenuOption);
