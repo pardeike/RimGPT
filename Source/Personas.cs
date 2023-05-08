@@ -1,6 +1,6 @@
-﻿using HarmonyLib;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using Verse;
 
@@ -11,37 +11,22 @@ namespace RimGPT
 		public static readonly int maxQueueSize = 3;
 		public static bool IsAudioQueueFull => speechQueue.Count >= maxQueueSize;
 
-		public static Persona[] personas = new Persona[]
+		public static List<Persona> personas = new()
 		{
 			new Persona()
 			{
-				name = "Peter", 
-				azureVoice = "en-US-DavisNeural", 
-				azureVoiceStyle = "chat", 
-				azureVoiceStyleDegree = 2f, 
-				speechRate = 0.2f, 
-				phrasesLimit = 5, 
-				phraseBatchSize = 5, 
-				phraseMaxWordCount = 50, 
-				historyMaxWordCount = 15, 
-				phraseDelayMin = 15, 
-				phraseDelayMax = 15, 
-				personality = "You are Peter, an expert e-sports commentator. Your job is to analyze what happens in the game, not just "
-			},
-			new Persona()
-			{
-				name = "Susan",
-				azureVoice = "en-US-AriaNeural", 
-				azureVoiceStyle = "chat", 
-				azureVoiceStyleDegree = 2f, 
-				speechRate = 0.25f, 
-				phrasesLimit = 5, 
-				phraseBatchSize = 1, 
-				phraseMaxWordCount = 10, 
-				historyMaxWordCount = 400, 
-				phraseDelayMin = 5, 
-				phraseDelayMax = 5, 
-				personality = "You are Susan, a very funny and witty commentator that finds her professional co-host Peter very charming. You try to analyse what Peter says, addressing him direectly."
+				name = "Tynan",
+				azureVoice = "en-AU-TimNeural",
+				azureVoiceStyle = "",
+				azureVoiceStyleDegree = 1f,
+				speechRate = 0.2f,
+				phrasesLimit = 10,
+				phraseBatchSize = 10,
+				phraseMaxWordCount = 80,
+				historyMaxWordCount = 400,
+				phraseDelayMin = 10,
+				phraseDelayMax = 10,
+				personality = "You are Tynan, the inventor and lead developer of a incredibly cruel game that breaks Geneva conventions called Rimworld. You are a typical besserwisser and a keen to comment on basically everything the stupid player does."
 			}
 		};
 		public static ConcurrentQueue<SpeechJob> speechQueue = new();
@@ -66,7 +51,7 @@ namespace RimGPT
 				}
 				_ = speechQueue.TryDequeue(out job);
 				//FileLog.Log($"SPEECH QUEUE -1 => {speechQueue.Count} -> play {job.persona?.name ?? "null"}: {job.audioClip != null}/{job.completed}");
-				await job.Play();
+				await job.Play(false);
 				return false;
 			});
 		}
@@ -125,10 +110,10 @@ namespace RimGPT
 			TTS.voices = new Voice[0];
 			if (RimGPTMod.Settings.azureSpeechKey == "" || RimGPTMod.Settings.azureSpeechRegion == "")
 				return;
-
+			
 			Tools.SafeAsync(async () =>
 			{
-				TTS.voices = await TTS.DispatchFormPost<Voice[]>(TTS.APIURL, null, true, null);
+				TTS.voices = await TTS.DispatchFormPost<Voice[]>($"{TTS.APIURL}/voices/list", null, true, null);
 				foreach (var persona in personas)
 				{
 					var voiceLanguage = Tools.VoiceLanguage(persona);

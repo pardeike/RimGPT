@@ -44,7 +44,7 @@ namespace RimGPT
 
 		public string Who(Persona persona)
 		{
-			var n = Personas.personas.Length - 1;
+			var n = Personas.personas.Count - 1;
 			if (n <= 0)
 				return $"You are role playing, watching {PlayerName} play Rimworld. Your name is '{persona.name}'";
 
@@ -160,6 +160,11 @@ Your role: {persona.personality}".ApplyVoiceStyle(persona);
 				Model = "gpt-3.5-turbo",
 				Messages = new List<ChatMessage>()
 						  {
+								new ChatMessage()
+								{
+									 Role = "system",
+									 Content = "You are a creative poet answering in 12 words or less."
+								},
 								new ChatMessage()
 								{
 									 Role = "user",

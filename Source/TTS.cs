@@ -97,7 +97,7 @@ namespace RimGPT
 
 	public class TTS
 	{
-		public static string APIURL => $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices/v1";
+		public static string APIURL => $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices";
 
 		public static Voice[] voices = new Voice[0];
 
@@ -255,9 +255,9 @@ namespace RimGPT
 				string error = null;
 				if (RimGPTMod.Settings.chatGPTKey != "")
 				{
-					var prompt = "Tell me something random in 15 words or less.";
-					if (persona.azureVoiceLanguage != "-")
-						prompt += $" Your response must be in {persona.azureVoiceLanguage}.";
+					var prompt = "Say something random.";
+					if (persona.personalityLanguage != "-")
+						prompt += $" Your response must be in {persona.personalityLanguage}.";
 					var dummyAI = new AI();
 					var result = await dummyAI.SimplePrompt(prompt);
 					text = result.Item1;
@@ -265,9 +265,15 @@ namespace RimGPT
 				}
 				if (text != null)
 				{
-					var job = new SpeechJob(persona, text, e => error = e);
-					if (error == null && job.audioClip != null)
-						await job.Play();
+					var audioClip = await AudioClipFromAzure(persona, $"{APIURL}/v1", text, e => error = e);
+					if (audioClip != null)
+					{
+						var source = GetAudioSource();
+						source.Stop();
+						source.clip = audioClip;
+						source.volume = RimGPTMod.Settings.speechVolume;
+						source.Play();
+					}
 				}
 				if (error != null)
 					LongEventHandler.ExecuteWhenFinished(() =>

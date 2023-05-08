@@ -24,7 +24,7 @@ namespace RimGPT
 			closeOnCancel = false;
 		}
 
-		public static void Show() => Find.WindowStack?.Add(new Dialog_Personality(new Persona()));
+		public static void Show(Persona persona) => Find.WindowStack?.Add(new Dialog_Personality(persona));
 
 		public void Save()
 		{

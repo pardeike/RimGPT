@@ -1,8 +1,6 @@
-﻿using HarmonyLib;
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using UnityEngine;
-using Verse.AI;
 
 namespace RimGPT
 {
@@ -32,34 +30,13 @@ namespace RimGPT
 					completed = true;
 					return;
 				}
-				audioClip = await TTS.AudioClipFromAzure(persona, TTS.APIURL, spokenText, errorCallback);
+				audioClip = await TTS.AudioClipFromAzure(persona, $"{TTS.APIURL}/v1", spokenText, errorCallback);
 				doneCallback();
 				completed = true;
 			});
 		}
 
-		public SpeechJob(Persona persona, string text, Action<string> errorCallback)
-		{
-			this.persona = persona;
-			waitForAudio = false;
-			doneCallback = null;
-
-			if (RimGPTMod.Settings.azureSpeechKey == "" || RimGPTMod.Settings.azureSpeechRegion == "")
-				return;
-
-			Tools.SafeAsync(async () =>
-			{
-				spokenText = text;
-				audioClip = await TTS.AudioClipFromAzure(persona, TTS.APIURL, spokenText, errorCallback);
-				if (audioClip == null)
-				{
-					doneCallback();
-					completed = true;
-				}
-			});
-		}
-
-		public async Task Play()
+		public async Task Play(bool immediately)
 		{
 			if (persona != null)
 			{
@@ -73,16 +50,33 @@ namespace RimGPT
 
 			if (audioClip != null)
 			{
-				var length = await Main.Perform(() =>
+				float length = 0;
+				var source = TTS.GetAudioSource();
+				if (immediately)
 				{
-					TTS.GetAudioSource().PlayOneShot(audioClip, RimGPTMod.Settings.speechVolume);
-					return audioClip.length;
-				});
+					source.Stop();
+					source.clip = audioClip;
+					source.volume = RimGPTMod.Settings.speechVolume;
+					source.Play();
+					length = audioClip.length;
+				}
+				else
+				{
+					length = await Main.Perform(() =>
+					{
+						source.Stop();
+						source.clip = audioClip;
+						source.volume = RimGPTMod.Settings.speechVolume;
+						source.Play();
+						return audioClip.length;
+					});
+				}
+
 				if (waitForAudio)
 					await Tools.SafeWait((int)(length * 1000));
 				//FileLog.Log($"{persona.name}: play done");
 			}
-			else if (showText)
+			else if (showText && spokenText != null)
 			{
 				var ms = 1000 * (int)(spokenText.Length / 20f);
 				await Tools.SafeWait(ms);

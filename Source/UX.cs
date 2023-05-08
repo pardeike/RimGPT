@@ -8,6 +8,8 @@ namespace RimGPT
 {
 	public static class UX
 	{
+		public const float ButtonHeight = 24f;
+
 		public static void SmallLabel(this Listing_Standard list, string text)
 		{
 			var rect = list.GetRect(20f);
@@ -62,36 +64,35 @@ namespace RimGPT
 		public static void Slider(this Listing_Standard list, ref int value, int min, int max, Func<string> label)
 		{
 			float f = value;
-			var h = HorizontalSlider(list.GetRect(22f), ref f, min, max, label == null ? null : label(), 1f);
+			HorizontalSlider(list.GetRect(22f), ref f, min, max, label == null ? null : label(), 1f);
 			value = (int)f;
-			list.Gap(h);
+			list.Gap(2f);
 		}
 
 		public static void Slider(this Listing_Standard list, ref float value, float min, float max, Func<string> label, float roundTo = -1f)
 		{
-			var rect = list.GetRect(22f);
-			var h = HorizontalSlider(rect, ref value, min, max, label == null ? null : label(), roundTo);
-			list.Gap(h);
+			HorizontalSlider(list.GetRect(22f), ref value, min, max, label == null ? null : label(), roundTo);
+			list.Gap(2f);
 		}
 
-		public static float HorizontalSlider(Rect rect, ref float value, float leftValue, float rightValue, string label, float roundTo = -1f)
+		public static void HorizontalSlider(Rect rect, ref float value, float leftValue, float rightValue, string label, float roundTo = -1f)
 		{
-			if (label != null)
-			{
-				var anchor = Text.Anchor;
-				var font = Text.Font;
-				Text.Font = GameFont.Tiny;
-				Text.Anchor = TextAnchor.UpperLeft;
-				Widgets.Label(rect, label);
-				Text.Anchor = anchor;
-				Text.Font = font;
+			var first = rect.width / 2.5f;
+			var second = rect.width - first;
 
-				rect.y += 18f;
-			}
-			value = GUI.HorizontalSlider(rect, value, leftValue, rightValue);
+			var anchor = Text.Anchor;
+			var font = Text.Font;
+			Text.Font = GameFont.Tiny;
+			Text.Anchor = TextAnchor.UpperLeft;
+			var rect2 = rect.LeftPartPixels(first);
+			rect2.y -= 2f;
+			Widgets.Label(rect2, label);
+			Text.Anchor = anchor;
+			Text.Font = font;
+
+			value = GUI.HorizontalSlider(rect.RightPartPixels(second), value, leftValue, rightValue);
 			if (roundTo > 0f)
 				value = Mathf.RoundToInt(value / roundTo) * roundTo;
-			return 4f + label != null ? 18f : 0f;
 		}
 
 		public static string TextAreaScrollable(Rect rect, string text, ref Vector2 scrollbarPosition)
@@ -130,8 +131,8 @@ namespace RimGPT
 
 		public static void Languages<T>(this Listing_Standard list, IEnumerable<T> languages, string label, Func<T, string> itemFunc, Action<T> action, float width, int column)
 		{
-			var rect = list.GetRect(30f);
-			list.Gap(-30f);
+			var rect = list.GetRect(ButtonHeight);
+			list.Gap(-ButtonHeight);
 			rect.width = width;
 			rect.x += column * (width + 20);
 
@@ -141,8 +142,8 @@ namespace RimGPT
 
 		public static void Voices(this Listing_Standard list, Persona persona, float width, int column)
 		{
-			var rect = list.GetRect(30f);
-			list.Gap(-30f);
+			var rect = list.GetRect(ButtonHeight);
+			list.Gap(-ButtonHeight);
 			rect.width = width;
 			rect.x += column * (width + 20);
 
@@ -153,11 +154,15 @@ namespace RimGPT
 					return;
 
 				var options = new List<FloatMenuOption>();
-				var voices = TTS.voices.Where(voice => voice.LocaleName.Contains(Tools.VoiceLanguage(persona))).OrderBy(voice => voice.DisplayName);
-				foreach (var voice in voices)
+
+				void AddVoice(Voice voice)
 				{
-					var hasStyles = voice.StyleList.NullOrEmpty() == false;
-					var floatMenuOption = new FloatMenuOption(voice.DisplayName + (hasStyles ? " *" : ""), () =>
+					string country = null;
+					var localeName = voice.LocaleName;
+					var idx = localeName.LastIndexOf('(');
+					if (idx >= 0 && localeName.EndsWith(")"))
+						country = localeName.Substring(idx);
+					var floatMenuOption = new FloatMenuOption(voice.DisplayName + (country != null ? $" {country}" : ""), () =>
 					{
 						persona.azureVoice = voice.ShortName;
 						persona.azureVoiceStyle = VoiceStyle.Values[0].Value;
@@ -166,6 +171,15 @@ namespace RimGPT
 					floatMenuOption.tooltip = new TipSignal?(tooltip);
 					options.Add(floatMenuOption);
 				}
+
+				var voices = TTS.voices.Where(voice => voice.LocaleName.Contains(Tools.VoiceLanguage(persona))).OrderBy(voice => voice.DisplayName);
+				var voicesWithStyles = voices.Where(voice => voice.StyleList.NullOrEmpty() == false);
+				foreach (var voice in voicesWithStyles)
+					AddVoice(voice);
+				if (voicesWithStyles.Any())
+					options.Add(new FloatMenuOption("-", () => { }));
+				foreach (var voice in voices.Where(voice => voice.StyleList.NullOrEmpty()))
+					AddVoice(voice);
 				Find.WindowStack.Add(new FloatMenu(options));
 			}
 		}
@@ -179,8 +193,8 @@ namespace RimGPT
 
 		public static void VoiceStyles(this Listing_Standard list, Persona persona, float width, int column)
 		{
-			var rect = list.GetRect(30f);
-			list.Gap(-30f);
+			var rect = list.GetRect(ButtonHeight);
+			list.Gap(-ButtonHeight);
 			rect.width = width;
 			rect.x += column * (width + 20);
 

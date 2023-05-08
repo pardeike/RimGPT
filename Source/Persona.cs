@@ -21,7 +21,6 @@ namespace RimGPT
 		[Setting] public string azureVoiceStyle = "default";
 		[Setting] public float azureVoiceStyleDegree = 1f;
 
-		[Setting] public string speechLanguage = "";
 		[Setting] public float speechRate = 0f;
 		[Setting] public float speechPitch = -0f;
 
@@ -41,7 +40,6 @@ namespace RimGPT
 			Scribe_Values.Look(ref azureVoiceStyle, "azureVoiceStyle", "default");
 			Scribe_Values.Look(ref azureVoiceStyleDegree, "azureVoiceStyleDegree", 1f);
 
-			Scribe_Values.Look(ref speechLanguage, "speechLanguage", "");
 			Scribe_Values.Look(ref speechRate, "speechRate", 0f);
 			Scribe_Values.Look(ref speechPitch, "speechPitch", -0.1f);
 
@@ -153,14 +151,13 @@ namespace RimGPT
 			return personalityElement.ToString();
 		}
 
-		public static Persona PersonalityFromXML(string xml)
+		public static void PersonalityFromXML(string xml, Persona persona)
 		{
-			var persona = new Persona();
 			var xDoc = XDocument.Parse(xml);
 			var root = xDoc.Root;
 			foreach (var element in root.Elements())
 			{
-				var field = AccessTools.DeclaredField(typeof(RimGPTSettings), element.Name.LocalName);
+				var field = AccessTools.DeclaredField(typeof(Persona), element.Name.LocalName);
 				if (field == null || Attribute.IsDefined(field, typeof(SettingAttribute)) == false)
 					continue;
 				field.SetValue(persona, field.FieldType switch
@@ -173,7 +170,6 @@ namespace RimGPT
 					_ => throw new NotImplementedException(field.FieldType.Name)
 				});
 			}
-			return persona;
 		}
 	}
 }
