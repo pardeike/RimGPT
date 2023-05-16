@@ -158,6 +158,7 @@ namespace RimGPT
 					if (existingNames.Contains(newName) == false)
 					{
 						var xml = selected.ToXml();
+						selected = new Persona();
 						Persona.PersonalityFromXML(xml, selected);
 						selected.name = newName;
 						Personas.personas.Add(selected);
