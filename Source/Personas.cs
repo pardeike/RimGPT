@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using Verse;
 
@@ -10,25 +9,6 @@ namespace RimGPT
 	{
 		public static readonly int maxQueueSize = 3;
 		public static bool IsAudioQueueFull => speechQueue.Count >= maxQueueSize;
-
-		public static List<Persona> personas = new()
-		{
-			new Persona()
-			{
-				name = "Tynan",
-				azureVoice = "en-AU-TimNeural",
-				azureVoiceStyle = "",
-				azureVoiceStyleDegree = 1f,
-				speechRate = 0.2f,
-				phrasesLimit = 10,
-				phraseBatchSize = 10,
-				phraseMaxWordCount = 80,
-				historyMaxWordCount = 400,
-				phraseDelayMin = 10,
-				phraseDelayMax = 10,
-				personality = "You are Tynan, the inventor and lead developer of a incredibly cruel game that breaks Geneva conventions called Rimworld. You are a typical besserwisser and a keen to comment on basically everything the stupid player does."
-			}
-		};
 		public static ConcurrentQueue<SpeechJob> speechQueue = new();
 		public static string currentText = "";
 
@@ -36,7 +16,7 @@ namespace RimGPT
 		{
 			Tools.SafeLoop(() =>
 			{
-				foreach (var persona in personas)
+				foreach (var persona in RimGPTMod.Settings.personas)
 					persona.Periodic();
 			},
 			1000);
@@ -61,7 +41,7 @@ namespace RimGPT
 			var phrase = new Phrase(speaker, text, priority);
 			Logger.Message(phrase.ToString());
 
-			foreach (var persona in personas.Where(p => p != speaker))
+			foreach (var persona in RimGPTMod.Settings.personas.Where(p => p != speaker))
 				persona.AddPhrase(phrase);
 		}
 
@@ -84,7 +64,7 @@ namespace RimGPT
 			lock (speechQueue)
 			{
 				speechQueue.Clear();
-				foreach (var persona in personas)
+				foreach (var persona in RimGPTMod.Settings.personas)
 					persona.Reset(reason);
 			}
 		}
@@ -93,7 +73,7 @@ namespace RimGPT
 		{
 			lock (speechQueue)
 			{
-				if (IsAudioQueueFull == false)
+				if (IsAudioQueueFull == false && RimGPTMod.Settings.azureSpeechKey != "" && RimGPTMod.Settings.azureSpeechRegion != "")
 				{
 					var filteredPhrases = phrases.Where(obs => obs.persona?.name != persona.name).ToArray();
 					var job = new SpeechJob(persona, filteredPhrases, errorCallback, doneCallback);
@@ -114,7 +94,7 @@ namespace RimGPT
 			Tools.SafeAsync(async () =>
 			{
 				TTS.voices = await TTS.DispatchFormPost<Voice[]>($"{TTS.APIURL}/voices/list", null, true, null);
-				foreach (var persona in personas)
+				foreach (var persona in RimGPTMod.Settings.personas)
 				{
 					var voiceLanguage = Tools.VoiceLanguage(persona);
 					var currentVoice = Voice.From(persona.azureVoice);

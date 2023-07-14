@@ -35,6 +35,8 @@ namespace RimGPT
 
 		public void ExposeData()
 		{
+			Scribe_Values.Look(ref name, "name", "RimGPT");
+
 			Scribe_Values.Look(ref azureVoiceLanguage, "azureVoiceLanguage", "-");
 			Scribe_Values.Look(ref azureVoice, "azureVoice", "en-CA-LiamNeural");
 			Scribe_Values.Look(ref azureVoiceStyle, "azureVoiceStyle", "default");
@@ -102,7 +104,7 @@ namespace RimGPT
 
 		public void Periodic()
 		{
-			if (RimGPTMod.Settings.enabled == false)
+			if (RimGPTMod.Settings.azureSpeechRegion.NullOrEmpty())
 				return;
 
 			var now = DateTime.Now;

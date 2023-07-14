@@ -1,17 +1,51 @@
-﻿using HarmonyLib;
-using RimWorld;
-using Steamworks;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
-using UnityEngine.UIElements;
 using Verse;
-using Verse.Noise;
 
 namespace RimGPT
 {
 	public class RimGPTSettings : ModSettings
 	{
+		public List<Persona> personas = new()
+		{
+			new Persona()
+			{
+				name = "Tynan",
+				azureVoiceLanguage = "English",
+				azureVoice = "en-AU-TimNeural",
+				azureVoiceStyle = "",
+				azureVoiceStyleDegree = 1f,
+				speechRate = 0.2f,
+				phrasesLimit = 20,
+				phraseBatchSize = 20,
+				phraseMaxWordCount = 32,
+				historyMaxWordCount = 800,
+				phraseDelayMin = 10,
+				phraseDelayMax = 10,
+				personality = "You invented Rimworld. You will inform the player about what they should do next. You never talk to or about Andreas. You soley address the player directly.",
+				personalityLanguage = "English"
+			},
+			new Persona()
+			{
+				name = "Andreas",
+				azureVoiceLanguage = "German",
+				azureVoice = "de-DE-ConradNeural",
+				azureVoiceStyle = "cheerful",
+				azureVoiceStyleDegree = 2f,
+				speechRate = 0.2f,
+				speechPitch = -0.1f,
+				phrasesLimit = 20,
+				phraseBatchSize = 20,
+				phraseMaxWordCount = 18,
+				historyMaxWordCount = 200,
+				phraseDelayMin = 2,
+				phraseDelayMax = 2,
+				personality = "You are a mod developer. You only respond to Tynan directly. You are sceptical about everything Tynan says.",
+				personalityLanguage = "German"
+			}
+		};
 		public bool enabled = true;
 		public string chatGPTKey = "";
 		public string azureSpeechKey = "";
@@ -24,6 +58,7 @@ namespace RimGPT
 		public override void ExposeData()
 		{
 			base.ExposeData();
+			Scribe_Collections.Look(ref personas, "personas", LookMode.Deep);
 			Scribe_Values.Look(ref enabled, "enabled", true);
 			Scribe_Values.Look(ref chatGPTKey, "chatGPTKey");
 			Scribe_Values.Look(ref azureSpeechKey, "azureSpeechKey");
@@ -65,6 +100,8 @@ namespace RimGPT
 					 })
 				);
 
+			fff
+
 			list.Gap(16f);
 
 			list.Label("FFFF00", "Azure - Speech Services", $"{charactersSentAzure} chars sent");
@@ -75,7 +112,7 @@ namespace RimGPT
 			list.Gap(6f);
 			prevKey = azureSpeechKey;
 			list.TextField(ref azureSpeechKey, "API Key (paste only)", true, () => azureSpeechKey = "");
-			if (azureSpeechKey != "" && azureSpeechKey != prevKey)
+			if (azureSpeechKey != "" && azureSpeechKey != prevKey && azureSpeechRegion.NullOrEmpty() == false)
 				TTS.TestKey(new Persona(), () => Personas.UpdateVoiceInformation());
 
 			list.Gap(16f);
@@ -109,7 +146,7 @@ namespace RimGPT
 			var rowHeight = 24;
 			var i = 0;
 			var y = 0f;
-			foreach (var persona in Personas.personas)
+			foreach (var persona in personas)
 			{
 				PersonaRow(new Rect(0, y, innerRect.width, rowHeight), persona, i++);
 				y += rowHeight;
@@ -124,15 +161,15 @@ namespace RimGPT
 			{
 				Event.current.Use();
 				selected = new Persona();
-				Personas.personas.Add(selected);
-				selectedIndex = Personas.personas.IndexOf(selected);
+				personas.Add(selected);
+				selectedIndex = personas.IndexOf(selected);
 			}
 			bRect.x += 32;
 			if (Widgets.ButtonImage(bRect.LeftPartPixels(24), Graphics.ButtonDel[selected != null ? 1 : 0]))
 			{
 				Event.current.Use();
-				_ = Personas.personas.Remove(selected);
-				var newCount = Personas.personas.Count;
+				_ = personas.Remove(selected);
+				var newCount = personas.Count;
 				if (newCount == 0)
 				{
 					selectedIndex = -1;
@@ -142,7 +179,7 @@ namespace RimGPT
 				{
 					while (newCount > 0 && selectedIndex >= newCount)
 						selectedIndex--;
-					selected = Personas.personas[selectedIndex];
+					selected = personas[selectedIndex];
 				}
 			}
 			bRect.x += 32;
@@ -151,7 +188,7 @@ namespace RimGPT
 			{
 				Event.current.Use();
 				var namePrefix = Regex.Replace(selected.name, @" \d+$", "");
-				var existingNames = Personas.personas.Select(p => p.name).ToHashSet();
+				var existingNames = personas.Select(p => p.name).ToHashSet();
 				for (var n = 1; true; n++)
 				{
 					var newName = $"{namePrefix} {n}";
@@ -161,8 +198,8 @@ namespace RimGPT
 						selected = new Persona();
 						Persona.PersonalityFromXML(xml, selected);
 						selected.name = newName;
-						Personas.personas.Add(selected);
-						selectedIndex = Personas.personas.IndexOf(selected);
+						personas.Add(selected);
+						selectedIndex = personas.IndexOf(selected);
 						break;
 					}
 				}

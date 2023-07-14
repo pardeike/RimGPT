@@ -16,7 +16,7 @@ namespace RimGPT
 {
 	public class AI
 	{
-		public const string modelVersion = "gpt-3.5-turbo";
+		public const string modelVersion = "gpt-4-0613"; //"gpt-3.5-turbo";
 
 #pragma warning disable CS0649
 		struct Output
@@ -37,35 +37,33 @@ namespace RimGPT
 		{
 			get
 			{
-				if (SteamManager.Initialized == false) return "a player";
-				return $"the player called '{SteamFriends.GetPersonaName()}'";
+				if (SteamManager.Initialized == false) return null;
+				return SteamFriends.GetPersonaName();
 			}
 		}
 
 		public string Who(Persona persona)
 		{
-			var n = Personas.personas.Count - 1;
-			if (n <= 0)
-				return $"You are role playing, watching {PlayerName} play Rimworld. Your name is '{persona.name}'";
+			var player = PlayerName == null ? "the player" : $"the player named '{PlayerName}'";
+			var observers = RimGPTMod.Settings.personas.Where(p => p != persona).Join(p => $"'{p.name}'");
 
-			var s = $"You are role playing with {n} others participant{(n == 1 ? "" : "s")}, watching {PlayerName} play Rimworld. Your name is '{persona.name}'";
-			if (n == 1)
-				s += $" and the other participant is named {Personas.personas.First(p => p != persona).name}";
-			else
-				s += $" and the others participants are {Personas.personas.Where(p => p != persona).Join(p => p.name)}";
-
-			return s;
+			var n = RimGPTMod.Settings.personas.Count - 1;
+			var instructions = new List<string>
+			{
+				$"System instruction: Begin{(n <= 0 ? "" : " multi-instance")} role-playing simulation.",
+				$"You are '{persona.name}', an observer.",
+				$"Along with you, other observers named {observers}, are watching {player} play the game Rimworld."
+			};
+			return instructions.Join(delimiter: " ");
 		}
 
-		public string SystemPrompt(Persona persona) => @$"{Who(persona)}. Your input will be generated from a game of Rimworld. You also get what the other role playing participants said (in form of 'X said: ...') and a list of past key facts.
+		public string SystemPrompt(Persona persona) => @$"{Who(persona)}. Your input will be from the game. You also get what the other role playing participants say (in form of 'X said: ...') and a list of past key facts.
 Create responses in two steps:
-1) Your response called '{responseName}' must be in {Tools.PersonalityLanguage(persona)}
-2) A list of key facts of what happened in the game so far called '{historyName}'
-Important limits:
-1) '{responseName}' - never have more than {persona.phraseMaxWordCount} words
-2) '{historyName}' - never have more than {persona.historyMaxWordCount} words
-Your output must only consist of json like {{""{responseName}"": ""..."", ""{historyName}"": ""...""}}.
-Your role: {persona.personality}".ApplyVoiceStyle(persona);
+1) Your response called '{responseName}' must be in {Tools.PersonalityLanguage(persona)}.
+2) A list of key facts of what happened in the game so far called '{historyName}'.
+Return your output in JSON format with keys '{responseName}' and '{historyName}'.
+Both '{responseName}' and '{historyName}' must stay within their respective word limits: {persona.phraseMaxWordCount} and {persona.historyMaxWordCount} words.
+Act as the following role and personality: {persona.personality}".ApplyVoiceStyle(persona);
 
 		public async Task<string> Evaluate(Persona persona, IEnumerable<Phrase> observations)
 		{
@@ -86,11 +84,11 @@ Your role: {persona.personality}".ApplyVoiceStyle(persona);
 					_ = input.AppendLine($"The player is at the dialog {dialogType}");
 				}
 			}
-			_ = input.AppendLine($"Key facts of the past:");
+			_ = input.AppendLine($"Historical key events:");
 			_ = input.AppendLine(history);
 			if (persona.lastSpokenText != "")
 				_ = input.AppendLine($"The last thing you said: {persona.lastSpokenText}");
-			_ = input.AppendLine("Just happened:");
+			_ = input.AppendLine("Current game state:");
 			foreach (var observation in observations)
 				_ = input.AppendLine($"- {observation.text}");
 

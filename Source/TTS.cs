@@ -8,6 +8,8 @@ using UnityEngine;
 using UnityEngine.Networking;
 using Verse;
 using Verse.Sound;
+using System.Speech.Synthesis;
+using HarmonyLib;
 
 namespace RimGPT
 {

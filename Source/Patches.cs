@@ -8,7 +8,6 @@ using System.Reflection;
 using UnityEngine;
 using Verse;
 using Verse.AI;
-using Verse.Grammar;
 
 // TODO: things to report:
 // - injuries
@@ -48,7 +47,7 @@ namespace RimGPT
 			var (sw, sh) = (UI.screenWidth, UI.screenHeight);
 			var (w, h) = (360, 120);
 			var rect = new Rect((sw - w) / 2, (sh - h) / 2, w, h);
-			var welcome = "Welcome to RimGPT. You need to configure the mod before you can use it.";
+			var welcome = "Welcome to RimGPT. You need to configure the mod before you can use it. Click here.";
 
 			Widgets.DrawBoxSolidWithOutline(rect, background, Color.white);
 			if (Mouse.IsOver(rect) && Input.GetMouseButton(0))
