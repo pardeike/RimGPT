@@ -59,7 +59,7 @@ namespace RimGPT
 			}
 		}
 
-		public static void Reset(string reason)
+		public static void Reset(params string[] reason)
 		{
 			lock (speechQueue)
 			{

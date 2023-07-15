@@ -15,8 +15,8 @@ namespace RimGPT
 			this.priority = priority;
 		}
 
-		public bool Equals(Phrase other) => text == other.text;
+		public readonly bool Equals(Phrase other) => text == other.text;
 
-		public override string ToString() => $"PRIO-{priority} {text}{(persona != null ? $" [by {persona.name}]" : "")}";
+		public override readonly string ToString() => $"PRIO-{priority} {text}{(persona != null ? $" [by {persona.name}]" : "")}";
 	}
 }

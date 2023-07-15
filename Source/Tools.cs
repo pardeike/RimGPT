@@ -1,8 +1,12 @@
-﻿using RimWorld;
+﻿using OpenAI;
+using RimWorld;
+using Steamworks;
 using System;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Verse;
+using Verse.Steam;
 
 namespace RimGPT
 {
@@ -10,6 +14,7 @@ namespace RimGPT
 	{
 		public static bool DEBUG = false;
 		public static readonly Regex tagRemover = new("<color.+?>(.+?)</(?:color)?>", RegexOptions.Singleline);
+		public static string[] chatGPTModels = new[] { "gpt-3.5-turbo", "gpt-4" };
 
 		public readonly struct Strings
 		{
@@ -23,6 +28,34 @@ namespace RimGPT
 			public static readonly string finished = "Finished".TranslateSimple();
 			public static readonly string dismiss = "CommandShuttleDismiss".TranslateSimple();
 			public static readonly string priority = "Priority".TranslateSimple();
+		}
+
+		public static string PlayerName()
+		{
+			if (SteamManager.Initialized == false) return null;
+			var name = SteamFriends.GetPersonaName();
+			if (name == "Brrainz") name = "Andreas"; // for testing
+			return name;
+		}
+
+		public static async void ReloadGPTModels()
+		{
+			var api = new OpenAIApi(RimGPTMod.Settings.chatGPTKey);
+			var response = await api.ListModels();
+			var error = response.Error;
+			if (error != null)
+				return;
+			
+			var result = response.Data
+				.Select(m => m.Id)
+				.Where(id => id.StartsWith("gpt"))
+				.OrderBy(id => id)
+				.ToArray();
+			if (result.Length == 0)
+				return;
+
+			chatGPTModels = result;
+			Logger.Message($"Loaded {chatGPTModels.Length} GPT models");
 		}
 
 		public static void SafeAsync(Func<Task> function)
@@ -145,7 +178,7 @@ namespace RimGPT
 				else
 					return Strings.enemy;
 			}
-			if (pawn.IsColonist)
+			if (pawn.IsColonist || pawn.IsColonyMech)
 				return Strings.colonist;
 			return Strings.visitor;
 		}

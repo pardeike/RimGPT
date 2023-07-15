@@ -45,7 +45,7 @@ namespace RimGPT
 			var working = true;
 			actions.Enqueue(() => { action(); working = false; });
 			while (working)
-				await Task.Yield();
+				await Task.Delay(200);
 		}
 
 		public static async Task<T> Perform<T>(Func<T> action)
@@ -54,7 +54,7 @@ namespace RimGPT
 			var working = true;
 			actions.Enqueue(() => { result = action(); working = false; });
 			while (working)
-				await Task.Yield();
+				await Task.Delay(200);
 			return result;
 		}
 	}
@@ -77,6 +77,7 @@ namespace RimGPT
 			LongEventHandler.ExecuteWhenFinished(() =>
 			{
 				Personas.UpdateVoiceInformation();
+				Tools.ReloadGPTModels();
 				if (Settings.IsConfigured)
 					Personas.Add("Player has launched Rimworld and is on the start screen", 0);
 			});

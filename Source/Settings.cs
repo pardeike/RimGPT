@@ -18,36 +18,38 @@ namespace RimGPT
 				azureVoiceStyle = "",
 				azureVoiceStyleDegree = 1f,
 				speechRate = 0.2f,
+				speechPitch = -0.1f,
 				phrasesLimit = 20,
 				phraseBatchSize = 20,
-				phraseMaxWordCount = 32,
+				phraseDelayMin = 30f,
+				phraseDelayMax = 60f,
+				phraseMaxWordCount = 48,
 				historyMaxWordCount = 800,
-				phraseDelayMin = 10,
-				phraseDelayMax = 10,
-				personality = "You invented Rimworld. You will inform the player about what they should do next. You never talk to or about Andreas. You soley address the player directly.",
+				personality = "You invented Rimworld. You will inform the player about what they should do next. You never talk to or about Brrainz. You soley address the player directly.",
 				personalityLanguage = "English"
 			},
 			new Persona()
 			{
-				name = "Andreas",
-				azureVoiceLanguage = "German",
-				azureVoice = "de-DE-ConradNeural",
-				azureVoiceStyle = "cheerful",
-				azureVoiceStyleDegree = 2f,
+				name = "Brrainz",
+				azureVoiceLanguage = "English",
+				azureVoice = "en-US-JasonNeural",
+				azureVoiceStyle = "whispering",
+				azureVoiceStyleDegree = 1.25f,
 				speechRate = 0.2f,
 				speechPitch = -0.1f,
 				phrasesLimit = 20,
 				phraseBatchSize = 20,
-				phraseMaxWordCount = 18,
+				phraseDelayMin = 25f,
+				phraseDelayMax = 55f,
+				phraseMaxWordCount = 24,
 				historyMaxWordCount = 200,
-				phraseDelayMin = 2,
-				phraseDelayMax = 2,
-				personality = "You are a mod developer. You only respond to Tynan directly. You are sceptical about everything Tynan says.",
-				personalityLanguage = "German"
+				personality = "You are a mod developer. You mostly respond to Tynan but sometimes talk to the player. You are sceptical about everything Tynan says. You support everything the player does in the game.",
+				personalityLanguage = "English"
 			}
 		};
 		public bool enabled = true;
 		public string chatGPTKey = "";
+		public string chatGPTModel = Tools.chatGPTModels.First();
 		public string azureSpeechKey = "";
 		public string azureSpeechRegion = "";
 		public float speechVolume = 4f;
@@ -55,16 +57,78 @@ namespace RimGPT
 		public long charactersSentOpenAI = 0;
 		public long charactersSentAzure = 0;
 
+		// for backwards compatibility --------
+		public string azureVoiceLanguage;
+		public string azureVoice;
+		public string azureVoiceStyle;
+		public float azureVoiceStyleDegree = 0;
+		public float speechRate = 0;
+		public float speechPitch = 0;
+		public int phrasesLimit = 0;
+		public int phraseBatchSize = 0;
+		public float phraseDelayMin = 0;
+		public float phraseDelayMax = 0;
+		public int phraseMaxWordCount = 0;
+		public int historyMaxWordCount = 0;
+		public string personality;
+		public string personalityLanguage;
+		// ------------------------------------
+
 		public override void ExposeData()
 		{
 			base.ExposeData();
 			Scribe_Collections.Look(ref personas, "personas", LookMode.Deep);
 			Scribe_Values.Look(ref enabled, "enabled", true);
 			Scribe_Values.Look(ref chatGPTKey, "chatGPTKey");
+			Scribe_Values.Look(ref chatGPTModel, "chatGPTModel");
 			Scribe_Values.Look(ref azureSpeechKey, "azureSpeechKey");
 			Scribe_Values.Look(ref azureSpeechRegion, "azureSpeechRegion");
 			Scribe_Values.Look(ref speechVolume, "speechVolume", 4f);
 			Scribe_Values.Look(ref showAsText, "showAsText", true);
+
+			// for backwards compatibility ---------------------------------------------
+			Scribe_Values.Look(ref azureVoiceLanguage, "azureVoiceLanguage", "-");
+			Scribe_Values.Look(ref azureVoice, "azureVoice", "en-CA-LiamNeural");
+			Scribe_Values.Look(ref azureVoiceStyle, "azureVoiceStyle", "default");
+			Scribe_Values.Look(ref azureVoiceStyleDegree, "azureVoiceStyleDegree", 1f);
+			Scribe_Values.Look(ref speechRate, "speechRate", 0f);
+			Scribe_Values.Look(ref speechPitch, "speechPitch", 0f);
+			Scribe_Values.Look(ref phrasesLimit, "phrasesLimit", 20);
+			Scribe_Values.Look(ref phraseBatchSize, "phraseBatchSize", 20);
+			Scribe_Values.Look(ref phraseDelayMin, "phraseDelayMin", 10f);
+			Scribe_Values.Look(ref phraseDelayMax, "phraseDelayMax", 20f);
+			Scribe_Values.Look(ref phraseMaxWordCount, "phraseMaxWordCount", 40);
+			Scribe_Values.Look(ref historyMaxWordCount, "historyMaxWordCount", 200);
+			Scribe_Values.Look(ref personality, "personality", AI.defaultPersonality);
+			Scribe_Values.Look(ref personalityLanguage, "personalityLanguage", "-");
+			// -------------------------------------------------------------------------
+
+			if (Scribe.mode == LoadSaveMode.PostLoadInit)
+			{
+				if (azureVoice != null && personas.NullOrEmpty())
+				{
+					chatGPTModel = Tools.chatGPTModels.First();
+					personas ??= new List<Persona>();
+					personas.Add(new Persona()
+					{
+						name = "Default",
+						azureVoiceLanguage = azureVoiceLanguage,
+						azureVoice = azureVoice,
+						azureVoiceStyle = azureVoiceStyle,
+						azureVoiceStyleDegree = azureVoiceStyleDegree,
+						speechRate = speechRate,
+						speechPitch = speechPitch,
+						phrasesLimit = phrasesLimit,
+						phraseBatchSize = phraseBatchSize,
+						phraseDelayMin = phraseDelayMin,
+						phraseDelayMax = phraseDelayMax,
+						phraseMaxWordCount = phraseMaxWordCount,
+						historyMaxWordCount = historyMaxWordCount,
+						personality = personality,
+						personalityLanguage = personalityLanguage
+					});
+				}
+			}
 		}
 
 		public bool IsConfigured =>
@@ -80,7 +144,7 @@ namespace RimGPT
 		public void DoWindowContents(Rect inRect)
 		{
 			string prevKey;
-			// Rect rect;
+			Rect rect;
 
 			var list = new Listing_Standard { ColumnWidth = (inRect.width - Listing.ColumnSpacing) / 2f };
 			list.Begin(inRect);
@@ -92,6 +156,8 @@ namespace RimGPT
 			prevKey = chatGPTKey;
 			list.TextField(ref chatGPTKey, "API Key (paste only)", true, () => chatGPTKey = "");
 			if (chatGPTKey != "" && chatGPTKey != prevKey)
+			{
+				Tools.ReloadGPTModels();
 				AI.TestKey(
 					 response => LongEventHandler.ExecuteWhenFinished(() =>
 					 {
@@ -99,8 +165,14 @@ namespace RimGPT
 						 Find.WindowStack.Add(dialog);
 					 })
 				);
+			}
 
-			fff
+			if (chatGPTKey != "")
+			{
+				rect = list.GetRect(UX.ButtonHeight);
+				if (Widgets.ButtonText(rect, chatGPTModel))
+					UX.GPTVersionMenu(l => chatGPTModel = l);
+			}
 
 			list.Gap(16f);
 
@@ -118,10 +190,10 @@ namespace RimGPT
 			list.Gap(16f);
 
 			list.Label("FFFF00", "Miscellaneous");
-			list.Slider(ref speechVolume, 0f, 10f, () => $"Speech volume: {speechVolume.ToPercentage(false)}", 0.01f);
+			list.Slider(ref speechVolume, 0f, 10f, f => $"Speech volume: {f.ToPercentage(false)}", 0.01f);
 			list.CheckboxLabeled("Show speech as subtitles", ref showAsText);
 			list.Gap(6f);
-			var rect = list.GetRect(UX.ButtonHeight);
+			rect = list.GetRect(UX.ButtonHeight);
 			if (Widgets.ButtonText(rect, "Reset Stats"))
 			{
 				charactersSentOpenAI = 0;
@@ -233,9 +305,9 @@ namespace RimGPT
 
 				list.Gap(16f);
 
-				list.Slider(ref selected.azureVoiceStyleDegree, 0f, 2f, () => $"Style degree: {selected.azureVoiceStyleDegree.ToPercentage(false)}", 0.01f);
-				list.Slider(ref selected.speechRate, -0.5f, 0.5f, () => $"Speech rate: {selected.speechRate.ToPercentage()}", 0.01f);
-				list.Slider(ref selected.speechPitch, -0.5f, 0.5f, () => $"Speech pitch: {selected.speechPitch.ToPercentage()}", 0.01f);
+				list.Slider(ref selected.azureVoiceStyleDegree, 0f, 2f, f => $"Style degree: {f.ToPercentage(false)}", 0.01f);
+				list.Slider(ref selected.speechRate, -0.5f, 0.5f, f => $"Speech rate: {f.ToPercentage()}", 0.01f);
+				list.Slider(ref selected.speechPitch, -0.5f, 0.5f, f => $"Speech pitch: {f.ToPercentage()}", 0.01f);
 
 				list.Gap(16f);
 
@@ -253,23 +325,21 @@ namespace RimGPT
 				list.Gap(16f);
 
 				_ = list.Label("Sending game information");
-				list.Slider(ref selected.phrasesLimit, 1, 100, () => $"Maximum items: {selected.phrasesLimit}");
+				list.Slider(ref selected.phrasesLimit, 1, 100, n => $"Max phrase count: {n}");
 				selected.phraseBatchSize = Mathf.Min(selected.phraseBatchSize, selected.phrasesLimit);
-				list.Slider(ref selected.phraseBatchSize, 1, selected.phrasesLimit, () => $"Batch size: {selected.phraseBatchSize}");
+				list.Slider(ref selected.phraseBatchSize, 1, selected.phrasesLimit, n => $"Batch size: {n} phrases");
 				list.Gap(16f);
 				_ = list.Label("Delay between comments");
-				if (selected.phraseDelayMin > selected.phraseDelayMax)
-					selected.phraseDelayMin = selected.phraseDelayMax;
-				list.Slider(ref selected.phraseDelayMin, 1f, selected.phraseDelayMax, () => $"Minimum: {selected.phraseDelayMin}", 0.1f);
-				if (selected.phraseDelayMax < selected.phraseDelayMin)
-					selected.phraseDelayMax = selected.phraseDelayMin;
-				list.Slider(ref selected.phraseDelayMax, selected.phraseDelayMin, 100f, () => $"Maximum: {selected.phraseDelayMax}", 0.1f);
+				list.Slider(ref selected.phraseDelayMin, 5f, 1200f, f => $"Min: {Mathf.FloorToInt(f + 0.01f)} sec", 1f, 2);
+				if (selected.phraseDelayMin > selected.phraseDelayMax) selected.phraseDelayMin = selected.phraseDelayMax;
+				list.Slider(ref selected.phraseDelayMax, 5f, 1200f, f => $"Max: {Mathf.FloorToInt(f + 0.01f)} sec", 1f, 2);
+				if (selected.phraseDelayMax < selected.phraseDelayMin) selected.phraseDelayMax = selected.phraseDelayMin;
 				list.Gap(16f);
 				_ = list.Label("Comments");
-				list.Slider(ref selected.phraseMaxWordCount, 1, 160, () => $"Maximum word count: {selected.phraseMaxWordCount}");
+				list.Slider(ref selected.phraseMaxWordCount, 1, 160, n => $"Max words: {n}");
 				list.Gap(16f);
 				_ = list.Label("History");
-				list.Slider(ref selected.historyMaxWordCount, 200, 1200, () => $"Maximum word count: {selected.historyMaxWordCount}");
+				list.Slider(ref selected.historyMaxWordCount, 200, 1200, n => $"Max words: {n}");
 				list.Gap(16f);
 
 				width = (list.ColumnWidth - 2 * 20) / 3;

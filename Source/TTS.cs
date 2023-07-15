@@ -8,8 +8,6 @@ using UnityEngine;
 using UnityEngine.Networking;
 using Verse;
 using Verse.Sound;
-using System.Speech.Synthesis;
-using HarmonyLib;
 
 namespace RimGPT
 {
@@ -138,7 +136,7 @@ namespace RimGPT
 			{
 				var asyncOperation = request.SendWebRequest();
 				while (!asyncOperation.isDone && RimGPTMod.Running)
-					await Task.Yield();
+					await Task.Delay(200);
 			}
 			catch (Exception exception)
 			{
@@ -186,7 +184,7 @@ namespace RimGPT
 			{
 				var asyncOperation = request.SendWebRequest();
 				while (!asyncOperation.isDone && RimGPTMod.Running)
-					await Task.Yield();
+					await Task.Delay(200);
 				RimGPTMod.Settings.charactersSentAzure += text.Length;
 			}
 			catch (Exception exception)
@@ -219,7 +217,7 @@ namespace RimGPT
 			{
 				var asyncOperation = request.SendWebRequest();
 				while (!asyncOperation.isDone && RimGPTMod.Running)
-					await Task.Yield();
+					await Task.Delay(200);
 			}
 			catch (Exception exception)
 			{

@@ -58,7 +58,7 @@ namespace OpenAI
 			{
 				var asyncOperation = request.SendWebRequest();
 				while (!asyncOperation.isDone && RimGPTMod.Running)
-					await Task.Yield();
+					await Task.Delay(200);
 			}
 			catch (Exception exception)
 			{

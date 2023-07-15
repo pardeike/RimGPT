@@ -3,94 +3,86 @@ using Newtonsoft.Json;
 using OpenAI;
 using RimWorld;
 using RimWorld.Planet;
-using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Verse;
-using Verse.Steam;
 
 namespace RimGPT
 {
 	public class AI
 	{
-		public const string modelVersion = "gpt-4-0613"; //"gpt-3.5-turbo";
-
 #pragma warning disable CS0649
+		public class Input
+		{
+			public string CurrentWindow { get; set; }
+			public string[] PreviousHistoricalKeyEvents { get; set; }
+			public string LastSpokenText { get; set; }
+			public List<string> CurrentGameState { get; set; }
+		}
+
 		struct Output
 		{
-			public string response;
-			public string history;
+			public string ResponseText { get; set; }
+			public string[] NewHistoricalKeyEvents { get; set; }
 		}
 #pragma warning restore CS0649
 
 		private OpenAIApi OpenAI => new(RimGPTMod.Settings.chatGPTKey);
-		private readonly string responseName = "response";
-		private readonly string historyName = "history";
-		private string history = "Nothing yet";
+		private string[] history = Array.Empty<string>();
 
 		public const string defaultPersonality = "You are a {VOICESTYLE} e-sports commentator. You address everyone directly.";
 
-		public string PlayerName
+		public string SystemPrompt(Persona currentPersona)
 		{
-			get
+			var playerName = Tools.PlayerName();
+			var player = playerName == null ? "the player" : $"the player named '{playerName}'";
+			var otherObservers = RimGPTMod.Settings.personas.Where(p => p != currentPersona).Join(persona => $"'{persona.name}'");
+			return new List<string>
 			{
-				if (SteamManager.Initialized == false) return null;
-				return SteamFriends.GetPersonaName();
-			}
+				$"System instruction: Begin{(otherObservers.Any() ? " multi-instance" : "")} role-playing simulation.\n",
+				$"You are '{currentPersona.name}', an observer.\n",
+				$"Act as the following role and personality: {currentPersona.personality}\n",
+				otherObservers.Any() ? $"Along with you, other observers named {otherObservers}, are watching {player} play the game Rimworld.\n" : $"You are watching {player} play the game Rimworld.\n",
+				$"Important rules to follow strictly:\n",
+				$"- Your input comes from the game and will be in JSON format. It has the following keys: 'CurrentWindow', 'PreviousHistoricalKeyEvents', 'LastSpokenText', and 'CurrentGameState', which is a list of recent events.",
+				$"- You also get what other observers say in form of 'X said: ...'.",
+				$"- Return your output in JSON format with keys 'ResponseText' and 'NewHistoricalKeyEvents'.",
+				$"- Your response called 'ResponseText' must be in {Tools.PersonalityLanguage(currentPersona)}.",
+				$"- Add what you want to remember as list of historical key facts called 'NewHistoricalKeyEvents'.",
+				$"- Limit 'ResponseText' to no more than {currentPersona.phraseMaxWordCount} words.",
+				$"- Limit 'NewHistoricalKeyEvents' to no more than {currentPersona.historyMaxWordCount} words."
+			}.Join(delimiter: "").ApplyVoiceStyle(currentPersona);
 		}
-
-		public string Who(Persona persona)
-		{
-			var player = PlayerName == null ? "the player" : $"the player named '{PlayerName}'";
-			var observers = RimGPTMod.Settings.personas.Where(p => p != persona).Join(p => $"'{p.name}'");
-
-			var n = RimGPTMod.Settings.personas.Count - 1;
-			var instructions = new List<string>
-			{
-				$"System instruction: Begin{(n <= 0 ? "" : " multi-instance")} role-playing simulation.",
-				$"You are '{persona.name}', an observer.",
-				$"Along with you, other observers named {observers}, are watching {player} play the game Rimworld."
-			};
-			return instructions.Join(delimiter: " ");
-		}
-
-		public string SystemPrompt(Persona persona) => @$"{Who(persona)}. Your input will be from the game. You also get what the other role playing participants say (in form of 'X said: ...') and a list of past key facts.
-Create responses in two steps:
-1) Your response called '{responseName}' must be in {Tools.PersonalityLanguage(persona)}.
-2) A list of key facts of what happened in the game so far called '{historyName}'.
-Return your output in JSON format with keys '{responseName}' and '{historyName}'.
-Both '{responseName}' and '{historyName}' must stay within their respective word limits: {persona.phraseMaxWordCount} and {persona.historyMaxWordCount} words.
-Act as the following role and personality: {persona.personality}".ApplyVoiceStyle(persona);
 
 		public async Task<string> Evaluate(Persona persona, IEnumerable<Phrase> observations)
 		{
-			var input = new StringBuilder();
+			var gameInput = new Input
+			{
+				CurrentGameState = observations.Select(o => o.text).ToList(),
+				PreviousHistoricalKeyEvents = history,
+				LastSpokenText = persona.lastSpokenText
+			};
+
 			var windowStack = Find.WindowStack;
 			if (Current.Game == null && windowStack != null)
 			{
 				if (windowStack.focusedWindow is not Page page || page == null)
 				{
 					if (WorldRendererUtility.WorldRenderedNow)
-						_ = input.AppendLine("The player is selecting the start site");
+						gameInput.CurrentWindow = "The player is selecting the start site";
 					else
-						_ = input.AppendLine("The player is at the start screen");
+						gameInput.CurrentWindow = "The player is at the start screen";
 				}
 				else
 				{
 					var dialogType = page.GetType().Name.Replace("Page_", "");
-					_ = input.AppendLine($"The player is at the dialog {dialogType}");
+					gameInput.CurrentWindow = $"The player is at the dialog {dialogType}";
 				}
 			}
-			_ = input.AppendLine($"Historical key events:");
-			_ = input.AppendLine(history);
-			if (persona.lastSpokenText != "")
-				_ = input.AppendLine($"The last thing you said: {persona.lastSpokenText}");
-			_ = input.AppendLine("Current game state:");
-			foreach (var observation in observations)
-				_ = input.AppendLine($"- {observation.text}");
+
+			var input = JsonConvert.SerializeObject(gameInput);
 
 			if (Tools.DEBUG)
 				Logger.Warning($"INPUT: {input}");
@@ -98,20 +90,12 @@ Act as the following role and personality: {persona.personality}".ApplyVoiceStyl
 			var systemPrompt = SystemPrompt(persona);
 			var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
 			{
-				Model = modelVersion,
-				Messages = new List<ChatMessage>()
-					 {
-						  new ChatMessage()
-						  {
-								Role = "system",
-								Content = systemPrompt
-						  },
-						  new ChatMessage()
-						  {
-								Role = "user",
-								Content = input.ToString()
-						  }
-					 }
+				Model = RimGPTMod.Settings.chatGPTModel,
+				Messages = new()
+				{
+					new ChatMessage() { Role = "system", Content = systemPrompt },
+					new ChatMessage() { Role = "user", Content = input }
+				}
 			}, error => Logger.Error(error));
 			RimGPTMod.Settings.charactersSentOpenAI += systemPrompt.Length + input.Length;
 
@@ -130,9 +114,13 @@ Act as the following role and personality: {persona.personality}".ApplyVoiceStyl
 					Logger.Warning($"OUTPUT: {response}");
 				try
 				{
-					var output = JsonConvert.DeserializeObject<Output>(response);
-					history = output.history;
-					return output.response.Cleanup();
+					Output output;
+					if (response.Length > 0 && response[0] != '{')
+						output = new Output { ResponseText = response, NewHistoricalKeyEvents = new string[0] };
+					else
+						output = JsonConvert.DeserializeObject<Output>(response);
+					history = output.NewHistoricalKeyEvents;
+					return output.ResponseText.Cleanup();
 				}
 				catch (Exception exception)
 				{
@@ -145,7 +133,7 @@ Act as the following role and personality: {persona.personality}".ApplyVoiceStyl
 			return null;
 		}
 
-		public void ReplaceHistory(string reason)
+		public void ReplaceHistory(string[] reason)
 		{
 			history = reason;
 		}
@@ -155,20 +143,12 @@ Act as the following role and personality: {persona.personality}".ApplyVoiceStyl
 			string requestError = null;
 			var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
 			{
-				Model = "gpt-3.5-turbo",
-				Messages = new List<ChatMessage>()
-						  {
-								new ChatMessage()
-								{
-									 Role = "system",
-									 Content = "You are a creative poet answering in 12 words or less."
-								},
-								new ChatMessage()
-								{
-									 Role = "user",
-									 Content = input
-								}
-						  }
+				Model = RimGPTMod.Settings.chatGPTModel,
+				Messages = new()
+				{
+					new ChatMessage() { Role = "system", Content = "You are a creative poet answering in 12 words or less." },
+					new ChatMessage() { Role = "user", Content = input }
+				}
 			}, e => requestError = e);
 			RimGPTMod.Settings.charactersSentOpenAI += input.Length;
 

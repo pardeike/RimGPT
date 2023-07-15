@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
+using static RimGPT.AI;
 
 namespace RimGPT
 {
@@ -61,17 +62,25 @@ namespace RimGPT
 				text = list.TextEntry(text);
 		}
 
-		public static void Slider(this Listing_Standard list, ref int value, int min, int max, Func<string> label)
+		public static void Slider(this Listing_Standard list, ref int value, int min, int max, Func<int, string> label, int logarithmic = 1)
 		{
-			float f = value;
-			HorizontalSlider(list.GetRect(22f), ref f, min, max, label == null ? null : label(), 1f);
-			value = (int)f;
+			var input = logarithmic != 1 ? Mathf.Log(value, logarithmic) : value;
+			var min2 = logarithmic != 1 ? Mathf.Log(min, logarithmic) : min;
+			var max2 = logarithmic != 1 ? Mathf.Log(max, logarithmic) : max;
+			HorizontalSlider(list.GetRect(22f), ref input, min2, max2, label == null ? null : label(Mathf.FloorToInt((logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input) + 0.001f)), 1f);
+			value = Mathf.FloorToInt((logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input) + 0.001f);
 			list.Gap(2f);
 		}
 
-		public static void Slider(this Listing_Standard list, ref float value, float min, float max, Func<string> label, float roundTo = -1f)
+		public static void Slider(this Listing_Standard list, ref float value, float min, float max, Func<float, string> label, float roundTo = -1f, int logarithmic = 1)
 		{
-			HorizontalSlider(list.GetRect(22f), ref value, min, max, label == null ? null : label(), roundTo);
+			var input = logarithmic != 1 ? Mathf.Log(value, logarithmic) : value;
+			var min2 = logarithmic != 1 ? Mathf.Log(min, logarithmic) : min;
+			var max2 = logarithmic != 1 ? Mathf.Log(max, logarithmic) : max;
+			HorizontalSlider(list.GetRect(22f), ref input, min2, max2, label == null ? null : label(logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input));
+			value = Mathf.Max(min, Mathf.Min(max, logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input));
+			if (roundTo > 0f)
+				value = Mathf.RoundToInt(value / roundTo) * roundTo;
 			list.Gap(2f);
 		}
 
@@ -119,6 +128,26 @@ namespace RimGPT
 			if (addPlus)
 				return $"{percentageValue:+0.##;-0.##;0}%";
 			return $"{percentageValue:0.##;-0.##;0}%";
+		}
+
+		public static void GPTVersionMenu(Action<string> action)
+		{
+			var options = new List<FloatMenuOption> { new FloatMenuOption("ChatGPT Version", () => action(default)) };
+			foreach (var version in Tools.chatGPTModels)
+				options.Add(new FloatMenuOption(version, () =>
+				{
+					if (version != default)
+					{
+						if (version.Contains("gpt-4"))
+						{
+							var window = Dialog_MessageBox.CreateConfirmation("GPT-4 can create more costs and is slower to answer, do you really want to proceed?", () => action(version), true, "Attention", WindowLayer.Super);
+							Find.WindowStack.Add(window);
+						}
+						else
+							action(version);
+					}
+				}));
+			Find.WindowStack.Add(new FloatMenu(options));
 		}
 
 		public static void LanguageChoiceMenu<T>(IEnumerable<T> languages, Func<T, string> itemFunc, Action<T> action)

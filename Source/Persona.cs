@@ -22,12 +22,12 @@ namespace RimGPT
 		[Setting] public float azureVoiceStyleDegree = 1f;
 
 		[Setting] public float speechRate = 0f;
-		[Setting] public float speechPitch = -0f;
+		[Setting] public float speechPitch = 0f;
 
 		[Setting] public int phrasesLimit = 20;
 		[Setting] public int phraseBatchSize = 20;
-		[Setting] public float phraseDelayMin = 5f;
-		[Setting] public float phraseDelayMax = 5f;
+		[Setting] public float phraseDelayMin = 30f;
+		[Setting] public float phraseDelayMax = 60f;
 		[Setting] public int phraseMaxWordCount = 40;
 		[Setting] public int historyMaxWordCount = 200;
 		[Setting] public string personality = AI.defaultPersonality;
@@ -43,19 +43,19 @@ namespace RimGPT
 			Scribe_Values.Look(ref azureVoiceStyleDegree, "azureVoiceStyleDegree", 1f);
 
 			Scribe_Values.Look(ref speechRate, "speechRate", 0f);
-			Scribe_Values.Look(ref speechPitch, "speechPitch", -0.1f);
+			Scribe_Values.Look(ref speechPitch, "speechPitch", 0f);
 
-			Scribe_Values.Look(ref phrasesLimit, "phrasesLimit", 40);
+			Scribe_Values.Look(ref phrasesLimit, "phrasesLimit", 20);
 			Scribe_Values.Look(ref phraseBatchSize, "phraseBatchSize", 20);
-			Scribe_Values.Look(ref phraseDelayMin, "phraseDelayMin", 2f);
-			Scribe_Values.Look(ref phraseDelayMax, "phraseDelayMax", 10f);
-			Scribe_Values.Look(ref phraseMaxWordCount, "phraseMaxWordCount", 50);
-			Scribe_Values.Look(ref historyMaxWordCount, "historyMaxWordCount", 400);
+			Scribe_Values.Look(ref phraseDelayMin, "phraseDelayMin", 10f);
+			Scribe_Values.Look(ref phraseDelayMax, "phraseDelayMax", 20f);
+			Scribe_Values.Look(ref phraseMaxWordCount, "phraseMaxWordCount", 40);
+			Scribe_Values.Look(ref historyMaxWordCount, "historyMaxWordCount", 200);
 			Scribe_Values.Look(ref personality, "personality", AI.defaultPersonality);
 			Scribe_Values.Look(ref personalityLanguage, "personalityLanguage", "-");
 
 			if (historyMaxWordCount < 200)
-				historyMaxWordCount = 400;
+				historyMaxWordCount = 200;
 			if (phraseBatchSize > phrasesLimit)
 				phraseBatchSize = phrasesLimit;
 			if (phraseDelayMin > phraseDelayMax)
@@ -93,7 +93,7 @@ namespace RimGPT
 			}
 		}
 
-		public void Reset(string reason)
+		public void Reset(string[] reason)
 		{
 			lock (phrases)
 			{
