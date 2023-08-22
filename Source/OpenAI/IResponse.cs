@@ -1,4 +1,4 @@
-namespace OpenAI
+﻿namespace OpenAI
 {
 	public interface IResponse
 	{

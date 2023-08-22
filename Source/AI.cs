@@ -109,6 +109,7 @@ namespace RimGPT
 					if (lastIndex >= 0)
 						response = response.Substring(firstIdx, lastIndex - firstIdx + 1);
 				}
+				response = response.Replace("ResponseText:", "");
 
 				if (Tools.DEBUG)
 					Logger.Warning($"OUTPUT: {response}");

@@ -18,11 +18,7 @@ namespace RimGPT
 		{
 			lock (_lockObject)
 			{
-				if (_debounceTimer != null)
-				{
-					_debounceTimer.Dispose();
-				}
-
+				_debounceTimer?.Dispose();
 				_debounceTimer = new Timer(
 					 _ => action(),
 					 null,

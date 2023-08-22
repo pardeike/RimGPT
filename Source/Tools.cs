@@ -32,9 +32,11 @@ namespace RimGPT
 
 		public static string PlayerName()
 		{
-			if (SteamManager.Initialized == false) return null;
+			if (SteamManager.Initialized == false)
+				return null;
 			var name = SteamFriends.GetPersonaName();
-			if (name == "Brrainz") name = "Andreas"; // for testing
+			if (name == "Brrainz")
+				name = "Andreas"; // for testing
 			return name;
 		}
 
@@ -45,10 +47,10 @@ namespace RimGPT
 			var error = response.Error;
 			if (error != null)
 				return;
-			
+
 			var result = response.Data
-				.Select(m => m.Id)
-				.Where(id => id.StartsWith("gpt"))
+				.Select(m => m?.Id)
+				.Where(id => id?.StartsWith("gpt") ?? false)
 				.OrderBy(id => id)
 				.ToArray();
 			if (result.Length == 0)

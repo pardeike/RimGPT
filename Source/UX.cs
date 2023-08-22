@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
-using static RimGPT.AI;
 
 namespace RimGPT
 {
@@ -11,7 +10,7 @@ namespace RimGPT
 	{
 		public const float ButtonHeight = 24f;
 
-		public static void SmallLabel(this Listing_Standard list, string text)
+		/*public static void SmallLabel(this Listing_Standard list, string text, string tooltip = null)
 		{
 			var rect = list.GetRect(20f);
 			var anchor = Text.Anchor;
@@ -21,12 +20,16 @@ namespace RimGPT
 			Widgets.Label(rect, text);
 			Text.Anchor = anchor;
 			Text.Font = font;
-		}
+			if (tooltip != null)
+				TooltipHandler.TipRegion(rect, tooltip);
+		}*/
 
-		public static void Label(this Listing_Standard list, string hexColor, string textLeft, string textRight = "")
+		public static void Label(this Listing_Standard list, string hexColor, string textLeft, string textRight = "", string tooltip = null)
 		{
 			var size = Text.CalcSize(textLeft);
 			var rect = list.GetRect(size.y);
+			if (tooltip != null)
+				TooltipHandler.TipRegion(rect, tooltip);
 			var anchor = Text.Anchor;
 			Text.Anchor = TextAnchor.MiddleLeft;
 			Widgets.Label(rect.LeftPartPixels(size.x), new TaggedString($"<color=#{hexColor}>{textLeft}</color>"));
@@ -62,29 +65,29 @@ namespace RimGPT
 				text = list.TextEntry(text);
 		}
 
-		public static void Slider(this Listing_Standard list, ref int value, int min, int max, Func<int, string> label, int logarithmic = 1)
+		public static void Slider(this Listing_Standard list, ref int value, int min, int max, Func<int, string> label, int logarithmic = 1, string tooltip = null)
 		{
 			var input = logarithmic != 1 ? Mathf.Log(value, logarithmic) : value;
 			var min2 = logarithmic != 1 ? Mathf.Log(min, logarithmic) : min;
 			var max2 = logarithmic != 1 ? Mathf.Log(max, logarithmic) : max;
-			HorizontalSlider(list.GetRect(22f), ref input, min2, max2, label == null ? null : label(Mathf.FloorToInt((logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input) + 0.001f)), 1f);
+			HorizontalSlider(list.GetRect(22f), ref input, min2, max2, label == null ? null : label(Mathf.FloorToInt((logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input) + 0.001f)), 1f, tooltip);
 			value = Mathf.FloorToInt((logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input) + 0.001f);
 			list.Gap(2f);
 		}
 
-		public static void Slider(this Listing_Standard list, ref float value, float min, float max, Func<float, string> label, float roundTo = -1f, int logarithmic = 1)
+		public static void Slider(this Listing_Standard list, ref float value, float min, float max, Func<float, string> label, float roundTo = -1f, int logarithmic = 1, string tooltip = null)
 		{
 			var input = logarithmic != 1 ? Mathf.Log(value, logarithmic) : value;
 			var min2 = logarithmic != 1 ? Mathf.Log(min, logarithmic) : min;
 			var max2 = logarithmic != 1 ? Mathf.Log(max, logarithmic) : max;
-			HorizontalSlider(list.GetRect(22f), ref input, min2, max2, label == null ? null : label(logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input));
+			HorizontalSlider(list.GetRect(22f), ref input, min2, max2, label == null ? null : label(logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input), -1f, tooltip);
 			value = Mathf.Max(min, Mathf.Min(max, logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input));
 			if (roundTo > 0f)
 				value = Mathf.RoundToInt(value / roundTo) * roundTo;
 			list.Gap(2f);
 		}
 
-		public static void HorizontalSlider(Rect rect, ref float value, float leftValue, float rightValue, string label, float roundTo = -1f)
+		public static void HorizontalSlider(Rect rect, ref float value, float leftValue, float rightValue, string label, float roundTo = -1f, string tooltip = null)
 		{
 			var first = rect.width / 2.5f;
 			var second = rect.width - first;
@@ -102,6 +105,9 @@ namespace RimGPT
 			value = GUI.HorizontalSlider(rect.RightPartPixels(second), value, leftValue, rightValue);
 			if (roundTo > 0f)
 				value = Mathf.RoundToInt(value / roundTo) * roundTo;
+
+			if (tooltip != null)
+				TooltipHandler.TipRegion(rect, tooltip);
 		}
 
 		public static string TextAreaScrollable(Rect rect, string text, ref Vector2 scrollbarPosition)

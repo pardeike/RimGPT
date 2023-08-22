@@ -111,13 +111,11 @@ namespace Kevsoft.Ssml
 				Async = true
 			};
 
-			using (var xmlWriter = XmlWriter.Create(stringBuilder, xmlWriterSettings))
-			{
-				await Write(xmlWriter);
-				await xmlWriter.FlushAsync();
+			using var xmlWriter = XmlWriter.Create(stringBuilder, xmlWriterSettings);
+			await Write(xmlWriter);
+			await xmlWriter.FlushAsync();
 
-				return stringBuilder.ToString();
-			}
+			return stringBuilder.ToString();
 		}
 
 		public IBreak Break()

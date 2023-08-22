@@ -1,4 +1,4 @@
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using RimGPT;
 using System;
@@ -68,6 +68,13 @@ namespace OpenAI
 			}
 
 			var response = request.downloadHandler.text;
+			if (response != null)
+			{
+				if (response.StartsWith("{") == false)
+					response = "{" + response;
+				if (response.Contains("}") == false)
+					response += "}";
+			}
 			var code = request.responseCode;
 			if (code >= 300)
 			{

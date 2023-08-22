@@ -90,7 +90,7 @@ namespace RimGPT
 			TTS.voices = new Voice[0];
 			if (RimGPTMod.Settings.azureSpeechKey == "" || RimGPTMod.Settings.azureSpeechRegion == "")
 				return;
-			
+
 			Tools.SafeAsync(async () =>
 			{
 				TTS.voices = await TTS.DispatchFormPost<Voice[]>($"{TTS.APIURL}/voices/list", null, true, null);

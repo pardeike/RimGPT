@@ -48,17 +48,12 @@ namespace Kevsoft.Ssml
 
 		private static string GetFormat(TimeFormat format)
 		{
-			switch (format)
+			return format switch
 			{
-				case TimeFormat.TwelveHour:
-					return "hms12";
-
-				case TimeFormat.TwentyFourHour:
-					return "hms24";
-
-				default:
-					throw new ArgumentOutOfRangeException();
-			}
+				TimeFormat.TwelveHour => "hms12",
+				TimeFormat.TwentyFourHour => "hms24",
+				_ => throw new ArgumentOutOfRangeException(),
+			};
 		}
 	}
 }

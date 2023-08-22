@@ -1,4 +1,4 @@
-using Newtonsoft.Json.Serialization;
+﻿using Newtonsoft.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace OpenAI

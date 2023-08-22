@@ -1,8 +1,8 @@
-﻿using Verse;
+﻿using HarmonyLib;
 using System;
 using System.Linq;
-using HarmonyLib;
 using System.Xml.Linq;
+using Verse;
 
 namespace RimGPT
 {

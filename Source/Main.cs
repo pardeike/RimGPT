@@ -1,12 +1,12 @@
 ﻿using Brrainz;
 using HarmonyLib;
-using System.Collections.Concurrent;
 using System;
+using System.Collections;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using Verse;
-using System.Collections;
 
 namespace RimGPT
 {

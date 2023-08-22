@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
@@ -202,7 +203,7 @@ namespace RimGPT
 
 			list.Gap(16f);
 
-			list.Label("FFFF00", "Personas");
+			list.Label("FFFF00", "Active personas", "", "All these personas are active and talk about the game and to each other.");
 
 			var height = inRect.height - UX.ButtonHeight - 24f - list.CurHeight;
 			var outerRect = list.GetRect(height);
@@ -324,22 +325,27 @@ namespace RimGPT
 
 				list.Gap(16f);
 
-				_ = list.Label("Sending game information");
-				list.Slider(ref selected.phrasesLimit, 1, 100, n => $"Max phrase count: {n}");
+				_ = list.Label("Sending game information", -1, "RimGPT limits when and what it sends to ChatGPT. It collects phrases from the game and other personas until after some time it sends some of the phrases batched together to create a comment.");
+				list.Slider(ref selected.phrasesLimit, 1, 100, n => $"Max phrase count: {n}", 1, "How many unsend phrases should RimGPT keep at a maximum?");
 				selected.phraseBatchSize = Mathf.Min(selected.phraseBatchSize, selected.phrasesLimit);
-				list.Slider(ref selected.phraseBatchSize, 1, selected.phrasesLimit, n => $"Batch size: {n} phrases");
+				list.Slider(ref selected.phraseBatchSize, 1, selected.phrasesLimit, n => $"Batch size: {n} phrases", 1, "How many phrases should RimGPT send batched together in its data to ChatGPT?");
 				list.Gap(16f);
-				_ = list.Label("Delay between comments");
-				list.Slider(ref selected.phraseDelayMin, 5f, 1200f, f => $"Min: {Mathf.FloorToInt(f + 0.01f)} sec", 1f, 2);
-				if (selected.phraseDelayMin > selected.phraseDelayMax) selected.phraseDelayMin = selected.phraseDelayMax;
-				list.Slider(ref selected.phraseDelayMax, 5f, 1200f, f => $"Max: {Mathf.FloorToInt(f + 0.01f)} sec", 1f, 2);
-				if (selected.phraseDelayMax < selected.phraseDelayMin) selected.phraseDelayMax = selected.phraseDelayMin;
+				_ = list.Label("Delay between comments", -1, "To optimize, RimGPT collects text and phrases and only sends it in intervals to ChatGPT to create comments.");
+				list.Slider(ref selected.phraseDelayMin, 5f, 1200f, f => $"Min: {Mathf.FloorToInt(f + 0.01f)} sec", 1f, 2, "RimGPT creates comments in intervals. What is the shortest time between comments?");
+				if (selected.phraseDelayMin > selected.phraseDelayMax)
+					selected.phraseDelayMin = selected.phraseDelayMax;
+				var oldMax = selected.phraseDelayMax;
+				list.Slider(ref selected.phraseDelayMax, 5f, 1200f, f => $"Max: {Mathf.FloorToInt(f + 0.01f)} sec", 1f, 2, "RimGPT creates comments in intervals. What is the longest time between comments?");
+				if (selected.phraseDelayMax < selected.phraseDelayMin)
+					selected.phraseDelayMax = selected.phraseDelayMin;
+				if (oldMax > selected.phraseDelayMax)
+					selected.nextPhraseTime = DateTime.Now.AddSeconds(selected.phraseDelayMin);
 				list.Gap(16f);
 				_ = list.Label("Comments");
-				list.Slider(ref selected.phraseMaxWordCount, 1, 160, n => $"Max words: {n}");
+				list.Slider(ref selected.phraseMaxWordCount, 1, 160, n => $"Max words: {n}", 1, "RimGPT instructs ChatGPT to generate comments that are no longer than this amount of words.");
 				list.Gap(16f);
 				_ = list.Label("History");
-				list.Slider(ref selected.historyMaxWordCount, 200, 1200, n => $"Max words: {n}");
+				list.Slider(ref selected.historyMaxWordCount, 200, 1200, n => $"Max words: {n}", 1, "RimGPT lets ChatGPT create a history summary that is then send together with new requests to form some kind of memory for ChatGPT. What is the maximum size of the history?");
 				list.Gap(16f);
 
 				width = (list.ColumnWidth - 2 * 20) / 3;
