@@ -14,7 +14,7 @@ namespace RimGPT
 	{
 		public static bool DEBUG = false;
 		public static readonly Regex tagRemover = new("<color.+?>(.+?)</(?:color)?>", RegexOptions.Singleline);
-		public static string[] chatGPTModels = new[] { "gpt-3.5-turbo", "gpt-4" };
+		public static string[] chatGPTModels = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview"];
 
 		public readonly struct Strings
 		{
@@ -272,13 +272,56 @@ namespace RimGPT
 				from = transition.subjectPawn;
 		}
 
-		public static readonly string[] commonLanguages = new string[]
-		{
-			"Alien", "Arabic", "Bengali", "Bulgarian", "Catalan", "Chinese", "Croatian", "Czech", "Danish", "Dutch", "English",
-			"Estonian", "Finnish", "French", "German", "Greek", "Hebrew", "Hindi", "Hungarian", "Icelandic", "Indonesian",
-			"Italian", "Japanese", "Korean", "Latvian", "Lithuanian", "Malay", "Norwegian", "Persian", "Polish", "Portuguese",
-			"Punjabi", "Romanian", "Russian", "Serbian", "Slovak", "Slovenian", "Spanish", "Swedish", "Tamil", "Telugu",
-			"Thai", "Turkish", "Ukrainian", "Urdu", "Vietnamese", "Welsh", "Yiddish"
-		};
+		public static readonly string[] commonLanguages =
+		[
+			"Alien",
+			"Arabic",
+			"Bengali",
+			"Bulgarian",
+			"Catalan",
+			"Chinese",
+			"Croatian",
+			"Czech",
+			"Danish",
+			"Dutch",
+			"English",
+			"Estonian",
+			"Finnish",
+			"French",
+			"German",
+			"Greek",
+			"Hebrew",
+			"Hindi",
+			"Hungarian",
+			"Icelandic",
+			"Indonesian",
+			"Italian",
+			"Japanese",
+			"Korean",
+			"Latvian",
+			"Lithuanian",
+			"Malay",
+			"Norwegian",
+			"Persian",
+			"Polish",
+			"Portuguese",
+			"Punjabi",
+			"Romanian",
+			"Russian",
+			"Serbian",
+			"Slovak",
+			"Slovenian",
+			"Spanish",
+			"Swedish",
+			"Tamil",
+			"Telugu",
+			"Thai",
+			"Turkish",
+			"Ukrainian",
+			"Urdu",
+			"Vietnamese",
+			"Welsh",
+			"Yiddish"
+		];
 	}
 }

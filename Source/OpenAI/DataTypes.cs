@@ -77,20 +77,28 @@ namespace OpenAI
 	}
 	#endregion
 
+	public sealed class ResponseFormat
+	{
+		[JsonProperty("type")] public string Type { get; set; }
+	}
+
 	#region Chat API Data Types
 	public sealed class CreateChatCompletionRequest
 	{
-		public string Model { get; set; }
-		public List<ChatMessage> Messages { get; set; }
-		public float? Temperature { get; set; } = 1;
-		public int? N { get; set; } = 1;
-		public bool? Stream { get; set; } = false;
-		public string Stop { get; set; }
-		public int? MaxTokens { get; set; }
-		public float? PresencePenalty { get; set; } = 0;
-		public float? FrequencyPenalty { get; set; } = 0;
-		public Dictionary<string, string> LogitBias { get; set; }
-		public string User { get; set; }
+		[JsonProperty("messages")] public List<ChatMessage> Messages { get; set; }
+		[JsonProperty("model")] public string Model { get; set; }
+		[JsonProperty("frequency_penalty")] public float? FrequencyPenalty { get; set; } = 0;
+		[JsonProperty("logit_bias")] public Dictionary<string, string> LogitBias { get; set; }
+		[JsonProperty("max_tokens")] public int? MaxTokens { get; set; }
+		[JsonProperty("n")] public int? N { get; set; } = 1;
+		[JsonProperty("presence_penalty")] public float? PresencePenalty { get; set; } = 0;
+		[JsonProperty("response_format")] public ResponseFormat ResponseFormat { get; set; }
+		[JsonProperty("seed")] public int? Seed { get; set; }
+		[JsonProperty("stop")] public string Stop { get; set; }
+		[JsonProperty("stream")] public bool? Stream { get; set; } = false;
+		[JsonProperty("temperature")] public float? Temperature { get; set; } = 1;
+		[JsonProperty("top_p")] public int? TopP { get; set; }
+		[JsonProperty("user")] public string User { get; set; }
 	}
 
 	public struct CreateChatCompletionResponse : IResponse

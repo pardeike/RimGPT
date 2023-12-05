@@ -12,7 +12,7 @@ namespace RimGPT
 
 		public string name = "RimGPT";
 		public AI ai = new();
-		public OrderedHashSet<Phrase> phrases = new();
+		public OrderedHashSet<Phrase> phrases = [];
 		public string lastSpokenText = "";
 		public DateTime nextPhraseTime = DateTime.Now;
 

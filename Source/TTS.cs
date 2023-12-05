@@ -53,8 +53,8 @@ namespace RimGPT
 		public string Value { get; private set; }
 		public string Tooltip { get; private set; }
 
-		public static readonly VoiceStyle[] Values = new VoiceStyle[]
-		{
+		public static readonly VoiceStyle[] Values =
+		[
 			new VoiceStyle("Default", "default", null),
 			new VoiceStyle("Advertisement Upbeat", "advertisement_upbeat", "Expresses an excited and high-energy tone for promoting a product or service"),
 			new VoiceStyle("Affectionate", "affectionate", "Expresses a warm and affectionate tone, with higher pitch and vocal energy. The speaker is in a state of attracting the attention of the listener. The personality of the speaker is often endearing in nature"),
@@ -90,7 +90,7 @@ namespace RimGPT
 			new VoiceStyle("Whispering", "whispering", "Speaks very softly and make a quiet and gentle sound"),
 			new VoiceStyle("Terrified", "terrified", "Expresses a very scared tone, with faster pace and a shakier voice. It sounds like the speaker is in an unsteady and frantic status"),
 			new VoiceStyle("Unfriendly", "unfriendly", "Expresses a cold and indifferent tone")
-		};
+		];
 
 		public static VoiceStyle From(string shortName) => Values.FirstOrDefault(s => s.Value == shortName);
 	}

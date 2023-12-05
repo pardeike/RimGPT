@@ -8,7 +8,7 @@ namespace Kevsoft.Ssml
 {
 	public class Ssml : ISsml
 	{
-		private readonly List<ISsmlWriter> _says = new();
+		private readonly List<ISsmlWriter> _says = [];
 		private readonly string _lang;
 		private readonly string _version;
 		private SsmlConfiguration _configuration;

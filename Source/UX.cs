@@ -140,7 +140,11 @@ namespace RimGPT
 		{
 			var options = new List<FloatMenuOption> { new FloatMenuOption("ChatGPT Version", () => action(default)) };
 			foreach (var version in Tools.chatGPTModels)
-				options.Add(new FloatMenuOption(version, () =>
+			{
+				var label = version;
+				if (version.Contains("1106"))
+					label = $"{version} [PREFERRED]";
+				options.Add(new FloatMenuOption(label, () =>
 				{
 					if (version != default)
 					{
@@ -153,6 +157,7 @@ namespace RimGPT
 							action(version);
 					}
 				}));
+			}
 			Find.WindowStack.Add(new FloatMenu(options));
 		}
 
@@ -236,7 +241,7 @@ namespace RimGPT
 			var currentVoice = Voice.From(persona.azureVoice);
 			var availableStyles = currentVoice?.StyleList;
 			if (availableStyles.NullOrEmpty())
-				availableStyles = new[] { "default" };
+				availableStyles = ["default"];
 			var currentStyle = VoiceStyle.From(persona.azureVoiceStyle);
 			if (Widgets.ButtonText(rect, currentStyle?.Name ?? ""))
 			{

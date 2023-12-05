@@ -4,7 +4,7 @@ namespace RimGPT
 {
 	public static class Differ
 	{
-		static readonly Dictionary<string, string> previousValues = new();
+		static readonly Dictionary<string, string> previousValues = [];
 
 		public static bool Changed(string key, string currentValue)
 		{

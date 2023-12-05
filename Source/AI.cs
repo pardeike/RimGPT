@@ -13,6 +13,8 @@ namespace RimGPT
 {
 	public class AI
 	{
+		public static JsonSerializerSettings settings = new() { NullValueHandling = NullValueHandling.Ignore };
+
 #pragma warning disable CS0649
 		public class Input
 		{
@@ -39,20 +41,29 @@ namespace RimGPT
 			var playerName = Tools.PlayerName();
 			var player = playerName == null ? "the player" : $"the player named '{playerName}'";
 			var otherObservers = RimGPTMod.Settings.personas.Where(p => p != currentPersona).Join(persona => $"'{persona.name}'");
+			var exampleInput = JsonConvert.SerializeObject(new Input
+			{
+				CurrentWindow = "<Info about currently open window>",
+				CurrentGameState = ["Event1", "Event2", "Event3"],
+				PreviousHistoricalKeyEvents = ["OldEvent1", "OldEvent2", "OldEvent3"],
+				LastSpokenText = "<Previous Output>"
+			}, settings);
+			var exampleOutput = JsonConvert.SerializeObject(new Output
+			{
+				ResponseText = "<New Output>",
+				NewHistoricalKeyEvents = ["OldEventsSummary", "Event 1 and 2", "Event3"]
+			}, settings);
+
 			return new List<string>
 			{
-				$"System instruction: Begin{(otherObservers.Any() ? " multi-instance" : "")} role-playing simulation.\n",
-				$"You are '{currentPersona.name}', an observer.\n",
-				$"Act as the following role and personality: {currentPersona.personality}\n",
-				otherObservers.Any() ? $"Along with you, other observers named {otherObservers}, are watching {player} play the game Rimworld.\n" : $"You are watching {player} play the game Rimworld.\n",
-				$"Important rules to follow strictly:\n",
-				$"- Your input comes from the game and will be in JSON format. It has the following keys: 'CurrentWindow', 'PreviousHistoricalKeyEvents', 'LastSpokenText', and 'CurrentGameState', which is a list of recent events.",
-				$"- You also get what other observers say in form of 'X said: ...'.",
-				$"- Return your output in JSON format with keys 'ResponseText' and 'NewHistoricalKeyEvents'.",
-				$"- Your response called 'ResponseText' must be in {Tools.PersonalityLanguage(currentPersona)}.",
-				$"- Add what you want to remember as list of historical key facts called 'NewHistoricalKeyEvents'.",
-				$"- Limit 'ResponseText' to no more than {currentPersona.phraseMaxWordCount} words.",
-				$"- Limit 'NewHistoricalKeyEvents' to no more than {currentPersona.historyMaxWordCount} words."
+				$"You are role-playing a commentator called '{currentPersona.name}'. ",
+				(otherObservers.Any() ? $"Your co-moderators are {otherObservers} and you all" : $"You") + $" are watching '{player}' playing the popular game Rimworld.\n",
+				$"Your input comes from the current game and will be json like this: {exampleInput}\n",
+				$"Your output must only be in json like this: {exampleOutput}\n",
+				$"Limit ResponseText to no more than {currentPersona.phraseMaxWordCount} words.\n",
+				$"Limit NewHistoricalKeyEvents to no more than {currentPersona.historyMaxWordCount} words.\n",
+				$"Your role/personality is: {currentPersona.personality}\n",
+				$"Remember: your output is in the format: {{\"ResponseText\":\"...\",\"NewHistoricalKeyEvents\":[\"...\",\"...\"]}}",
 			}.Join(delimiter: "").ApplyVoiceStyle(currentPersona);
 		}
 
@@ -82,26 +93,34 @@ namespace RimGPT
 				}
 			}
 
-			var input = JsonConvert.SerializeObject(gameInput);
-
-			if (Tools.DEBUG)
-				Logger.Warning($"INPUT: {input}");
+			var input = JsonConvert.SerializeObject(gameInput, settings);
 
 			var systemPrompt = SystemPrompt(persona);
-			var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
+			var request = new CreateChatCompletionRequest()
 			{
 				Model = RimGPTMod.Settings.chatGPTModel,
-				Messages = new()
-				{
+				ResponseFormat = RimGPTMod.Settings.chatGPTModel.Contains("1106") ? new ResponseFormat { Type = "json_object" } : null,
+				// FrequencyPenalty = 1.0f,
+				// PresencePenalty = 1.0f,
+				// Temperature = 1.5f,
+				Messages =
+				[
 					new ChatMessage() { Role = "system", Content = systemPrompt },
 					new ChatMessage() { Role = "user", Content = input }
-				}
-			}, error => Logger.Error(error));
+				]
+			};
+
+			if (Tools.DEBUG)
+				Log.Warning($"INPUT: {JsonConvert.SerializeObject(request, settings)}");
+
+			var completionResponse = await OpenAI.CreateChatCompletion(request, error => Logger.Error(error));
 			RimGPTMod.Settings.charactersSentOpenAI += systemPrompt.Length + input.Length;
 
 			if (completionResponse.Choices?.Count > 0)
 			{
-				var response = (completionResponse.Choices[0].Message.Content ?? "").Trim();
+				var response = (completionResponse.Choices[0].Message.Content ?? "");
+				RimGPTMod.Settings.charactersSentOpenAI += response.Length;
+				response = response.Trim();
 				var firstIdx = response.IndexOf("{");
 				if (firstIdx >= 0)
 				{
@@ -145,16 +164,20 @@ namespace RimGPT
 			var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
 			{
 				Model = RimGPTMod.Settings.chatGPTModel,
-				Messages = new()
-				{
+				Messages =
+				[
 					new ChatMessage() { Role = "system", Content = "You are a creative poet answering in 12 words or less." },
 					new ChatMessage() { Role = "user", Content = input }
-				}
+				]
 			}, e => requestError = e);
 			RimGPTMod.Settings.charactersSentOpenAI += input.Length;
 
 			if (completionResponse.Choices?.Count > 0)
-				return (completionResponse.Choices[0].Message.Content, null);
+			{
+				var response = (completionResponse.Choices[0].Message.Content ?? "");
+				RimGPTMod.Settings.charactersSentOpenAI += response.Length;
+				return (response, null);
+			}
 
 			return (null, requestError);
 		}

@@ -14,6 +14,7 @@
 		</li>
 	</modDependencies>
 	<packageId>brrainz.rimgpt</packageId>
+	<modVersion>2.0.1.0</modVersion>
 	<description>OpenAI runs your raids. Good luck.
 
 Powered by Harmony Patch Library

@@ -9,8 +9,8 @@ namespace RimGPT
 {
 	public class RimGPTSettings : ModSettings
 	{
-		public List<Persona> personas = new()
-		{
+		public List<Persona> personas =
+		[
 			new Persona()
 			{
 				name = "Tynan",
@@ -47,7 +47,7 @@ namespace RimGPT
 				personality = "You are a mod developer. You mostly respond to Tynan but sometimes talk to the player. You are sceptical about everything Tynan says. You support everything the player does in the game.",
 				personalityLanguage = "English"
 			}
-		};
+		];
 		public bool enabled = true;
 		public string chatGPTKey = "";
 		public string chatGPTModel = Tools.chatGPTModels.First();
@@ -109,7 +109,7 @@ namespace RimGPT
 				if (azureVoice != null && personas.NullOrEmpty())
 				{
 					chatGPTModel = Tools.chatGPTModels.First();
-					personas ??= new List<Persona>();
+					personas ??= [];
 					personas.Add(new Persona()
 					{
 						name = "Default",
@@ -153,7 +153,7 @@ namespace RimGPT
 			// for three columns with 20px spacing
 			var width = (list.ColumnWidth - 2 * 20) / 3;
 
-			list.Label("FFFF00", "OpenAI - ChatGPT", $"{charactersSentOpenAI} chars sent");
+			list.Label("FFFF00", "OpenAI - ChatGPT", $"{charactersSentOpenAI} chars total");
 			prevKey = chatGPTKey;
 			list.TextField(ref chatGPTKey, "API Key (paste only)", true, () => chatGPTKey = "");
 			if (chatGPTKey != "" && chatGPTKey != prevKey)

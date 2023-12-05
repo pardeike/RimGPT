@@ -124,7 +124,7 @@ namespace RimGPT
 
 	// reset history when a game is loaded
 	//
-	[HarmonyPatch(typeof(GameDataSaveLoader), nameof(GameDataSaveLoader.LoadGame), new Type[] { typeof(string) })]
+	[HarmonyPatch(typeof(GameDataSaveLoader), nameof(GameDataSaveLoader.LoadGame), [typeof(string)])]
 	public static class GameDataSaveLoader_LoadGame_Patch
 	{
 		public static void Postfix(string saveFileName)
@@ -481,15 +481,15 @@ namespace RimGPT
 	{
 		static int lastTicks = 0;
 		static int lastTotal = -1;
-		static readonly HashSet<ThingCategoryDef> thingCategories = new()
-		{
+		static readonly HashSet<ThingCategoryDef> thingCategories =
+		[
 			ThingCategoryDefOf.Foods,
 			ThingCategoryDefOf.FoodMeals,
 			ThingCategoryDefOf.Medicine,
 			ThingCategoryDefOf.StoneBlocks,
 			ThingCategoryDefOf.Manufactured,
 			ThingCategoryDefOf.ResourcesRaw
-		};
+		];
 
 		public static bool Reportable(this KeyValuePair<ThingDef, int> pair)
 		{
