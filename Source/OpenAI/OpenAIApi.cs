@@ -48,7 +48,7 @@ namespace OpenAI
 			{
 				NamingStrategy = new CustomNamingStrategy()
 			},
-			MissingMemberHandling = MissingMemberHandling.Error,
+			MissingMemberHandling = MissingMemberHandling.Ignore, // Setting this to Ignore also solves the problem of OpenAI adding new fields to the API response.
 			Culture = CultureInfo.InvariantCulture
 		};
 

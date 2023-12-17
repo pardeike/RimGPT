@@ -14,7 +14,8 @@ namespace OpenAI
 		private readonly JsonSerializerSettings jsonSerializerSettings = new()
 		{
 			NullValueHandling = NullValueHandling.Ignore,
-			ContractResolver = new DefaultContractResolver()
+            MissingMemberHandling = MissingMemberHandling.Ignore,
+            ContractResolver = new DefaultContractResolver()
 			{
 				NamingStrategy = new CustomNamingStrategy()
 			}
