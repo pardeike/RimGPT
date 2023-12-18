@@ -13,7 +13,7 @@ namespace RimGPT
 {
 	public class AI
 	{
-		public static JsonSerializerSettings settings = new() { NullValueHandling = NullValueHandling.Ignore };
+		public static JsonSerializerSettings settings = new() { NullValueHandling = NullValueHandling.Ignore, MissingMemberHandling = MissingMemberHandling.Ignore};
 
 #pragma warning disable CS0649
 		public class Input
