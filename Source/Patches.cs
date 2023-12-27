@@ -478,8 +478,8 @@ namespace RimGPT
 				1 => "most important",
 				2 => "more important",
 				3 => "less important",
-				>= 4 => "least important", 
-				_ => "of undefined importance", 
+				>= 4 => "least important",
+				_ => "of undefined importance",
 			};
 			string actionMessage;
 
@@ -666,30 +666,32 @@ namespace RimGPT
 
 			prodUpdateTicks++;
 
-			// use in-game map ticks as we dont want to factor this in if paused or not on the map.
+			// use in-game map ticks as we don't want to factor this in if paused or not on the map.
 			if (prodUpdateTicks % 24000 != 0) return;
-
-			List<string> messages = new List<string>();
 
 			// already researched projects
 			var completedResearch = DefDatabase<ResearchProjectDef>.AllDefsListForReading
 										.Where(research => research.IsFinished);
 			string completedResearchNames = string.Join(", ", completedResearch.Select(r => r.label));
-			messages.Add("Research Completed: " + completedResearchNames);
+			string completedMessage = $"Research Completed: {completedResearchNames}";
 
 			// Now do current research
 			ResearchProjectDef currentResearch = Find.ResearchManager.currentProj;
 			string researchInProgress = currentResearch != null ? currentResearch.label : "None";
-			messages.Add("Current Research: " + researchInProgress);
+			string currentMessage = $"Current Research: {researchInProgress}";
 
 			// Now do available research that is not locked
 			var availableResearch = DefDatabase<ResearchProjectDef>.AllDefsListForReading
 										.Where(research => !research.IsFinished && research.PrerequisitesCompleted);
 			string availableResearchNames = string.Join(", ", availableResearch.Select(r => r.label));
-			messages.Add("Available Research: " + availableResearchNames);
+			string availableMessage = $"Available Research: {availableResearchNames}";
 
-			// Calling Personas.Add method (assuming it exists) and fixing the missing '+' for concatenation
-			Personas.Add("Status Update: " + String.Join("\n", messages), 1);
+			// Aggregate all messages into one formatted string
+			string statusUpdate = $"{completedMessage}\n{currentMessage}\n{availableMessage}";
+
+			// Call Personas.Add method (assuming it exists)
+			Personas.Add("Status Update: " + statusUpdate, 1);
+
 		}
 	}
 
