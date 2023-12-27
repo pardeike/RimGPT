@@ -769,7 +769,7 @@ namespace RimGPT
 
 			string totalPowerNeedsMessage = $"Total Power needs: {totalPowerNeeds}, Total Power Generated: {totalPowerGenerated}";
 			messages.Add(totalPowerNeedsMessage);
-			if (totalPowerNeeds > 0 && totalPowerGenerated > 0) {
+			if (totalPowerNeeds > 0 || totalPowerGenerated > 0) {
 				// dont talk about power if there is no power
 				Personas.Add("Energy Analysis: " + powerStatus + "\n" + string.Join(", ", messages), priority);
 			} else {
