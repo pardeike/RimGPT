@@ -48,9 +48,13 @@ namespace RimGPT
 				personalityLanguage = "English"
 			}
 		];
+        public string ChatGPTModelPrimary = Tools.chatGPTModels.First();
+        public string ChatGPTModelSecondary = Tools.chatGPTModels.First();
+        public int ModelSwitchRatio = 10;
+		public bool UseSecondaryModel = false;
 		public bool enabled = true;
 		public string chatGPTKey = "";
-		public string chatGPTModel = Tools.chatGPTModels.First();
+
 		public string azureSpeechKey = "";
 		public string azureSpeechRegion = "";
 		public float speechVolume = 4f;
@@ -81,7 +85,11 @@ namespace RimGPT
 			Scribe_Collections.Look(ref personas, "personas", LookMode.Deep);
 			Scribe_Values.Look(ref enabled, "enabled", true);
 			Scribe_Values.Look(ref chatGPTKey, "chatGPTKey");
-			Scribe_Values.Look(ref chatGPTModel, "chatGPTModel");
+  			Scribe_Values.Look(ref UseSecondaryModel, "UseSecondaryModel", defaultValue: false);
+    		Scribe_Values.Look(ref ModelSwitchRatio, "ModelSwitchRatio", defaultValue: 10);			
+			Scribe_Values.Look(ref ChatGPTModelPrimary, "ChatGPTModelPrimary", Tools.chatGPTModels.First());
+			Scribe_Values.Look(ref ChatGPTModelSecondary, "ChatGPTModelSecondary", Tools.chatGPTModels.First());
+			
 			Scribe_Values.Look(ref azureSpeechKey, "azureSpeechKey");
 			Scribe_Values.Look(ref azureSpeechRegion, "azureSpeechRegion");
 			Scribe_Values.Look(ref speechVolume, "speechVolume", 4f);
@@ -108,7 +116,7 @@ namespace RimGPT
 			{
 				if (azureVoice != null && personas.NullOrEmpty())
 				{
-					chatGPTModel = Tools.chatGPTModels.First();
+					ChatGPTModelPrimary = Tools.chatGPTModels.First();
 					personas ??= [];
 					personas.Add(new Persona()
 					{
@@ -147,11 +155,21 @@ namespace RimGPT
 			string prevKey;
 			Rect rect;
 
-			var list = new Listing_Standard { ColumnWidth = (inRect.width - Listing.ColumnSpacing) / 2f };
-			list.Begin(inRect);
+			float spacing = 20f; // Alternatively adjust the spacing if needed
+			float totalSpaceBetweenColumns = spacing * 2;
+			
+			// New calculation for column widths
+   float slimColumnFactor = 0.5f; // Middle column is 50% of the others
+    float availableSpace = inRect.width - totalSpaceBetweenColumns; // Total available width minus the spacing
+    float normalColumnWidth = (availableSpace / (2 + slimColumnFactor)); // Width for the 1st and 3rd columns
+    float middleColumnWidth = normalColumnWidth * slimColumnFactor; // Width for the middle (slimmer) column
+
+
+            var list = new Listing_Standard { ColumnWidth = normalColumnWidth  };
+            list.Begin(inRect);
 
 			// for three columns with 20px spacing
-			var width = (list.ColumnWidth - 2 * 20) / 3;
+			var width = normalColumnWidth ;
 
 			list.Label("FFFF00", "OpenAI - ChatGPT", $"{charactersSentOpenAI} chars total");
 			prevKey = chatGPTKey;
@@ -169,11 +187,30 @@ namespace RimGPT
 			}
 
 			if (chatGPTKey != "")
-			{
-				rect = list.GetRect(UX.ButtonHeight);
-				if (Widgets.ButtonText(rect, chatGPTModel))
-					UX.GPTVersionMenu(l => chatGPTModel = l);
-			}
+				{
+					// Button for selecting the primary ChatGPT model
+					list.Label("Primary ChatGPT Model");
+					rect = list.GetRect(UX.ButtonHeight);
+					if (Widgets.ButtonText(rect, ChatGPTModelPrimary))
+						UX.GPTVersionMenu(l => ChatGPTModelPrimary = l);
+
+					// Add some vertical spacing between buttons
+					list.Gap(10f);
+
+					// Button for selecting the secondary ChatGPT model
+					list.Label("Secondary ChatGPT Model");
+					rect = list.GetRect(UX.ButtonHeight);
+					if (Widgets.ButtonText(rect, ChatGPTModelSecondary))
+						UX.GPTVersionMenu(l => ChatGPTModelSecondary = l);
+
+					// Slider for adjusting the ModelSwitchRatio as a float cast to an int.
+					list.Label($"Model Switch Ratio: {ModelSwitchRatio}");
+					float sliderValue = list.Slider(ModelSwitchRatio, 1f, 20f);
+					
+					// Since sliders typically work with floats, we cast the value to int after user interaction.
+					ModelSwitchRatio = Mathf.RoundToInt(sliderValue); 							
+				}
+
 
 			list.Gap(16f);
 
@@ -200,10 +237,11 @@ namespace RimGPT
 				charactersSentOpenAI = 0;
 				charactersSentAzure = 0;
 			}
-
+			list.NewColumn();
+			list.ColumnWidth = middleColumnWidth;
 			list.Gap(16f);
 
-			list.Label("FFFF00", "Active personas", "", "All these personas are active and talk about the game and to each other.");
+			list.Label("FFFF00", "Active personas", "", "All these personas are active.");
 
 			var height = inRect.height - UX.ButtonHeight - 24f - list.CurHeight;
 			var outerRect = list.GetRect(height);
@@ -279,14 +317,14 @@ namespace RimGPT
 			}
 
 			list.NewColumn(); //------------------------------------------------------------------------------------------------------------------
-			width = (list.ColumnWidth - 2 * 20) / 3;
+			list.ColumnWidth = normalColumnWidth ;
 
 			if (selected != null)
 			{
 				var curY = list.curY;
 				_ = list.Label("Persona Name");
 				list.curY = curY;
-				var cw = list.ColumnWidth / 2.5f;
+				var cw = list.ColumnWidth / 3f;
 				list.curX += cw;
 				list.ColumnWidth -= cw;
 				selected.name = list.TextEntry(selected.name);
@@ -298,8 +336,8 @@ namespace RimGPT
 				{
 					selected.azureVoiceLanguage = l == null ? "-" : l.FriendlyNameEnglish;
 					Personas.UpdateVoiceInformation();
-				}, width, 0);
-				list.Voices(selected, width, 1);
+				}, width/2, 0);
+				list.Voices(selected, width /2, 1);
 				if (UX.HasVoiceStyles(selected))
 					list.VoiceStyles(selected, width, 2);
 				list.Gap(30f);
@@ -313,8 +351,7 @@ namespace RimGPT
 				list.Gap(16f);
 
 				rect = list.GetRect(UX.ButtonHeight);
-				rect.width = width;
-				if (Widgets.ButtonText(rect, "Edit personality"))
+				if (Widgets.ButtonText(rect, "Personality"))
 					Dialog_Personality.Show(selected);
 				rect.x += width + 20;
 				if (Widgets.ButtonText(rect, selected.personalityLanguage == "-" ? "Game Language" : selected.personalityLanguage))

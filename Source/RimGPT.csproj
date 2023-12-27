@@ -76,22 +76,12 @@
 	</Target>
 
 	<PropertyGroup>
-		<PostBuildEvent>
-			echo Postprocessing
-			where ModBuilder 2&gt; nul | find /i "ModBuilder.exe"
-			if not errorlevel 1 (
-			ModBuilder AssemblyVersion -file "$(MSBuildProjectDirectory)\$(OutputPath)$(AssemblyName).dll" -save "$(MSBuildProjectName)-version"
-			)
-			if defined INSTALL_MOD (
-			"%INSTALL_MOD%" "$(Configuration)" "$(MSBuildProjectDirectory)\..\" "$(MSBuildProjectName)" "About Assemblies Defs Textures" ""
-			)
-		</PostBuildEvent>
-		<Company>Brrainz</Company>
-		<Authors>Andreas Pardeike</Authors>
+		<Company>Custom</Company>
+		<Authors>Andreas Pardeike, Matt McFarland</Authors>
 		<Description></Description>
 		<PackageProjectUrl>https://github.com/pardeike/RimGPT</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/pardeike/RimGPT</RepositoryUrl>
-		<Product>RimGPT</Product>
+		<Product>RimGPT-Custom</Product>
 	</PropertyGroup>
 
 </Project>
