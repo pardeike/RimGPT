@@ -572,7 +572,7 @@ namespace RimGPT
 	}
 
 
-	// send rooms data from time to time
+	// Send info about rooms from time to time
 	//
 	[HarmonyPatch(typeof(UIRoot), nameof(UIRoot.UIRootUpdate))]
 	public static class UIRoot_UIRootUpdate_Rooms_Update
@@ -700,7 +700,7 @@ namespace RimGPT
 		}
 	}
 
-	// send building data and research ifo from time to time
+	// send an energy info from time to time
 	//
 	[HarmonyPatch(typeof(UIRoot), nameof(UIRoot.UIRootUpdate))]
 	public static class UIRoot_UIRootUpdate_Power_Update
@@ -828,6 +828,8 @@ namespace RimGPT
 		}
 	}
 
+	// send weather info, and update the colony setting from time to time
+	//
 	[HarmonyPatch(typeof(UIRoot), nameof(UIRoot.UIRootUpdate))]
 	public static class UIRoot_UIRootUpdate_WeatherReport_Patch
 	{
@@ -895,6 +897,7 @@ namespace RimGPT
 		}
 	}
 
+	// update the colony roster
 	[HarmonyPatch(typeof(UIRoot), nameof(UIRoot.UIRootUpdate))]
 	public static class UIRoot_UIRootUpdate_ColonistRoster_Patch
 	{
@@ -978,6 +981,7 @@ namespace RimGPT
 		}
 	}
 
+	// send colonist interactions
 	[HarmonyPatch(typeof(Pawn_InteractionsTracker))]
 	public static class Pawn_InteractionsTracker_TryInteractWith_Patch
 	{
@@ -1045,6 +1049,7 @@ namespace RimGPT
 		}
 	}
 
+	// send colonist opinions of eachother from time to time
 	[HarmonyPatch(typeof(UIRoot), nameof(UIRoot.UIRootUpdate))]
 	public static class UIRoot_UIRootUpdate_OpinionReport_Patch
 	{
@@ -1103,6 +1108,8 @@ namespace RimGPT
 			}
 		}
 	}
+
+	// send colonist thoughts and mood effects from time to time
 	[HarmonyPatch(typeof(UIRoot), nameof(UIRoot.UIRootUpdate))]
 	public static class UIRoot_UIRootUpdate_ColonistThoughts_Patch
 	{
