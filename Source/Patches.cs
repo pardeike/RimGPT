@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using RimWorld.Planet;
+using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -769,9 +770,10 @@ namespace RimGPT
 			string totalPowerNeedsMessage = $"Total Power needs: {totalPowerNeeds}, Total Power Generated: {totalPowerGenerated}";
 			messages.Add(totalPowerNeedsMessage);
 			if (totalPowerNeeds > 0 && totalPowerGenerated > 0) {
+				// dont talk about power if there is no power
 				Personas.Add("Energy Analysis: " + powerStatus + "\n" + string.Join(", ", messages), priority);
 			} else {
-				Personas.Add("Energy Analysis: The colony has no electrical buildings or power generation at this time.", 1);
+				Logger.Message("Skip Power Generation evaluation.");
 			}
 			
 		}
@@ -985,8 +987,8 @@ namespace RimGPT
 				// Save the data to memory in RecordKeeper
 				RecordKeeper.CollectColonistData(colonists);
 				string[] colonistDataArray = RecordKeeper.FetchColonistData();
-				//string colonistDataString = String.Join("\n\n", colonistDataArray);
-				//Log.Message(colonistDataString);
+				string colonistDataString = String.Join("\n\n", colonistDataArray);
+				Log.Message(colonistDataString);
 			}
 		}
 	}
