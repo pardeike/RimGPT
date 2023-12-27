@@ -473,26 +473,14 @@ namespace RimGPT
 			var colonistName = instance.pawn.NameAndType();
 
 			// Create a status message based on the new priority
-			string importanceMessage;
-			switch (priority)
+			string importanceMessage = priority switch
 			{
-				case 1:
-					importanceMessage = "most important";
-					break;
-				case 2:
-					importanceMessage = "more important";
-					break;
-				case 3:
-					importanceMessage = "less important";
-					break;
-				case 4:
-					importanceMessage = "least important";
-					break;
-				default:
-					importanceMessage = "of undefined importance";
-					break;
-			}
-
+				1 => "most important",
+				2 => "more important",
+				3 => "less important",
+				>= 4 => "least important", 
+				_ => "of undefined importance", 
+			};
 			string actionMessage;
 
 			// Determine if the job was just added or removed
@@ -583,10 +571,8 @@ namespace RimGPT
 		public static void Postfix()
 		{
 			var map = Find.CurrentMap;
-			if (map == null)
-			{
-				return;
-			}
+			if (map == null) return;
+
 
 			if (map.areaManager == null)
 			{
@@ -702,7 +688,7 @@ namespace RimGPT
 			messages.Add("Available Research: " + availableResearchNames);
 
 			// Calling Personas.Add method (assuming it exists) and fixing the missing '+' for concatenation
-			Personas.Add("Minor Update: " + String.Join("\n", messages), 1);
+			Personas.Add("Status Update: " + String.Join("\n", messages), 1);
 		}
 	}
 
@@ -769,13 +755,16 @@ namespace RimGPT
 
 			string totalPowerNeedsMessage = $"Total Power needs: {totalPowerNeeds}, Total Power Generated: {totalPowerGenerated}";
 			messages.Add(totalPowerNeedsMessage);
-			if (totalPowerNeeds > 0 || totalPowerGenerated > 0) {
+			if (totalPowerNeeds > 0 || totalPowerGenerated > 0)
+			{
 				// dont talk about power if there is no power
 				Personas.Add("Energy Analysis: " + powerStatus + "\n" + string.Join(", ", messages), priority);
-			} else {
+			}
+			else
+			{
 				Logger.Message("Skip Power Generation evaluation.");
 			}
-			
+
 		}
 
 
@@ -922,8 +911,8 @@ namespace RimGPT
 
 			rosterTicks++;
 
-			// Collect on the first tick and then after each period of 500 ticks
-			if (rosterTicks % 500 == 0)
+			// Collect on the first tick and then after each period of 5000 ticks
+			if (rosterTicks % 5000 == 0)
 			{
 				var colonists = new List<RecordKeeper.ColonistData>();
 

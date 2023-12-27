@@ -42,33 +42,49 @@ namespace RimGPT
                 StringBuilder dataBuilder = new StringBuilder();
 
                 // Add basic information
-                dataBuilder.AppendLine($"Name: {colonist.Name}");
-                dataBuilder.AppendLine($"Gender: {colonist.Gender}");
-                dataBuilder.AppendLine($"Age: {colonist.Age}");
-                dataBuilder.AppendLine($"Mood: {colonist.Mood}");
+                dataBuilder.AppendLine($"Colonist {colonist.Name}, a {colonist.Age} year old {colonist.Gender} with a mood of {colonist.Mood}.");
 
                 // Add skills information
-                dataBuilder.AppendLine("Skills:");
+                var zeroLevelSkills = new List<string>();
+                var otherSkills = new List<string>();
+
                 foreach (var skill in colonist.Skills)
                 {
-                    dataBuilder.AppendLine($"- {skill.Key}: Level {skill.Value.Level}, XP Since Last Level {skill.Value.XpSinceLastLevel}, XP Required for Level Up {skill.Value.XpRequiredForLevelUp}");
+                    if (skill.Value.Level == 0)
+                    {
+                        zeroLevelSkills.Add(skill.Key);
+                    }
+                    else
+                    {
+                        otherSkills.Add($"{skill.Key} at level {skill.Value.Level}");
+                    }
+                }
+
+                dataBuilder.AppendLine("Skills:");
+                if (zeroLevelSkills.Count > 0)
+                {
+                    dataBuilder.AppendLine($"- {string.Join(", ", zeroLevelSkills)} are all at level 0.");
+                }
+                foreach (var skillSentence in otherSkills)
+                {
+                    dataBuilder.AppendLine($"- {skillSentence}.");
                 }
 
                 // Add traits information
-                dataBuilder.AppendLine("Traits:");
+                dataBuilder.AppendLine("Notable Traits:");
                 foreach (var trait in colonist.Traits)
                 {
                     dataBuilder.AppendLine($"- {trait}");
                 }
 
                 // Add health (hediffs) information, including immunity where applicable
-                if(colonist.Health != null && colonist.Health.Count > 0)
+                if (colonist.Health != null && colonist.Health.Count > 0)
                 {
-                    dataBuilder.AppendLine("Health Issues:");
+                    dataBuilder.AppendLine("Health:");
                     foreach (var hediff in colonist.Health)
                     {
-                        string immunityInfo = hediff.Immunity.HasValue ? $", Immunity: {hediff.Immunity.Value:P1}" : "";
-                        dataBuilder.AppendLine($"- Ailment: {hediff.Label}, Severity: {hediff.Severity:F2}{immunityInfo}");
+                        string immunityInfo = hediff.Immunity.HasValue ? $" with an immunity of {hediff.Immunity.Value:P1}" : "";
+                        dataBuilder.AppendLine($"- {hediff.Label}: Severity: {hediff.Severity:F2}{immunityInfo}.");
                     }
                 }
 
