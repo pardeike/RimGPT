@@ -683,10 +683,15 @@ namespace RimGPT
 
 			List<string> messages = new List<string>();
 
+			// already researched projects
+			var completedResearch = DefDatabase<ResearchProjectDef>.AllDefsListForReading
+										.Where(research => research.IsFinished);
+			string completedResearchNames = string.Join(", ", completedResearch.Select(r => r.label));
+			messages.Add("Research Completed: " + completedResearchNames);
+
 			// Now do current research
 			ResearchProjectDef currentResearch = Find.ResearchManager.currentProj;
 			string researchInProgress = currentResearch != null ? currentResearch.label : "None";
-
 			messages.Add("Current Research: " + researchInProgress);
 
 			// Now do available research that is not locked
@@ -762,8 +767,13 @@ namespace RimGPT
 			}
 
 			string totalPowerNeedsMessage = $"Total Power needs: {totalPowerNeeds}, Total Power Generated: {totalPowerGenerated}";
-
-			Personas.Add("Energy Analysis: " + powerStatus + "\n" + string.Join(", ", messages), priority);
+			messages.Add(totalPowerNeedsMessage);
+			if (totalPowerNeeds > 0 && totalPowerGenerated > 0) {
+				Personas.Add("Energy Analysis: " + powerStatus + "\n" + string.Join(", ", messages), priority);
+			} else {
+				Personas.Add("Energy Analysis: The colony has no electrical buildings or power generation at this time.", 1);
+			}
+			
 		}
 
 
@@ -809,7 +819,7 @@ namespace RimGPT
 				powerStatus = "Failure";
 				priority = 3;
 			}
-			else if (powerDelta < 300)
+			else if (powerDelta < 200)
 			{
 				powerStatus = "Unstable (Brownouts possible)";
 				priority = 3;
