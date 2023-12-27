@@ -596,6 +596,7 @@ namespace RimGPT
 			foreach (Room room in allRooms)
 			{
 				string roleLabel = room.Role?.label ?? "Undefined";
+				// This prevents reporting any room that is not properly named - such as single doors or hallways.
 				if (roleLabel == "Undefined" || roleLabel == "none" || roleLabel == "room")
 				{
 					continue;
