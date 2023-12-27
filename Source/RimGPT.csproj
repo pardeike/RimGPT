@@ -33,12 +33,10 @@
 
 	<ItemGroup>
 		<PackageReference Include="Brrainz.RimWorld.CrossPromotion" Version="1.1.1" />
-		<PackageReference Include="Krafs.Rimworld.Ref" Version="1.4.3901"
-			GeneratePathProperty="true" />
+		<PackageReference Include="Krafs.Rimworld.Ref" Version="1.4.3901" GeneratePathProperty="true" />
 		<PackageReference Include="Lib.Harmony" Version="2.2.2" ExcludeAssets="runtime" />
 		<PackageReference Include="Microsoft.NETCore.Platforms" Version="7.0.4" />
-		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472"
-			Version="1.0.3">
+		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
@@ -58,10 +56,8 @@
 			<AssemblyCSharp_Publicised>$(PubliciseOutputPath)Assembly-CSharp_publicised.dll</AssemblyCSharp_Publicised>
 		</PropertyGroup>
 		<Message Importance="High" Text="Publicising Rimworld Assembly ..." />
-		<Publicise TargetAssemblyPath="$(AssemblyCSharp)" OutputPath="$(PubliciseOutputPath)"
-			Condition="Exists('$(AssemblyCSharp)')" />
-		<Message Importance="High"
-			Text="Replacing reference to un-publicised assemblies with publicised equivalents ..." />
+		<Publicise TargetAssemblyPath="$(AssemblyCSharp)" OutputPath="$(PubliciseOutputPath)" Condition="Exists('$(AssemblyCSharp)')" />
+		<Message Importance="High" Text="Replacing reference to un-publicised assemblies with publicised equivalents ..." />
 		<ItemGroup>
 			<Reference Include="$(AssemblyCSharp_Publicised)">
 				<SpecificVersion>false</SpecificVersion>
@@ -84,13 +80,10 @@
 			echo Postprocessing
 			where ModBuilder 2&gt; nul | find /i "ModBuilder.exe"
 			if not errorlevel 1 (
-			ModBuilder AssemblyVersion -file
-			"$(MSBuildProjectDirectory)\$(OutputPath)$(AssemblyName).dll" -save
-			"$(MSBuildProjectName)-version"
+			ModBuilder AssemblyVersion -file "$(MSBuildProjectDirectory)\$(OutputPath)$(AssemblyName).dll" -save "$(MSBuildProjectName)-version"
 			)
 			if defined INSTALL_MOD (
-			"%INSTALL_MOD%" "$(Configuration)" "$(MSBuildProjectDirectory)\..\"
-			"$(MSBuildProjectName)" "About Assemblies Defs Textures" ""
+			"%INSTALL_MOD%" "$(Configuration)" "$(MSBuildProjectDirectory)\..\" "$(MSBuildProjectName)" "About Assemblies Defs Textures" ""
 			)
 		</PostBuildEvent>
 		<Company>Brrainz</Company>
