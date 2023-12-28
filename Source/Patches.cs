@@ -660,46 +660,46 @@ namespace RimGPT
 
 		public static void Task(Map map)
 		{
+			if (!RimGPTMod.Settings.reportColonistThoughts) return;
+
+			foreach (Pawn colonist in map.mapPawns.FreeColonists)
 			{
+				Dictionary<string, (int Count, float MoodEffect)> thoughtCounts = new Dictionary<string, (int, float)>();
 
-				foreach (Pawn colonist in map.mapPawns.FreeColonists)
+				foreach (Thought_Memory thought in colonist.needs.mood.thoughts.memories.Memories)
 				{
-					Dictionary<string, (int Count, float MoodEffect)> thoughtCounts = new Dictionary<string, (int, float)>();
+					string label = thought.LabelCap;
+					float moodEffect = thought.MoodOffset();
 
-					foreach (Thought_Memory thought in colonist.needs.mood.thoughts.memories.Memories)
+					if (thoughtCounts.ContainsKey(label))
 					{
-						string label = thought.LabelCap;
-						float moodEffect = thought.MoodOffset();
+						thoughtCounts[label] = (thoughtCounts[label].Count + 1, thoughtCounts[label].MoodEffect + moodEffect);
+					}
+					else
+					{
+						thoughtCounts.Add(label, (1, moodEffect));
+					}
+				}
 
-						if (thoughtCounts.ContainsKey(label))
-						{
-							thoughtCounts[label] = (thoughtCounts[label].Count + 1, thoughtCounts[label].MoodEffect + moodEffect);
-						}
-						else
-						{
-							thoughtCounts.Add(label, (1, moodEffect));
-						}
+				// Create a single line summary of thoughts for each colonist, mentioning mood effects only if they are non-zero.
+				var formattedThoughts = thoughtCounts.Select(kvp =>
+				{
+					string plural = kvp.Value.Count > 1 ? $"(x{kvp.Value.Count})" : "";
+					string moodEffectDescription = "";
+
+					if (kvp.Value.MoodEffect != 0.0f)
+					{
+						moodEffectDescription = $"{(kvp.Value.MoodEffect > 0 ? " (improving mood by " : " (decreasing mood by ")}{Math.Abs(kvp.Value.MoodEffect)})";
 					}
 
-					// Create a single line summary of thoughts for each colonist, mentioning mood effects only if they are non-zero.
-					var formattedThoughts = thoughtCounts.Select(kvp =>
-					{
-						string plural = kvp.Value.Count > 1 ? $"(x{kvp.Value.Count})" : "";
-						string moodEffectDescription = "";
+					return $"{kvp.Key}{plural}{moodEffectDescription}";
+				}).Where(s => !string.IsNullOrEmpty(s)); // Filter out empty strings.
 
-						if (kvp.Value.MoodEffect != 0.0f)
-						{
-							moodEffectDescription = $"{(kvp.Value.MoodEffect > 0 ? " (improving mood by " : " (decreasing mood by ")}{Math.Abs(kvp.Value.MoodEffect)})";
-						}
+				string thoughtsMessage = $"{colonist.Name.ToStringShort}'s recent thoughts: {string.Join(", ", formattedThoughts)}";
 
-						return $"{kvp.Key}{plural}{moodEffectDescription}";
-					}).Where(s => !string.IsNullOrEmpty(s)); // Filter out empty strings.
-
-					string thoughtsMessage = $"{colonist.Name.ToStringShort}'s recent thoughts: {string.Join(", ", formattedThoughts)}";
-
-					Personas.Add(thoughtsMessage, 2);
-				}
+				Personas.Add(thoughtsMessage, 2);
 			}
+
 		}
 	}
 
@@ -710,6 +710,8 @@ namespace RimGPT
 
 		public static void Task(Map map)
 		{
+
+			if (!RimGPTMod.Settings.reportColonistOpinions) return;
 
 			List<string> opinionMessages = new List<string>();
 			var freeColonistsCopy = map.mapPawns.FreeColonists.ToList();
@@ -772,6 +774,7 @@ namespace RimGPT
 
 		public static void Task(Map map)
 		{
+
 			// Ensure that map is used instead of Find.CurrentMap for consistency and reliability.
 			var amounts = map.resourceCounter.AllCountedAmounts.Where(Reportable).ToArray();
 			var total = amounts.Sum(pair => pair.Value);
@@ -792,6 +795,8 @@ namespace RimGPT
 		public static void Task(Map map)
 		{
 
+			// return if disabled
+			if (!RimGPTMod.Settings.reportEnergyStatus) return;
 			List<string> messages = new List<string>();
 
 			// Power generation calculations
@@ -920,7 +925,7 @@ namespace RimGPT
 		public static void Task(Map map)
 		{
 
-
+			if (!RimGPTMod.Settings.reportRoomStatus) return;
 			if (map.areaManager == null) return;
 			if (map.ParentFaction != Faction.OfPlayer) return;
 
@@ -990,7 +995,7 @@ namespace RimGPT
 	{
 		public static void Task(Map map)
 		{
-
+			if (!RimGPTMod.Settings.reportResearchStatus) return;
 			if (!map.IsPlayerHome) return;
 
 			// already researched projects
@@ -1085,6 +1090,7 @@ namespace RimGPT
 	{
 		public static void Task(Map map)
 		{
+			if (!RimGPTMod.Settings.reportColonistRoster) return;
 
 			var colonists = new List<RecordKeeper.ColonistData>();
 
@@ -1126,7 +1132,7 @@ namespace RimGPT
 						Severity = hediff.Severity,
 						IsPermanent = hediff.IsPermanent(),
 						Immunity = null,
-						Location = hediff.Part?.Label, 
+						Location = hediff.Part?.Label,
 						Bleeding = hediff.Bleeding, // Indicates whether the Hediff is currently causing bleeding.
 					};
 
