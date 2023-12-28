@@ -31,7 +31,7 @@ namespace RimGPT
         public static void FlushQueue(bool forceFlush = false)
         {
             var stringBuilder = new StringBuilder();
-            // Correct the type for keysToRemove to match the full key of designationCounts
+            
             var keysToRemove = new List<(string Action, string Label, string ThingLabel)>();
 
             foreach (var entry in designationCounts)
@@ -42,11 +42,11 @@ namespace RimGPT
                     string message = $"(player {actionText} {entry.Key.ThingLabel} x{entry.Value} for {entry.Key.Label})";
                     stringBuilder.AppendLine(message);
 
-                    keysToRemove.Add(entry.Key); // No change required here
+                    keysToRemove.Add(entry.Key); 
                 }
             }
 
-            // Remove entries using the correct tuple key
+
             foreach (var key in keysToRemove)
             {
                 designationCounts.Remove(key);
