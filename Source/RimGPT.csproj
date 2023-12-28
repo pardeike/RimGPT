@@ -87,7 +87,7 @@
 			)
 		</PostBuildEvent>
 		<Company>Brrainz</Company>
-		<Authors>Andreas Pardeike</Authors>
+		<Authors>Andreas Pardeike, Matt McFarland</Authors>
 		<Description></Description>
 		<PackageProjectUrl>https://github.com/pardeike/RimGPT</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/pardeike/RimGPT</RepositoryUrl>
