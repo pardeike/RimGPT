@@ -533,7 +533,7 @@ namespace RimGPT
 
 			Personas.Add(message, 2);
 		}
-		
+
 		// this could be expanded with more types or different logic to determine the type
 		//
 		public static string GetPawnType(Pawn pawn)
@@ -577,14 +577,14 @@ namespace RimGPT
 		// Dictionary to keep our tasks
 		private static readonly Dictionary<string, UpdateTask> updateTasks = new()
 		{
-			{ "ResourceCount", new UpdateTask(12000, ReportResources.Task, false) },
-			{ "ColonySetting", new UpdateTask(40000, UpdateColonySetting.Task, true) },
-			{ "ColonistOpinions", new UpdateTask(RimGPTMod.Settings.reportColonistOpinionsFrequency, ReportColonistOpinions.Task, RimGPTMod.Settings.reportColonistOpinionsImmediate) },
-			{ "ColonistThoughts", new UpdateTask(RimGPTMod.Settings.reportColonistThoughtsFrequency, ReportColonistThoughts.Task, RimGPTMod.Settings.reportColonistThoughtsImmediate) },
-			{ "ColonistRoster", new UpdateTask(RimGPTMod.Settings.reportColonistRosterFrequency, UpdateColonistRoster.Task, RimGPTMod.Settings.reportColonistRosterImmediate) },
-			{ "EnergyStatus", new UpdateTask(RimGPTMod.Settings.reportEnergyFrequency, ReportEnergyStatus.Task, RimGPTMod.Settings.reportEnergyImmediate) },
-			{ "ResearchStatus", new UpdateTask(RimGPTMod.Settings.reportResearchFrequency, ReportResearchStatus.Task, RimGPTMod.Settings.reportResearchImmediate) },
-			{ "RoomStatus", new UpdateTask(RimGPTMod.Settings.reportRoomStatusFrequency, ReportRoomStatus.Task, RimGPTMod.Settings.reportRoomStatusImmediate) },
+			{ "ResourceCount", new UpdateTask(() => 12000, ReportResources.Task, false) },
+			{ "ColonySetting", new UpdateTask(() => 40000, UpdateColonySetting.Task, true) },
+			{ "ColonistOpinions", new UpdateTask(() => RimGPTMod.Settings.reportColonistOpinionsFrequency, ReportColonistOpinions.Task, RimGPTMod.Settings.reportColonistOpinionsImmediate) },
+			{ "ColonistThoughts", new UpdateTask(() => RimGPTMod.Settings.reportColonistThoughtsFrequency, ReportColonistThoughts.Task, RimGPTMod.Settings.reportColonistThoughtsImmediate) },
+			{ "ColonistRoster", new UpdateTask(() => RimGPTMod.Settings.reportColonistRosterFrequency, UpdateColonistRoster.Task, RimGPTMod.Settings.reportColonistRosterImmediate) },
+			{ "EnergyStatus", new UpdateTask(() => RimGPTMod.Settings.reportEnergyFrequency, ReportEnergyStatus.Task, RimGPTMod.Settings.reportEnergyImmediate) },
+			{ "ResearchStatus", new UpdateTask(() => RimGPTMod.Settings.reportResearchFrequency, ReportResearchStatus.Task, RimGPTMod.Settings.reportResearchImmediate) },
+			{ "RoomStatus", new UpdateTask(() => RimGPTMod.Settings.reportRoomStatusFrequency, ReportRoomStatus.Task, RimGPTMod.Settings.reportRoomStatusImmediate) },
 			// Other tasks...
 		};
 		public static void Postfix()
@@ -598,9 +598,12 @@ namespace RimGPT
 				var key = taskEntry.Key;
 				var task = taskEntry.Value;
 
-				task.UpdateTicks++;
-				if (task.UpdateTicks % task.UpdateOn == 0)
-					task.Action(map);
+				task.updateTickCounter--;
+				if (task.updateTickCounter < 0)
+				{
+					task.updateTickCounter = task.updateIntervalFunc();
+					task.action(map);
+				}
 
 				updateTasks[key] = task;
 			}

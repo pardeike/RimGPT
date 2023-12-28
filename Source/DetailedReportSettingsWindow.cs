@@ -129,7 +129,7 @@ namespace RimGPT
 				sliderListing.Begin(sliderRect);
 				sliderListing.Label(label);
 				if (enabled) {
-					sliderListing.Slider(ref frequencySetting, 250, 420000, n => $"Frequency: {FormatFrequencyLabel(n)}  ", 1, tooltip);
+					sliderListing.Slider(ref frequencySetting, 2500, 180000, n => $"Frequency: {FormatFrequencyLabel(n)}  ", 1, tooltip);
 				}				
 				sliderListing.End();
 
