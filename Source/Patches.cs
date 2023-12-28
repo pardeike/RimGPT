@@ -13,7 +13,7 @@ using Verse.AI;
 // - injuries
 // - raider ai
 // - player changes to config
-// - player designating (buttons & construction)
+// - player designating (buttons & construction)  (is it done now??)
 
 namespace RimGPT
 {
@@ -607,6 +607,63 @@ namespace RimGPT
 
 				updateTasks[key] = task;
 			}
+		}
+	}
+
+
+
+
+	// when player designates an order
+	[HarmonyPatch(typeof(DesignationManager), nameof(DesignationManager.AddDesignation))]
+	public static class DesignationManager_AddDesignation_Patch
+	{
+		public static void Postfix(Designation newDes)
+		{
+			string order = !string.IsNullOrEmpty(newDes.def.label) ? newDes.def.label :
+						   !string.IsNullOrEmpty(newDes.def.LabelCap) ? newDes.def.LabelCap :
+						   !string.IsNullOrEmpty(newDes.def.description) ? newDes.def.description :
+						   newDes.def.defName; // Fall back to defName which should always have a value.
+
+			string target = newDes.target.Thing?.LabelShort ?? "an area";
+
+			if (order == "HarvestPlant" && target.Contains("tree"))
+				order = "Chopping";
+
+			DesignationQueueManager.EnqueueDesignation("designated", order, target);
+		}
+	}
+
+	[HarmonyPatch(typeof(DesignationManager), nameof(DesignationManager.RemoveDesignation))]
+	public static class DesignationManager_RemoveDesignation_Patch
+	{
+		public static void Postfix(Designation des)
+		{
+			string order = !string.IsNullOrEmpty(des.def.label) ? des.def.label :
+						   !string.IsNullOrEmpty(des.def.LabelCap) ? des.def.LabelCap :
+						   !string.IsNullOrEmpty(des.def.description) ? des.def.description :
+						   des.def.defName; // Use the same defName as before.
+
+			string target = des.target.Thing?.LabelShort ?? "an area";
+
+			if (order == "HarvestPlant" && target.Contains("tree"))
+				order = "Chopping";
+
+			// Use a distinctive action string for cancellations.
+			DesignationQueueManager.EnqueueDesignation("Cancel", order, target);
+		}
+	}
+
+
+	// on every tick, regardless if game is paused or not
+	[HarmonyPatch(typeof(TickManager), "DoSingleTick")]
+	public static class TickManager_DoSingleTick_Patch
+	{
+		public static void Postfix()
+		{
+			var map = Find.CurrentMap;
+			if (map == null)
+				return;
+			DesignationQueueManager.Update();
 		}
 	}
 }
