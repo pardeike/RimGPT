@@ -8,13 +8,8 @@ namespace RimGPT
 {
 	public static class RecordKeeper
 	{
-		public static List<ColonistData> colonistRecords;
-		public static string colonySetting;
-
-		public static string FetchColonySetting()
-		{
-			return colonySetting ?? "Unknown as of now...";
-		}
+		public static List<ColonistData> colonistRecords = [];
+		public static string colonySetting = "Unknown as of now...";
 
 		public static void CollectColonistData(List<ColonistData> colonists)
 		{
@@ -36,6 +31,8 @@ namespace RimGPT
 
 			}).ToArray();
 		}
+
+		public static string FetchColonySetting() => colonySetting;
 
 		private static void AddBasicInformation(StringBuilder builder, ColonistData colonist)
 		{
