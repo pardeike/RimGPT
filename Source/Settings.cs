@@ -79,12 +79,37 @@ namespace RimGPT
 		public string personality;
 		public string personalityLanguage;
 
-		public bool reportColonistThoughts = true;
+		// reporting settings
+
+		// Power Insight settings
 		public bool reportEnergyStatus = true;
+		public int reportEnergyFrequency = 8000;
+		public bool reportEnergyImmediate = false;
+
+		// Research Insight settings
 		public bool reportResearchStatus = true;
-		public bool reportColonistOpinions = false;
-		public bool reportColonistRoster = false;
-		public bool reportRoomStatus = false;
+		public int reportResearchFrequency = 60000;
+		public bool reportResearchImmediate = false;
+
+		// Thoughts & Mood Insight settings
+		public bool reportColonistThoughts = true;
+		public int reportColonistThoughtsFrequency = 60000;
+		public bool reportColonistThoughtsImmediate = false;
+
+		// Interpersonal Insight settings
+		public bool reportColonistOpinions = false; // Initially disabled
+		public int reportColonistOpinionsFrequency = 60000;
+		public bool reportColonistOpinionsImmediate = false;
+
+		// Detailed Colonist Insight settings
+		public bool reportColonistRoster = false; // Initially disabled
+		public int reportColonistRosterFrequency = 60000;
+		public bool reportColonistRosterImmediate = false;
+
+		// Rooms Insight settings
+		public bool reportRoomStatus = false; // Initially disabled
+		public int reportRoomStatusFrequency = 60000;
+		public bool reportRoomStatusImmediate = false;
 		// ------------------------------------
 
 		public override void ExposeData()
@@ -103,12 +128,35 @@ namespace RimGPT
 			Scribe_Values.Look(ref speechVolume, "speechVolume", 4f);
 			Scribe_Values.Look(ref showAsText, "showAsText", true);
 
-			Scribe_Values.Look(ref reportColonistOpinions, "reportColonistOpinions", defaultValue: false);
-			Scribe_Values.Look(ref reportColonistThoughts, "reportColonistThoughts", defaultValue: true);
-			Scribe_Values.Look(ref reportColonistRoster, "reportColonistRoster", defaultValue: false); // Marked as experimental, off by default
+			// Power Insight settings
 			Scribe_Values.Look(ref reportEnergyStatus, "reportEnergyStatus", defaultValue: true);
+			Scribe_Values.Look(ref reportEnergyFrequency, "reportEnergyFrequency", defaultValue: 8000);
+			Scribe_Values.Look(ref reportEnergyImmediate, "reportEnergyImmediate", defaultValue: false);
+
+			// Research Insight settings
 			Scribe_Values.Look(ref reportResearchStatus, "reportResearchStatus", defaultValue: true);
-			Scribe_Values.Look(ref reportRoomStatus, "reportRoomStatus", defaultValue: false); // Marked as experimental, off by default
+			Scribe_Values.Look(ref reportResearchFrequency, "reportResearchFrequency", defaultValue: 60000);
+			Scribe_Values.Look(ref reportResearchImmediate, "reportResearchImmediate", defaultValue: false);
+
+			// Thoughts & Mood Insight settings
+			Scribe_Values.Look(ref reportColonistThoughts, "reportColonistThoughts", defaultValue: true);
+			Scribe_Values.Look(ref reportColonistThoughtsFrequency, "reportColonistThoughtsFrequency", defaultValue: 60000);
+			Scribe_Values.Look(ref reportColonistThoughtsImmediate, "reportColonistThoughtsImmediate", defaultValue: false);
+
+			// Interpersonal Insight settings
+			Scribe_Values.Look(ref reportColonistOpinions, "reportColonistOpinions", defaultValue: false);
+			Scribe_Values.Look(ref reportColonistOpinionsFrequency, "reportColonistOpinionsFrequency", defaultValue: 60000);
+			Scribe_Values.Look(ref reportColonistOpinionsImmediate, "reportColonistOpinionsImmediate", defaultValue: false);
+
+			// Detailed Colonist Insight settings
+			Scribe_Values.Look(ref reportColonistRoster, "reportColonistRoster", defaultValue: false);
+			Scribe_Values.Look(ref reportColonistRosterFrequency, "reportColonistRosterFrequency", defaultValue: 60000);
+			Scribe_Values.Look(ref reportColonistRosterImmediate, "reportColonistRosterImmediate", defaultValue: false);
+
+			// Rooms Insight settings
+			Scribe_Values.Look(ref reportRoomStatus, "reportRoomStatus", defaultValue: false);
+			Scribe_Values.Look(ref reportRoomStatusFrequency, "reportRoomStatusFrequency", defaultValue: 60000);
+			Scribe_Values.Look(ref reportRoomStatusImmediate, "reportRoomStatusImmediate", defaultValue: false);
 
 			// for backwards compatibility ---------------------------------------------
 			Scribe_Values.Look(ref azureVoiceLanguage, "azureVoiceLanguage", "-");

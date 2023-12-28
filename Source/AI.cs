@@ -72,27 +72,21 @@ namespace RimGPT
 			}.Join(delimiter: "");
 		}
 
-		public string GetCurrentChatGPTModel()
+		private string GetCurrentChatGPTModel()
 		{
-			// Always use primary if UseSecondaryModel is turned off
-			if (!RimGPTMod.Settings.UseSecondaryModel)
-				return RimGPTMod.Settings.ChatGPTModelPrimary;
-			// Increment the model switch counter for each call to this method.
+			if (!RimGPTMod.Settings.UseSecondaryModel) return RimGPTMod.Settings.ChatGPTModelPrimary;
+
 			modelSwitchCounter++;
 
-			// Determine which model to use based on the ModelSwitchRatio.
-			// If the counter value modulated by the ModelSwitchRatio equals 1, then switch to the secondary model.
-			// This implies that if the counter is a multiple of the ratio, we will still return the primary model,
-			// achieving the desired switching effect only after the specified number of primary model uses.
-			if ((modelSwitchCounter % RimGPTMod.Settings.ModelSwitchRatio) == 1)
-			{
+			if (modelSwitchCounter == RimGPTMod.Settings.ModelSwitchRatio) {
+				modelSwitchCounter = 0;
+
 				return RimGPTMod.Settings.ChatGPTModelSecondary;
-			}
-			else
-			{
+			} else {
 				return RimGPTMod.Settings.ChatGPTModelPrimary;
 			}
 		}
+
 
 		public async Task<string> Evaluate(Persona persona, IEnumerable<Phrase> observations)
 		{

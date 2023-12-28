@@ -574,19 +574,19 @@ namespace RimGPT
 		// Dictionary to keep our tasks
 		// format: name, task(update interval where 60000 is one in-game day), do immmediately? (helpful when loading a game)
 		//
-		public static readonly Dictionary<string, UpdateTask> updateTasks = new()
+		// Dictionary to keep our tasks
+		private static readonly Dictionary<string, UpdateTask> updateTasks = new()
 		{
-			{ "ResourceCount", new UpdateTask(12000, ReportResources.Task, true) },
-			{ "ColonistOpinions", new UpdateTask(60000, ReportColonistOpinions.Task, true) },
-			{ "ColonistThoughts", new UpdateTask(24000, ReportColonistThoughts.Task, true) },
-			{ "ColonistRoster", new UpdateTask(6000, UpdateColonistRoster.Task, true) },
+			{ "ResourceCount", new UpdateTask(12000, ReportResources.Task, false) },
 			{ "ColonySetting", new UpdateTask(40000, UpdateColonySetting.Task, true) },
-			{ "EnergyStatus", new UpdateTask(12000, ReportEnergyStatus.Task, true) },
-			{ "ResearchStatus", new UpdateTask(60000, ReportResearchStatus.Task, true) },
-			{ "RoomStatus", new UpdateTask(30000, ReportRoomStatus.Task, true ) },
-			// more tasks here ...
+			{ "ColonistOpinions", new UpdateTask(RimGPTMod.Settings.reportColonistOpinionsFrequency, ReportColonistOpinions.Task, RimGPTMod.Settings.reportColonistOpinionsImmediate) },
+			{ "ColonistThoughts", new UpdateTask(RimGPTMod.Settings.reportColonistThoughtsFrequency, ReportColonistThoughts.Task, RimGPTMod.Settings.reportColonistThoughtsImmediate) },
+			{ "ColonistRoster", new UpdateTask(RimGPTMod.Settings.reportColonistRosterFrequency, UpdateColonistRoster.Task, RimGPTMod.Settings.reportColonistRosterImmediate) },
+			{ "EnergyStatus", new UpdateTask(RimGPTMod.Settings.reportEnergyFrequency, ReportEnergyStatus.Task, RimGPTMod.Settings.reportEnergyImmediate) },
+			{ "ResearchStatus", new UpdateTask(RimGPTMod.Settings.reportResearchFrequency, ReportResearchStatus.Task, RimGPTMod.Settings.reportResearchImmediate) },
+			{ "RoomStatus", new UpdateTask(RimGPTMod.Settings.reportRoomStatusFrequency, ReportRoomStatus.Task, RimGPTMod.Settings.reportRoomStatusImmediate) },
+			// Other tasks...
 		};
-
 		public static void Postfix()
 		{
 			var map = Find.CurrentMap;
