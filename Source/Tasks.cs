@@ -1,4 +1,5 @@
-﻿using RimWorld;
+﻿using HarmonyLib;
+using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,7 +39,7 @@ namespace RimGPT
 			{
 				lastTotal = total;
 				var colonistCount = map.mapPawns.FreeColonistsCount;
-				var amountList = string.Join(", ", amounts.Select(pair => $"{pair.Value} {pair.Key.label.CapitalizeFirst()}"));
+				var amountList = amounts.Select(pair => $"{pair.Value} {pair.Key.label.CapitalizeFirst()}").Join();
 				Personas.Add($"Minor update: total {colonistCount} colonist(s), {amountList}", 2);
 			}
 		}
@@ -79,7 +80,7 @@ namespace RimGPT
 				})
 				.Where(s => string.IsNullOrEmpty(s) == false);
 
-				var thoughtsMessage = $"{colonist.Name.ToStringShort}'s recent thoughts: {string.Join(", ", formattedThoughts)}";
+				var thoughtsMessage = $"{colonist.Name.ToStringShort}'s recent thoughts: {formattedThoughts.Join()}";
 				Personas.Add(thoughtsMessage, 2);
 			}
 		}
@@ -120,7 +121,7 @@ namespace RimGPT
 
 			if (opinionMessages.Any())
 			{
-				var consolidatedMessage = string.Join("\n", opinionMessages);
+				var consolidatedMessage = opinionMessages.Join(delimiter: "\n");
 				Personas.Add(consolidatedMessage, 2);
 			}
 		}
@@ -154,7 +155,7 @@ namespace RimGPT
 			if (allPowerGeneratingBuildings.Any() == false)
 				messages.Add("Power Generators: None");
 			else
-				messages.Add("Power Generators: " + string.Join(", ", powerGeneratorBuildings));
+				messages.Add("Power Generators: " + powerGeneratorBuildings.Join());
 
 			var totalPowerNeeds = CalculateTotalPowerNeeds(map, messages);
 
@@ -175,7 +176,7 @@ namespace RimGPT
 			messages.Add(totalPowerNeedsMessage);
 			if (totalPowerNeeds > 0 || totalPowerGenerated > 0)
 				// dont talk about power if there is no power
-				Personas.Add("Energy Analysis: " + powerStatus + "\n" + string.Join(", ", messages), priority);
+				Personas.Add("Energy Analysis: " + powerStatus + "\n" + messages.Join(), priority);
 			else
 				Logger.Message("Skip Power Generation evaluation.");
 		}
@@ -206,7 +207,7 @@ namespace RimGPT
 			}
 
 			if (powerConsumptionMessages.Any())
-				messages.Add("Power Consumption: " + string.Join(", ", powerConsumptionMessages));
+				messages.Add("Power Consumption: " + powerConsumptionMessages.Join());
 
 			return totalPowerNeeds;
 		}
@@ -268,7 +269,7 @@ namespace RimGPT
 			}
 
 			if (roomsList.Count > 0)
-				Personas.Add("Notable Rooms in the Colony: " + string.Join("\n", roomsList), 1);
+				Personas.Add("Notable Rooms in the Colony: " + roomsList.Join(delimiter: "\n"), 1);
 		}
 	}
 
@@ -286,7 +287,7 @@ namespace RimGPT
 
 			// already researched projects
 			var completedResearch = DefDatabase<ResearchProjectDef>.AllDefsListForReading.Where(research => research.IsFinished);
-			var completedResearchNames = string.Join(", ", completedResearch.Select(r => r.label));
+			var completedResearchNames = completedResearch.Select(r => r.label).Join();
 			var completedMessage = $"Already Known: {completedResearchNames}";
 
 			// Now do current research
@@ -296,7 +297,7 @@ namespace RimGPT
 
 			// Now do available research that is not locked
 			var availableResearch = DefDatabase<ResearchProjectDef>.AllDefsListForReading.Where(research => !research.IsFinished && research.PrerequisitesCompleted);
-			var availableResearchNames = string.Join(", ", availableResearch.Select(r => r.label));
+			var availableResearchNames = availableResearch.Select(r => r.label).Join();
 			var availableMessage = $"Available Research: {availableResearchNames}";
 
 			Personas.Add($"Research Update: {completedMessage}\n{currentMessage}\n{availableMessage}", 1);
@@ -334,7 +335,7 @@ namespace RimGPT
 				var season = GenDate.Season((quadrumIndex * GenDate.DaysPerQuadrum + 5) * GenDate.TicksPerDay, tileLatLong);
 				quadrumsMonthsSeasons.Add($"{quadrum.Label()} is {season}");
 			}
-			var quadrumsMonthsSeasonsString = string.Join(", ", quadrumsMonthsSeasons);
+			var quadrumsMonthsSeasonsString = quadrumsMonthsSeasons.Join();
 
 			var message = $"Current Season: {seasonName}, Yearly Seasons Overview: {quadrumsMonthsSeasonsString}\n " +
 							  $"Each Quadrum lasts 15 days, and there are 4 Quadrums per year\n" +
@@ -401,7 +402,7 @@ namespace RimGPT
 			}
 
 			RecordKeeper.CollectColonistData(colonists);
-			Log.Message(string.Join("\n\n", RecordKeeper.FetchColonistData()));
+			Log.Message(RecordKeeper.FetchColonistData().Join(delimiter: "\n\n"));
 		}
 	}
 }

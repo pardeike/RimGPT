@@ -77,7 +77,7 @@ namespace RimGPT
 				{
 					var lastElementIndex = hediffDescriptions.Count - 1;
 					hediffDescriptions[lastElementIndex] = "and " + hediffDescriptions[lastElementIndex];
-					hediffsText = string.Join(", ", hediffDescriptions);
+					hediffsText = hediffDescriptions.Join();
 				}
 
 				builder.Append($" {colonist.Name} has {hediffsText}.");
