@@ -39,10 +39,7 @@ namespace RimGPT
 									 "personas. This includes game state, weather, colonist activities, messages, alerts, letters, and resources.\n\n" +
 									 "Below you can enable additional insight feeds for more in-depth analysis:";
 				listing.Label(description);
-				string restartNotification = "Changes require a restart to take effect.";
-				GUI.color = Color.yellow;
-				listing.Label(restartNotification);
-				GUI.color = Color.white;
+
 				listing.GapLine(18f);
 
 				float yOffset = listing.CurHeight; // Current Y position after the headers and description
