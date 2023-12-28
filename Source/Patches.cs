@@ -617,14 +617,15 @@ namespace RimGPT
 		// Dictionary to keep our tasks
 		private static readonly Dictionary<string, UpdateTask> updateTasks = new()
 	{
+		// name, task(update interval where 60000 is one in-game day), do immmediately? (helpful when loading a game)
 		{ "ResourceCount", new UpdateTask(12000, ReportResources.Task, true) },
 		{ "ColonistOpinions", new UpdateTask(60000, ReportColonistOpinions.Task, true) },
 		{ "ColonistThoughts", new UpdateTask(24000, ReportColonistThoughts.Task, true) },
-		{ "ColonistRoster", new UpdateTask(24000, UpdateColonistRoster.Task, true) },
-		{ "ColonySetting", new UpdateTask(60000, UpdateColonySetting.Task, true) },
-		{ "EnergyStatus", new UpdateTask(60000, ReportEnergyStatus.Task, true) },
+		{ "ColonistRoster", new UpdateTask(6000, UpdateColonistRoster.Task, true) },
+		{ "ColonySetting", new UpdateTask(40000, UpdateColonySetting.Task, true) },
+		{ "EnergyStatus", new UpdateTask(12000, ReportEnergyStatus.Task, true) },
 		{ "ResearchStatus", new UpdateTask(60000, ReportResearchStatus.Task, true) },
-		{ "RoomStatus", new UpdateTask(60000, ReportRoomStatus.Task, true ) },
+		{ "RoomStatus", new UpdateTask(30000, ReportRoomStatus.Task, true ) },
         // Other tasks...
     };
 
