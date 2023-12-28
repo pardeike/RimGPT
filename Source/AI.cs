@@ -13,9 +13,8 @@ namespace RimGPT
 {
 	public class AI
 	{
-    	private int _modelSwitchCounter = 0;
-
-		public static JsonSerializerSettings settings = new() { NullValueHandling = NullValueHandling.Ignore, MissingMemberHandling = MissingMemberHandling.Ignore};
+		public int modelSwitchCounter = 0;
+		public static JsonSerializerSettings settings = new() { NullValueHandling = NullValueHandling.Ignore, MissingMemberHandling = MissingMemberHandling.Ignore };
 
 #pragma warning disable CS0649
 		public class Input
@@ -25,8 +24,7 @@ namespace RimGPT
 			public string LastSpokenText { get; set; }
 			public List<string> CurrentGameState { get; set; }
 			public string[] ColonyRoster { get; set; }
-			public string ColonySetting {get; set; }
-
+			public string ColonySetting { get; set; }
 		}
 
 		struct Output
@@ -36,8 +34,8 @@ namespace RimGPT
 		}
 #pragma warning restore CS0649
 
-		private OpenAIApi OpenAI => new(RimGPTMod.Settings.chatGPTKey);
-		private string[] history = Array.Empty<string>();
+		public OpenAIApi OpenAI => new(RimGPTMod.Settings.chatGPTKey);
+		public string[] history = Array.Empty<string>();
 
 		public const string defaultPersonality = "You are a commentator watching the player play the popular game, Rimworld.";
 
@@ -52,7 +50,7 @@ namespace RimGPT
 				CurrentGameState = ["Event1", "Event2", "Event3"],
 				PreviousHistoricalKeyEvents = ["OldEvent1", "OldEvent2", "OldEvent3"],
 				LastSpokenText = "<Previous Output>",
-				ColonyRoster =  ["Colonist 1", "Colonist 2", "Colonist 3"],
+				ColonyRoster = ["Colonist 1", "Colonist 2", "Colonist 3"],
 				ColonySetting = "<A description about the colony and setting>"
 			}, settings);
 			var exampleOutput = JsonConvert.SerializeObject(new Output
@@ -62,30 +60,31 @@ namespace RimGPT
 			}, settings);
 
 			return new List<string>
-			{	$"You are {currentPersona.name}\n",
+			{  $"You are {currentPersona.name}\n",
 				$"The narrative needs to fit within the context of Rimworld, your responses should reflect the game's events and setting appropriately..\n",
 				$"Your input comes from the game, and will be json like this: {exampleInput}\n",
 				$"Your output must only be in json like this: {exampleOutput}\n",
 				$"Limit ResponseText to no more than {currentPersona.phraseMaxWordCount} words.\n",
 				$"When constructing the 'ResponseText', consider vocal clarity and pacing so that it is easily understandable when spoken by Microsoft Azure Speech Services.\n",
 				$"Limit NewHistoricalKeyEvents to no more than {currentPersona.historyMaxWordCount} words.\n",
-				$"{currentPersona.personality}\n",				
+				$"{currentPersona.personality}\n",
 				$"Remember: your output is in the format: {{\"ResponseText\":\"Your narrative response goes here, within the word limit.\",\"NewHistoricalKeyEvents\":[\"...\",\"...\"]}}",
 			}.Join(delimiter: "");
 		}
 
-		private string GetCurrentChatGPTModel()
+		public string GetCurrentChatGPTModel()
 		{
 			// Always use primary if UseSecondaryModel is turned off
-			if (!RimGPTMod.Settings.UseSecondaryModel) return RimGPTMod.Settings.ChatGPTModelPrimary;
+			if (!RimGPTMod.Settings.UseSecondaryModel)
+				return RimGPTMod.Settings.ChatGPTModelPrimary;
 			// Increment the model switch counter for each call to this method.
-			_modelSwitchCounter++;
+			modelSwitchCounter++;
 
 			// Determine which model to use based on the ModelSwitchRatio.
 			// If the counter value modulated by the ModelSwitchRatio equals 1, then switch to the secondary model.
 			// This implies that if the counter is a multiple of the ratio, we will still return the primary model,
 			// achieving the desired switching effect only after the specified number of primary model uses.
-			if ((_modelSwitchCounter % RimGPTMod.Settings.ModelSwitchRatio) == 1)
+			if ((modelSwitchCounter % RimGPTMod.Settings.ModelSwitchRatio) == 1)
 			{
 				return RimGPTMod.Settings.ChatGPTModelSecondary;
 			}
@@ -97,7 +96,7 @@ namespace RimGPT
 
 		public async Task<string> Evaluate(Persona persona, IEnumerable<Phrase> observations)
 		{
-			
+
 			var gameInput = new Input
 			{
 				CurrentGameState = observations.Select(o => o.text).ToList(),
@@ -194,7 +193,7 @@ namespace RimGPT
 			string requestError = null;
 			var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
 			{
-				Model =  GetCurrentChatGPTModel(),
+				Model = GetCurrentChatGPTModel(),
 				Messages =
 				[
 					new ChatMessage() { Role = "system", Content = "You are a creative poet answering in 12 words or less." },

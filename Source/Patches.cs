@@ -1,12 +1,10 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using RimWorld.Planet;
-using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using UnityEngine;
 using Verse;
 using Verse.AI;
@@ -463,17 +461,13 @@ namespace RimGPT
 	{
 		public static void SetPriority(Pawn_WorkSettings instance, WorkTypeDef w, int priority)
 		{
-			// Capture the old priority before setting the new one
-			int oldPriority = instance.GetPriority(w);
-
-			// Now set the new priority
+			var oldPriority = instance.GetPriority(w);
 			instance.SetPriority(w, priority);
 
 			var workType = w.labelShort.CapitalizeFirst();
 			var colonistName = instance.pawn.NameAndType();
 
-			// Create a status message based on the new priority
-			string importanceMessage = priority switch
+			var importanceMessage = priority switch
 			{
 				1 => "most important",
 				2 => "more important",
@@ -481,26 +475,25 @@ namespace RimGPT
 				>= 4 => "least important",
 				_ => "of undefined importance",
 			};
+
 			string actionMessage;
 
-			// Determine if the job was just added or removed
 			if (priority == 0 && oldPriority > 0)
 			{
-				// If new priority is 0 and old priority was greater than 0, the job was removed.
+				// the job was removed.
 				actionMessage = $"The priority for {colonistName} for {workType} was removed.";
 			}
 			else if (oldPriority == 0 && priority > 0)
 			{
-				// If old priority was 0 and new priority is greater than 0, the job was added.
+				// the job was added.
 				actionMessage = $"The priority for {colonistName} for {workType} became {importanceMessage}.";
 			}
 			else
 			{
-				// Otherwise, the priority level changed.
+				// the priority level changed.
 				actionMessage = $"The priority for {colonistName} for {workType} became {importanceMessage}.";
 			}
 
-			// Finally, add the detailed message with the appropriate priority change.
 			Personas.Add($"{actionMessage} (Priority: {priority})", 2);
 		}
 
@@ -513,48 +506,41 @@ namespace RimGPT
 	}
 
 	// send colonist interactions
-	[HarmonyPatch(typeof(Pawn_InteractionsTracker))]
+	//
+	[HarmonyPatch(typeof(Pawn_InteractionsTracker), nameof(Pawn_InteractionsTracker.TryInteractWith))]
+	[HarmonyPatch([typeof(Pawn), typeof(InteractionDef)])]
 	public static class Pawn_InteractionsTracker_TryInteractWith_Patch
 	{
-		[HarmonyPatch("TryInteractWith", new Type[] { typeof(Pawn), typeof(InteractionDef) })]
 		public static void Postfix(Pawn recipient, Pawn ___pawn, bool __result, InteractionDef intDef)
 		{
-			// Ensure the interaction was successful
 			if (!__result)
 				return;
 
-			// At least one pawn should be of the player's faction
+			// at least one pawn should be of the player's faction
 			if (___pawn.Faction != Faction.OfPlayer && recipient.Faction != Faction.OfPlayer)
 				return;
 
-			var map = Find.CurrentMap;
-			if (map == null)
-				return;
+			var opinionOfRecipient = ___pawn.relations.OpinionOf(recipient);
+			var opinionOfPawn = recipient.relations.OpinionOf(___pawn);
 
-			int opinionOfRecipient = ___pawn.relations.OpinionOf(recipient);
-			int opinionOfPawn = recipient.relations.OpinionOf(___pawn);
-
-			// Construct a message that includes the type and name of each pawn
-			string pawnType = GetPawnType(___pawn);
-			string recipientType = GetPawnType(recipient);
-
-			string message = $"{pawnType} '{___pawn.Name.ToStringShort}' interacted with {recipientType} '{recipient.Name.ToStringShort}'. " +
+			// construct a message that includes the type and name of each pawn
+			var pawnType = GetPawnType(___pawn);
+			var recipientType = GetPawnType(recipient);
+			var message = $"{pawnType} '{___pawn.Name.ToStringShort}' interacted with {recipientType} '{recipient.Name.ToStringShort}'. " +
 							$"Opinions --- {___pawn.Name.ToStringShort}'s opinion of {recipient.Name.ToStringShort}: {opinionOfRecipient}, " +
 							$"{recipient.Name.ToStringShort}'s opinion of {___pawn.Name.ToStringShort}: {opinionOfPawn}. " +
 							$"Interaction: '{intDef?.label ?? "something"}' initiated by {___pawn.Name.ToStringShort}.";
 
 			Personas.Add(message, 2);
 		}
-
-		private static string GetPawnType(Pawn pawn)
+		
+		// this could be expanded with more types or different logic to determine the type
+		//
+		public static string GetPawnType(Pawn pawn)
 		{
-			if (pawn.IsColonist)
-				return "colonist";
-			if (pawn.IsPrisoner)
-				return "prisoner";
-			if (pawn.IsSlave)
-				return "slave";
-			// This could be expanded with more types or different logic to determine the type.
+			if (pawn.IsColonist) return "colonist";
+			if (pawn.IsPrisoner) return "prisoner";
+			if (pawn.IsSlave) return "slave";
 			return "visitor";
 		}
 	}
@@ -580,589 +566,44 @@ namespace RimGPT
 		}
 	}
 
-
-	// Anything that requires the map to be defined that we update on periodically
+	// anything that requires the map to be defined that we update on periodically
+	//
 	[HarmonyPatch(typeof(UIRoot), nameof(UIRoot.UIRootUpdate))]
-	public static class UIRoot_UIRootUpdate_InGamePeriodicUpdates_Patch
+	public static partial class GenerallPeriodicMapUpdates_Patch
 	{
-		private struct UpdateTask
-		{
-			public int UpdateTicks;
-			public int UpdateOn;
-			public Action<Map> Action;
-
-			/// <summary>
-			/// Initializes a new instance of the UpdateTask which allows for scheduling a recurring action.
-			/// </summary>
-			/// <param name="updateOn">The interval in ticks after which the action should be invoked.</param>
-			/// <param name="action">The action to execute at each scheduled interval.</param>
-			/// <param name="startImmediately">
-			/// If set to true, the action will be executed as soon as the task starts. Otherwise,
-			/// the first execution will occur after the specified interval.
-			/// </param>
-			public UpdateTask(int updateOn, Action<Map> action, bool startImmediately)
-			{
-				// Set 'UpdateTicks' to -1 to ensure the action is executed on the first tick if 'startImmediately' is true;
-				// otherwise, set it to 0 to wait for the first interval to pass before execution.
-				UpdateTicks = startImmediately ? -1 : 0;
-
-				// Define the number of ticks between consecutive executions of the action.
-				UpdateOn = updateOn;
-
-				// Store the action to be executed on each update.
-				Action = action;
-			}
-		}
-
 		// Dictionary to keep our tasks
-		private static readonly Dictionary<string, UpdateTask> updateTasks = new()
-	{
-		// name, task(update interval where 60000 is one in-game day), do immmediately? (helpful when loading a game)
-		{ "ResourceCount", new UpdateTask(12000, ReportResources.Task, true) },
-		{ "ColonistOpinions", new UpdateTask(60000, ReportColonistOpinions.Task, true) },
-		{ "ColonistThoughts", new UpdateTask(24000, ReportColonistThoughts.Task, true) },
-		{ "ColonistRoster", new UpdateTask(6000, UpdateColonistRoster.Task, true) },
-		{ "ColonySetting", new UpdateTask(40000, UpdateColonySetting.Task, true) },
-		{ "EnergyStatus", new UpdateTask(12000, ReportEnergyStatus.Task, true) },
-		{ "ResearchStatus", new UpdateTask(60000, ReportResearchStatus.Task, true) },
-		{ "RoomStatus", new UpdateTask(30000, ReportRoomStatus.Task, true ) },
-        // Other tasks...
-    };
+		// format: name, task(update interval where 60000 is one in-game day), do immmediately? (helpful when loading a game)
+		//
+		public static readonly Dictionary<string, UpdateTask> updateTasks = new()
+		{
+			{ "ResourceCount", new UpdateTask(12000, ReportResources.Task, true) },
+			{ "ColonistOpinions", new UpdateTask(60000, ReportColonistOpinions.Task, true) },
+			{ "ColonistThoughts", new UpdateTask(24000, ReportColonistThoughts.Task, true) },
+			{ "ColonistRoster", new UpdateTask(6000, UpdateColonistRoster.Task, true) },
+			{ "ColonySetting", new UpdateTask(40000, UpdateColonySetting.Task, true) },
+			{ "EnergyStatus", new UpdateTask(12000, ReportEnergyStatus.Task, true) },
+			{ "ResearchStatus", new UpdateTask(60000, ReportResearchStatus.Task, true) },
+			{ "RoomStatus", new UpdateTask(30000, ReportRoomStatus.Task, true ) },
+			// more tasks here ...
+		};
 
 		public static void Postfix()
 		{
 			var map = Find.CurrentMap;
-			if (map == null) return;
+			if (map == null)
+				return;
 
 			foreach (var taskEntry in updateTasks.ToList())
 			{
 				var key = taskEntry.Key;
 				var task = taskEntry.Value;
+
 				task.UpdateTicks++;
-
 				if (task.UpdateTicks % task.UpdateOn == 0)
-				{
-					task.Action(map); // Perform the action.
-				}
+					task.Action(map);
 
-				updateTasks[key] = task; // Update the task in the dictionary.
+				updateTasks[key] = task;
 			}
 		}
 	}
-
-	public interface IPeriodicTask
-	{
-		void Task(Map map);
-	}
-
-	// Reports on colonist thoughts and mood, used as a periodic report to keep AI informed.
-	public static class ReportColonistThoughts
-	{
-
-		public static void Task(Map map)
-		{
-			if (!RimGPTMod.Settings.reportColonistThoughts) return;
-
-			foreach (Pawn colonist in map.mapPawns.FreeColonists)
-			{
-				Dictionary<string, (int Count, float MoodEffect)> thoughtCounts = new Dictionary<string, (int, float)>();
-
-				foreach (Thought_Memory thought in colonist.needs.mood.thoughts.memories.Memories)
-				{
-					string label = thought.LabelCap;
-					float moodEffect = thought.MoodOffset();
-
-					if (thoughtCounts.ContainsKey(label))
-					{
-						thoughtCounts[label] = (thoughtCounts[label].Count + 1, thoughtCounts[label].MoodEffect + moodEffect);
-					}
-					else
-					{
-						thoughtCounts.Add(label, (1, moodEffect));
-					}
-				}
-
-				// Create a single line summary of thoughts for each colonist, mentioning mood effects only if they are non-zero.
-				var formattedThoughts = thoughtCounts.Select(kvp =>
-				{
-					string plural = kvp.Value.Count > 1 ? $"(x{kvp.Value.Count})" : "";
-					string moodEffectDescription = "";
-
-					if (kvp.Value.MoodEffect != 0.0f)
-					{
-						moodEffectDescription = $"{(kvp.Value.MoodEffect > 0 ? " (improving mood by " : " (decreasing mood by ")}{Math.Abs(kvp.Value.MoodEffect)})";
-					}
-
-					return $"{kvp.Key}{plural}{moodEffectDescription}";
-				}).Where(s => !string.IsNullOrEmpty(s)); // Filter out empty strings.
-
-				string thoughtsMessage = $"{colonist.Name.ToStringShort}'s recent thoughts: {string.Join(", ", formattedThoughts)}";
-
-				Personas.Add(thoughtsMessage, 2);
-			}
-
-		}
-	}
-
-	// Report colonists opinions of each other, used as a periodic report of colonists opinions of eachother.
-	public static class ReportColonistOpinions
-	{
-		private static Dictionary<(Pawn, Pawn), int> lastOpinions = new Dictionary<(Pawn, Pawn), int>();
-
-		public static void Task(Map map)
-		{
-
-			if (!RimGPTMod.Settings.reportColonistOpinions) return;
-
-			List<string> opinionMessages = new List<string>();
-			var freeColonistsCopy = map.mapPawns.FreeColonists.ToList();
-
-			foreach (var colonist in freeColonistsCopy)
-			{
-				foreach (var otherColonist in freeColonistsCopy)
-				{
-					if (colonist != otherColonist)
-					{
-						int currentOpinion = colonist.relations.OpinionOf(otherColonist);
-
-						if (lastOpinions.TryGetValue((colonist, otherColonist), out int previousOpinion))
-						{
-							string trend = currentOpinion == previousOpinion ? "stayed the same" :
-										   currentOpinion > previousOpinion ? "improved" : "worsened";
-
-							opinionMessages.Add($"{colonist.Name} current opinion of {otherColonist.Name}: {currentOpinion} (has {trend} since yesterday)");
-						}
-						else
-						{
-							opinionMessages.Add($"{colonist.Name} current opinion of {otherColonist.Name}: {currentOpinion}");
-						}
-
-						lastOpinions[(colonist, otherColonist)] = currentOpinion;
-					}
-				}
-			}
-
-			if (opinionMessages.Any())
-			{
-				string consolidatedMessage = string.Join("\n", opinionMessages);
-				Personas.Add(consolidatedMessage, 2);
-			}
-
-
-		}
-	}
-
-	// Reports on colony resources
-	public static class ReportResources
-	{
-		private static int lastTotal = -1;
-		private static readonly HashSet<ThingCategoryDef> thingCategories = new()
-	{
-		ThingCategoryDefOf.Foods,
-		ThingCategoryDefOf.FoodMeals,
-		ThingCategoryDefOf.Medicine,
-		ThingCategoryDefOf.StoneBlocks,
-		ThingCategoryDefOf.Manufactured,
-		ThingCategoryDefOf.ResourcesRaw
-	};
-
-		public static bool Reportable(KeyValuePair<ThingDef, int> pair)
-		{
-			if (pair.Value == 0) return false;
-			var hashSet = pair.Key.thingCategories?.ToHashSet() ?? new HashSet<ThingCategoryDef>();
-			return hashSet.Intersect(thingCategories).Any();
-		}
-
-		public static void Task(Map map)
-		{
-
-			// Ensure that map is used instead of Find.CurrentMap for consistency and reliability.
-			var amounts = map.resourceCounter.AllCountedAmounts.Where(Reportable).ToArray();
-			var total = amounts.Sum(pair => pair.Value);
-
-			if (amounts.Any() && total != lastTotal)
-			{
-				lastTotal = total;
-				var colonistCount = map.mapPawns.FreeColonistsCount;
-				var amountList = string.Join(", ", amounts.Select(pair => $"{pair.Value} {pair.Key.label.CapitalizeFirst()}"));
-				Personas.Add($"Minor update: total {colonistCount} colonist(s), {amountList}", 2);
-			}
-		}
-	}
-
-	// Reports on colony Energy status, is skipped if the colony does not have any energy buildings or needs.
-	public static class ReportEnergyStatus
-	{
-		public static void Task(Map map)
-		{
-
-			// return if disabled
-			if (!RimGPTMod.Settings.reportEnergyStatus) return;
-			List<string> messages = new List<string>();
-
-			// Power generation calculations
-			float totalPowerGenerated = 0f;
-			bool hasPowerGenerators = false;
-
-			List<string> powerGeneratorBuildings = new List<string>();
-			var allPowerGeneratingBuildings = map.listerBuildings.allBuildingsColonist
-				.Where(building => building.GetComp<CompPowerPlant>() != null);
-
-			foreach (Building powerPlant in allPowerGeneratingBuildings)
-			{
-				CompPowerPlant compPowerPlant = powerPlant.GetComp<CompPowerPlant>();
-				totalPowerGenerated += compPowerPlant.PowerOn ? compPowerPlant.PowerOutput : 0f;
-				string message = $"{powerPlant.Label} (Power Output: {compPowerPlant.PowerOutput})";
-				powerGeneratorBuildings.Add(message);
-			}
-
-			hasPowerGenerators = allPowerGeneratingBuildings.Any();
-
-			if (!hasPowerGenerators)
-			{
-				messages.Add("Power Generators: None");
-			}
-			else
-			{
-				messages.Add("Power Generators: " + string.Join(", ", powerGeneratorBuildings));
-			}
-
-
-			float totalPowerNeeds = CalculateTotalPowerNeeds(map, messages);
-
-			var powerDelta = totalPowerGenerated - totalPowerNeeds;
-			(string powerStatus, int priority) = DeterminePowerStatus(powerDelta);
-
-			var allBuildingsWithPowerThatUseFuelComp = map.listerBuildings.allBuildingsColonist
-				// to avoid getting stuff like braziers and torches, we want to make sure the refuelable generates power.
-				.Where(building => building.GetComp<CompRefuelable>() != null && building.GetComp<CompPowerPlant>() != null).ToList();
-
-			if (allBuildingsWithPowerThatUseFuelComp.Count > 0 && powerDelta > 500)
-			{
-				powerStatus = "Excessive surplus, fuel is being wasted.";
-				priority = 3;
-			}
-
-			string totalPowerNeedsMessage = $"Total Power needs: {totalPowerNeeds}, Total Power Generated: {totalPowerGenerated}";
-			messages.Add(totalPowerNeedsMessage);
-			if (totalPowerNeeds > 0 || totalPowerGenerated > 0)
-			{
-				// dont talk about power if there is no power
-				Personas.Add("Energy Analysis: " + powerStatus + "\n" + string.Join(", ", messages), priority);
-			}
-			else
-			{
-				Logger.Message("Skip Power Generation evaluation.");
-			}
-
-		}
-
-
-
-		private static float CalculateTotalPowerNeeds(Map map, List<string> messages)
-		{
-			float totalPowerNeeds = 0f;
-			var allBuildingsWithPowerComp = map.listerBuildings.allBuildingsColonist
-				.Where(building =>
-				{
-					var compPowerTrader = building.GetComp<CompPowerTrader>();
-					return compPowerTrader != null && compPowerTrader.PowerOutput < 0;
-				}).ToList();
-
-			// Create a list to hold power consumption messages for each building
-			List<string> powerConsumptionMessages = new List<string>();
-
-			foreach (Building building in allBuildingsWithPowerComp)
-			{
-				CompPowerTrader compPowerTrader = building.GetComp<CompPowerTrader>();
-				float powerConsumed = compPowerTrader.PowerOn ? compPowerTrader.Props.basePowerConsumption : 0f;
-				totalPowerNeeds += powerConsumed;
-
-				// Add each building's power consumption details to the list
-				string message = $"{building.Label} (Power Consumption: {powerConsumed})";
-				powerConsumptionMessages.Add(message);
-			}
-
-			// Add the list of power consumption messages to the main messages list
-			if (powerConsumptionMessages.Any())
-			{
-				messages.Add("Power Consumption: " + string.Join(", ", powerConsumptionMessages));
-			}
-
-			return totalPowerNeeds;
-		}
-		private static (string, int) DeterminePowerStatus(float powerDelta)
-		{
-			string powerStatus;
-			int priority;
-			if (powerDelta < 0)
-			{
-				powerStatus = "Failure";
-				priority = 3;
-			}
-			else if (powerDelta < 200)
-			{
-				powerStatus = "Unstable (Brownouts possible)";
-				priority = 3;
-			}
-			else if (powerDelta > 700)
-			{
-				powerStatus = "Surplus";
-				priority = 4;
-			}
-			else
-			{
-				powerStatus = "Stable";
-				priority = 4;
-			}
-			return (powerStatus, priority);
-		}
-
-	}
-
-	// Reports on notable rooms, avoiding unlabeled or undefined rooms, or rooms simply defined as "room"
-	public static class ReportRoomStatus
-	{
-		public static void Task(Map map)
-		{
-
-			if (!RimGPTMod.Settings.reportRoomStatus) return;
-			if (map.areaManager == null) return;
-			if (map.ParentFaction != Faction.OfPlayer) return;
-
-			Area_Home homeArea = map.areaManager.Home;
-
-			var allRooms = map.regionGrid.allRooms;
-			var roomsList = new List<string>();
-			foreach (Room room in allRooms)
-			{
-				string roleLabel = room.Role?.label ?? "Undefined";
-				// This prevents reporting any room that is not properly named - such as single doors or hallways.
-				if (roleLabel == "Undefined" || roleLabel == "none" || roleLabel == "room")
-				{
-					continue;
-				}
-				foreach (IntVec3 cell in room.Cells)
-				{
-
-					if (homeArea[cell])
-					{
-
-
-						var statsStringBuilder = new System.Text.StringBuilder();
-						if (room.stats != null)
-						{
-							foreach (var statPair in room.stats)
-							{
-								if (statPair.Key != null)
-									statsStringBuilder.Append($"{statPair.Key.label} is {statPair.Value}, ");
-							}
-						}
-
-						string statsString = statsStringBuilder.ToString().TrimEnd(',', ' ');
-						// how to add the final and conjunction at the end
-
-						string article = "A ";
-
-						// Check if 'roleLabel' contains "'s" anywhere to indicate possessive form
-						if (roleLabel.IndexOf("'s", StringComparison.OrdinalIgnoreCase) != -1)
-						{
-							// It is possessive, so no article needed
-							article = "";
-						}
-
-						string sentenceEnding = ", and ";
-						string constructedSentence = $"{article}{roleLabel}, its " +
-													statsString.TrimEnd(sentenceEnding.ToCharArray()) + ".";
-
-						roomsList.Add(constructedSentence);
-
-						break; // We have our information, so we can exit the loop.
-					}
-				}
-			}
-
-
-			if (roomsList.Count > 0)
-			{
-				string message = String.Join("\n", roomsList); // Joins the room names with a comma separator
-				Personas.Add("Notable Rooms in the Colony: " + message, 1);
-			}
-		}
-	}
-
-	// Reports on current Research, helping AI understand research context in the game
-	public static class ReportResearchStatus
-	{
-		public static void Task(Map map)
-		{
-			if (!RimGPTMod.Settings.reportResearchStatus) return;
-			if (!map.IsPlayerHome) return;
-
-			// already researched projects
-			var completedResearch = DefDatabase<ResearchProjectDef>.AllDefsListForReading
-										.Where(research => research.IsFinished);
-			string completedResearchNames = string.Join(", ", completedResearch.Select(r => r.label));
-			string completedMessage = $"Already Known: {completedResearchNames}";
-
-			// Now do current research
-			ResearchProjectDef currentResearch = Find.ResearchManager.currentProj;
-			string researchInProgress = currentResearch != null ? currentResearch.label : "None";
-			string currentMessage = $"Current Research: {researchInProgress}";
-
-			// Now do available research that is not locked
-			var availableResearch = DefDatabase<ResearchProjectDef>.AllDefsListForReading
-										.Where(research => !research.IsFinished && research.PrerequisitesCompleted);
-			string availableResearchNames = string.Join(", ", availableResearch.Select(r => r.label));
-			string availableMessage = $"Available Research: {availableResearchNames}";
-
-			// Aggregate all messages into one formatted string
-			string statusUpdate = $"{completedMessage}\n{currentMessage}\n{availableMessage}";
-
-			// Call Personas.Add method (assuming it exists)
-			Personas.Add("Research Update: " + statusUpdate, 1);
-
-		}
-	}
-
-	// This updates the Colony Setting, including weather, date, name of colony, etc.
-	// This is used to update the record keeper, which in turn is used by the AI as part of game state.
-	public static class UpdateColonySetting
-	{
-
-		public static void Task(Map map)
-		{
-
-			WeatherDef currentWeather = map.weatherManager.curWeather;
-			Season currentSeason = GenLocalDate.Season(map);
-			string seasonName = currentSeason.LabelCap();
-			int tileIndex = map.Tile; // Assuming 'map' is a Map object representing your current game map.
-			Vector2 tileLatLong = Find.WorldGrid.LongLatOf(tileIndex);
-			long currentTicks = Find.TickManager.TicksAbs;
-			string fullDateString = GenDate.DateFullStringAt(currentTicks, tileLatLong);
-			// Calculate the age of the colony in years, quadrums, and days
-			int totalDays = GenDate.DaysPassed;
-			int years = totalDays / 60; // Assuming 60 days per year by default
-			int quadrums = (totalDays % 60) / 15; // Assuming 15 days per quadrums
-			int days = (totalDays % 60) % 15; // Remaining days after accounting for years and quadrums
-
-			string settlementName = map.Parent.LabelCap;
-
-			// Get the biome's name and description
-			BiomeDef biome = map.Biome;
-			string biomeName = biome.LabelCap;
-			string biomeDescription = biome.description;
-
-			// Retrieve the season names for each quadrum
-
-			// Retrieve the month names and season names for each quadrum
-			List<string> quadrumsMonthsSeasons = new List<string>();
-			for (int quadrumIndex = 0; quadrumIndex < 4; quadrumIndex++)
-			{
-				Quadrum quadrum = (Quadrum)quadrumIndex; // Explicitly cast int to Quadrum (which is actually a byte underneath)
-				string quadrumLabel = quadrum.Label();   // Use the Label() extension method already provided in RimWorld
-
-				// Convert quadrumIndex to byte since Quadrum is a byte and calculate ticks for the season
-				Season season = GenDate.Season((long)(((byte)quadrum * 15 + 5) * GenDate.TicksPerDay), tileLatLong);
-
-				// Assuming there's a label property or method like 'Label' or 'LabelCap' on season, use it here
-				string seasonLabel = season.ToString(); // Replace this with actual method/property to get season name if necessary
-
-				quadrumsMonthsSeasons.Add($"{quadrumLabel} is {seasonLabel}");
-			}
-			string quadrumsMonthsSeasonsString = string.Join(", ", quadrumsMonthsSeasons);
-
-
-			string message = $"Current Season: {seasonName}, Yearly Seasons Overview: {quadrumsMonthsSeasonsString}\n " +
-							$"Each Quadrum lasts 15 days, and there are 4 Quadrums per year\n" +
-							$"Today is: {fullDateString}, The current Settlement name is: {settlementName}\n " +
-							$"Our colony is {years} years {quadrums} quadrums {days} days old\n " +
-							$"Current weather: {currentWeather.LabelCap}\n " +
-							$"Temperature: {map.mapTemperature.OutdoorTemp:0.#}°C\n " +
-							$"Area: {biomeName}, {biomeDescription}";
-			Personas.Add(message, 3);
-		}
-
-	}
-
-	// This updates the List of all colonists and their skills and does not send a message to AI, rather it updates
-	// the record keeper, which in turn is used by the AI as part of the game state.
-	public static class UpdateColonistRoster
-	{
-		public static void Task(Map map)
-		{
-			if (!RimGPTMod.Settings.reportColonistRoster) return;
-
-			var colonists = new List<RecordKeeper.ColonistData>();
-
-			foreach (Pawn colonist in map.mapPawns.FreeColonists)
-			{
-				var data = new RecordKeeper.ColonistData
-				{
-					Name = colonist.Name.ToStringFull,
-					Gender = colonist.gender.ToString(),
-					Age = colonist.ageTracker.AgeBiologicalYears,
-					Mood = colonist.needs.mood?.CurLevelPercentage.ToStringPercent() ?? "Unknown",
-					Skills = new Dictionary<string, RecordKeeper.SkillData>(),
-					Traits = new List<string>(),
-					// Adding Health information
-					Health = new List<RecordKeeper.HediffData>()
-				};
-
-				foreach (SkillRecord skill in colonist.skills.skills)
-				{
-					data.Skills.Add(skill.def.LabelCap, new RecordKeeper.SkillData
-					{
-						Level = skill.Level,
-						XpSinceLastLevel = skill.xpSinceLastLevel,
-						XpRequiredForLevelUp = skill.XpRequiredForLevelUp
-					});
-				}
-
-				foreach (Trait trait in colonist.story.traits.allTraits)
-				{
-					data.Traits.Add(trait.Label);
-				}
-
-				// Include health information by iterating through Hediffs
-				foreach (Hediff hediff in colonist.health.hediffSet.hediffs)
-				{
-					var hediffData = new RecordKeeper.HediffData
-					{
-						Label = hediff.Label,
-						Severity = hediff.Severity,
-						IsPermanent = hediff.IsPermanent(),
-						Immunity = null,
-						Location = hediff.Part?.Label,
-						Bleeding = hediff.Bleeding, // Indicates whether the Hediff is currently causing bleeding.
-					};
-
-					if (hediff is HediffWithComps hediffWithComps)
-					{
-						var immunityComp = hediffWithComps.TryGetComp<HediffComp_Immunizable>();
-						if (immunityComp != null)
-						{
-							hediffData.Immunity = immunityComp.Immunity;
-						}
-					}
-
-					data.Health.Add(hediffData);
-				}
-
-				colonists.Add(data);
-			}
-
-			// Save the data to memory in RecordKeeper
-			RecordKeeper.CollectColonistData(colonists);
-			string[] colonistDataArray = RecordKeeper.FetchColonistData();
-			string colonistDataString = String.Join("\n\n", colonistDataArray);
-			Log.Message(colonistDataString);
-		}
-
-	}
-
-
 }
-
-
-

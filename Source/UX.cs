@@ -112,7 +112,7 @@ namespace RimGPT
 
 		public static string TextAreaScrollable(Rect rect, string text, ref Vector2 scrollbarPosition)
 		{
-			Rect rect2 = new Rect(0f, 0f, rect.width - 16f, Mathf.Max(Text.CalcHeight(text, rect.width) + 10f, rect.height));
+			var rect2 = new Rect(0f, 0f, rect.width - 16f, Mathf.Max(Text.CalcHeight(text, rect.width) + 10f, rect.height));
 			Widgets.BeginScrollView(rect, ref scrollbarPosition, rect2, true);
 			var style = Text.textAreaStyles[1];
 			style.padding = new RectOffset(8, 8, 8, 8);

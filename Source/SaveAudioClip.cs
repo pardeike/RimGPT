@@ -54,7 +54,7 @@ public static class SaveAudioClip
 	{
 		var fileStream = new FileStream(filepath, FileMode.Create);
 		var emptyByte = new byte();
-		for (int i = 0; i < HEADER_SIZE; i++)
+		for (var i = 0; i < HEADER_SIZE; i++)
 			fileStream.WriteByte(emptyByte);
 		return fileStream;
 	}
@@ -65,8 +65,8 @@ public static class SaveAudioClip
 		_ = clip.GetData(samples, 0);
 		var intData = new Int16[samples.Length];
 		var bytesData = new Byte[samples.Length * 2];
-		int rescaleFactor = 32767; //to convert float to Int16
-		for (int i = 0; i < samples.Length; i++)
+		var rescaleFactor = 32767; //to convert float to Int16
+		for (var i = 0; i < samples.Length; i++)
 		{
 			intData[i] = (short)(samples[i] * rescaleFactor);
 			var byteArr = BitConverter.GetBytes(intData[i]);

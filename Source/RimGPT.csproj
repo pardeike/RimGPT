@@ -1,19 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<ProjectGuid>{1C3E372A-16D1-47D7-865E-BAB22551B035}</ProjectGuid>
-		<RootNamespace>RimGPT</RootNamespace>
-		<AssemblyName>RimGPT</AssemblyName>
+		<RootNamespace>$(ModFileName)</RootNamespace>
+		<AssemblyName>$(ModFileName)</AssemblyName>
 		<TargetFramework>net472</TargetFramework>
 		<LangVersion>latest</LangVersion>
 		<PlatformTarget>x64</PlatformTarget>
 		<OutputPath>..\Assemblies\</OutputPath>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<Version>$(ModVersion)</Version>
+		<AssemblyVersion>$(ModVersion)</AssemblyVersion>
+		<FileVersion>$(ModVersion)</FileVersion>
+		<PackageVersion>$(ModVersion)</PackageVersion>
+		<InformationalVersion>$(ModVersion)</InformationalVersion>
+		<Company>Brrainz</Company>
+		<Authors>Andreas Pardeike, Matt McFarland</Authors>
 		<Copyright>Copyright Andreas Pardeike</Copyright>
-		<Configurations>Release;Debug</Configurations>
-		<Version>2.0.2.0</Version>
-		<ReleaseVersion>2.0.2</ReleaseVersion>
+		<PackageProjectUrl>$(Repository)</PackageProjectUrl>
+		<RepositoryUrl>$(Repository)</RepositoryUrl>
+		<Product>$(ModName)</Product>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -32,6 +38,21 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<Content Include="..\Directory.Build.props">
+			<Link>%(Filename)%(Extension)</Link>
+		</Content>
+		<Content Include="..\Defs\**\*.xml">
+			<Link>Defs\%(RecursiveDir)%(Filename)%(Extension)</Link>
+		</Content>
+		<Content Include="..\Languages\**\Keyed\*.xml">
+			<Link>Languages\%(RecursiveDir)%(FileName)%(Extension)</Link>
+		</Content>
+		<Content Include="..\Languages\**\DefInjected\**\*.xml">
+			<Link>Languages\%(RecursiveDir)%(FileName)%(Extension)</Link>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Brrainz.RimWorld.CrossPromotion" Version="1.1.1" />
 		<PackageReference Include="Krafs.Rimworld.Ref" Version="1.4.3901" GeneratePathProperty="true" />
 		<PackageReference Include="Lib.Harmony" Version="2.2.2" ExcludeAssets="runtime" />
@@ -45,7 +66,7 @@
 
 	<ItemGroup>
 		<Reference Include="Newtonsoft.Json">
-			<HintPath>..\Libs\Newtonsoft.Json.dll</HintPath>
+			<HintPath>..\Libraries\Newtonsoft.Json.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 
@@ -75,23 +96,31 @@
 		</ItemGroup>
 	</Target>
 
-	<PropertyGroup>
-		<PostBuildEvent>
-			echo Postprocessing
-			where ModBuilder 2&gt; nul | find /i "ModBuilder.exe"
-			if not errorlevel 1 (
-			ModBuilder AssemblyVersion -file "$(MSBuildProjectDirectory)\$(OutputPath)$(AssemblyName).dll" -save "$(MSBuildProjectName)-version"
-			)
-			if defined INSTALL_MOD (
-			"%INSTALL_MOD%" "$(Configuration)" "$(MSBuildProjectDirectory)\..\" "$(MSBuildProjectName)" "About Assemblies Defs Textures" ""
-			)
-		</PostBuildEvent>
-		<Company>Brrainz</Company>
-		<Authors>Andreas Pardeike, Matt McFarland</Authors>
-		<Description></Description>
-		<PackageProjectUrl>https://github.com/pardeike/RimGPT</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/pardeike/RimGPT</RepositoryUrl>
-		<Product>RimGPT</Product>
-	</PropertyGroup>
+	<Target Name="PostBuildAction" AfterTargets="Build">
+		<XmlPoke XmlInputPath="$(MSBuildProjectDirectory)\..\About\About.xml" Query="//ModMetaData/modVersion" Value="$(ModVersion)" />
+		<XmlPoke XmlInputPath="$(MSBuildProjectDirectory)\..\About\Manifest.xml" Query="//Manifest/version" Value="$(ModVersion)" />
+	</Target>
+
+	<Target Name="CopyToRimworld" AfterTargets="PostBuildAction" Condition="'$(RIMWORLD_MOD_DIR)' != ''">
+		<RemoveDir Directories="$(RIMWORLD_MOD_DIR)\$(ModFileName)" />
+		<ItemGroup>
+			<CopyAbout Include="..\About\**" />
+			<CopyAssemblies Include="..\Assemblies\**" />
+			<CopyDefs Include="..\Defs\**" />
+			<CopyTextures Include="..\Textures\**" />
+			<CopyLicense Include="..\LICENSE" />
+			<CopyReadme Include="..\Readme.md" />
+		</ItemGroup>
+		<Copy SourceFiles="@(CopyAbout)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\About\%(RecursiveDir)" />
+		<Copy SourceFiles="@(CopyAssemblies)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\Assemblies\%(RecursiveDir)" />
+		<Copy SourceFiles="@(CopyDefs)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\Defs\%(RecursiveDir)" />
+		<Copy SourceFiles="@(CopyTextures)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\Textures\%(RecursiveDir)" />
+		<Copy SourceFiles="@(CopyLicense)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)" />
+		<Copy SourceFiles="@(CopyReadme)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)" />
+	</Target>
+
+	<Target Name="ZipMod" AfterTargets="CopyToRimworld" Condition="'$(RIMWORLD_MOD_DIR)' != ''">
+		<ZipDirectory SourceDirectory="$(RIMWORLD_MOD_DIR)\$(ModFileName)" DestinationFile="$(RIMWORLD_MOD_DIR)\$(ModFileName).zip" Overwrite="true" />
+	</Target>
 
 </Project>

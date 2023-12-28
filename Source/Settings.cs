@@ -7,7 +7,7 @@ using Verse;
 
 namespace RimGPT
 {
-	public class RimGPTSettings : ModSettings
+	public partial class RimGPTSettings : ModSettings
 	{
 		public List<Persona> personas =
 		[
@@ -48,8 +48,9 @@ namespace RimGPT
 				personalityLanguage = "English"
 			}
 		];
-		public string ChatGPTModelPrimary = Tools.chatGPTModels.First();
-		public string ChatGPTModelSecondary = Tools.chatGPTModels.First();
+
+		public string ChatGPTModelPrimary = Tools.chatGPTModels[0];
+		public string ChatGPTModelSecondary = Tools.chatGPTModels[1];
 		public int ModelSwitchRatio = 10;
 		public bool UseSecondaryModel = false;
 		public bool enabled = true;
@@ -77,8 +78,6 @@ namespace RimGPT
 		public int historyMaxWordCount = 0;
 		public string personality;
 		public string personalityLanguage;
-
-		// reporting settings
 
 		public bool reportColonistThoughts = true;
 		public bool reportEnergyStatus = true;
@@ -156,10 +155,9 @@ namespace RimGPT
 			}
 		}
 
-		public bool IsConfigured =>
-			 chatGPTKey?.Length > 0 && ((azureSpeechKey?.Length > 0 && azureSpeechRegion?.Length > 0) || showAsText);
+		public bool IsConfigured => chatGPTKey?.Length > 0 && ((azureSpeechKey?.Length > 0 && azureSpeechRegion?.Length > 0) || showAsText);
 
-		private Vector2 scrollPosition = Vector2.zero;
+		public Vector2 scrollPosition = Vector2.zero;
 		public static Persona selected = null;
 		public static int selectedIndex = -1;
 		public static readonly Color listBackground = new(32 / 255f, 36 / 255f, 40 / 255f);
@@ -168,18 +166,16 @@ namespace RimGPT
 
 		public void DoWindowContents(Rect inRect)
 		{
-			string prevKey;
 			Rect rect;
 
-			float spacing = 20f; // Alternatively adjust the spacing if needed
-			float totalSpaceBetweenColumns = spacing * 2;
+			var spacing = 20f; // Alternatively adjust the spacing if needed
+			var totalSpaceBetweenColumns = spacing * 2;
 
 			// New calculation for column widths
-			float slimColumnFactor = 0.5f; // Middle column is 50% of the others
-			float availableSpace = inRect.width - totalSpaceBetweenColumns; // Total available width minus the spacing
-			float normalColumnWidth = (availableSpace / (2 + slimColumnFactor)); // Width for the 1st and 3rd columns
-			float middleColumnWidth = normalColumnWidth * slimColumnFactor; // Width for the middle (slimmer) column
-
+			var slimColumnFactor = 0.5f; // Middle column is 50% of the others
+			var availableSpace = inRect.width - totalSpaceBetweenColumns; // Total available width minus the spacing
+			var normalColumnWidth = (availableSpace / (2 + slimColumnFactor)); // Width for the 1st and 3rd columns
+			var middleColumnWidth = normalColumnWidth * slimColumnFactor; // Width for the middle (slimmer) column
 
 			var list = new Listing_Standard { ColumnWidth = normalColumnWidth };
 			list.Begin(inRect);
@@ -188,7 +184,7 @@ namespace RimGPT
 			var width = normalColumnWidth;
 
 			list.Label("FFFF00", "OpenAI - ChatGPT", $"{charactersSentOpenAI} chars total");
-			prevKey = chatGPTKey;
+			var prevKey = chatGPTKey;
 			list.TextField(ref chatGPTKey, "API Key (paste only)", true, () => chatGPTKey = "");
 			if (chatGPTKey != "" && chatGPTKey != prevKey)
 			{
@@ -204,19 +200,16 @@ namespace RimGPT
 
 			if (chatGPTKey != "")
 			{
-				// Button for selecting the primary ChatGPT model (e.g., GPT-3.5)
 				list.Label("Primary ChatGPT Model");
 				rect = list.GetRect(UX.ButtonHeight);
 				TooltipHandler.TipRegion(rect, "Set the primary AI model used by default for generating insights. For example, choosing 'GPT-3.5' could be your standard model.");
 				if (Widgets.ButtonText(rect, ChatGPTModelPrimary))
 					UX.GPTVersionMenu(l => ChatGPTModelPrimary = l);
 
-				// Add some vertical spacing between buttons
 				list.Gap(10f);
 				list.CheckboxLabeled("Alternate between two models", ref UseSecondaryModel);
 				if (UseSecondaryModel == true)
 				{
-					// Button for selecting the secondary ChatGPT model (e.g., GPT-4)
 					list.Gap(10f);
 					list.Label("Secondary ChatGPT Model");
 					list.Gap(10f);
@@ -226,11 +219,8 @@ namespace RimGPT
 						UX.GPTVersionMenu(l => ChatGPTModelSecondary = l);
 					list.Gap(10f);
 					list.Slider(ref ModelSwitchRatio, 1, 20, f => $"Ratio: {f}:1", 1, "Adjust the frequency at which the system switches between the primary and secondary AI models. The 'Model Switch Ratio' value determines after how many calls to the primary model the system will switch to the secondary model for one time. A lower ratio means more frequent switching to the secondary model.\n\nExample: With a ratio of '1', there is no distinction between primary and secondary—each call alternates between the two. With a ratio of '10', the system uses the primary model nine times, and then the secondary model once before repeating the cycle.");
-
 				}
-
 			}
-
 
 			list.Gap(16f);
 
@@ -261,15 +251,10 @@ namespace RimGPT
 			list.ColumnWidth = middleColumnWidth;
 
 			list.Gap(16f);
-			// Create the AI Insights button
 			if (Widgets.ButtonText(list.GetRect(UX.ButtonHeight), "AI Insights"))
-			{
-				ShowDetailedReportSettings();
-			}
+				Find.WindowStack.Add(new DetailedReportSettingsWindow(this));
 
-			// Add some vertical spacing between buttons if needed
 			list.Gap(10f);
-
 			list.Label("FFFF00", "Active personas", "", "All these personas are active.");
 
 			var height = inRect.height - UX.ButtonHeight - 24f - list.CurHeight;
@@ -282,7 +267,6 @@ namespace RimGPT
 
 			var list2 = new Listing_Standard();
 			list2.Begin(innerRect);
-
 			var rowHeight = 24;
 			var i = 0;
 			var y = 0f;
@@ -291,7 +275,6 @@ namespace RimGPT
 				PersonaRow(new Rect(0, y, innerRect.width, rowHeight), persona, i++);
 				y += rowHeight;
 			}
-
 			list2.End();
 
 			Widgets.EndScrollView();
@@ -379,10 +362,10 @@ namespace RimGPT
 
 				list.Gap(16f);
 
-				float buttonWidth = (rect.width - 40) / 3; // Spacing between buttons is 20, hence 40 for two spaces.
+				var buttonWidth = (rect.width - 40) / 3; // Spacing between buttons is 20, hence 40 for two spaces.
 
 				rect = list.GetRect(UX.ButtonHeight);
-				Rect buttonRect = new Rect(rect.x, rect.y, buttonWidth, rect.height);
+				var buttonRect = new Rect(rect.x, rect.y, buttonWidth, rect.height);
 
 				if (Widgets.ButtonText(buttonRect, "Personality"))
 					Dialog_Personality.Show(selected);
@@ -467,102 +450,5 @@ namespace RimGPT
 				selectedIndex = idx;
 			}
 		}
-
-		private void ShowDetailedReportSettings()
-		{
-			// Create an instance of our custom window for detailed report settings
-			Find.WindowStack.Add(new DetailedReportSettingsWindow(this));
-		}
-
-		// Define a new class inheriting from RimWorld's 'Window' for our settings
-		private class DetailedReportSettingsWindow : Window
-		{
-			// Reference to the settings to allow us to modify them
-			private RimGPTSettings settings;
-
-			// Constructor to pass in the settings reference
-			public DetailedReportSettingsWindow(RimGPTSettings settings)
-			{
-				this.settings = settings;
-
-				// Set properties for the window
-				doCloseX = true;
-
-			}
-
-			// Override the method to specify the initial size of the window
-			public override Vector2 InitialSize => new Vector2(600f, 400f); // Adjust size as needed
-
-			// Override DoWindowContents to lay out the contents of the window
-			public override void DoWindowContents(Rect inRect)
-			{
-				var list = new Listing_Standard();
-
-				// Begin the layout group 
-				list.Begin(inRect);
-
-				// Add a header label
-				Text.Font = GameFont.Medium;
-				list.Label("AI Insights Configuration");
-
-				// Switch back to the small font for standard text and options
-				Text.Font = GameFont.Small;
-
-				// Description paragraph explaining permanently monitored aspects by the AI
-				string description = "RimGPT automatically monitors a range of essential data points to create adaptive and responsive " +
-									 "personas. This includes game state, weather, colonist activities, messages, alerts, letters, and resources.\n\n" +
-									 "Below you can enable additional insight feeds for more in-depth analysis:";
-				list.Label(description);
-
-				// Add some spacing before the detailed insight options
-				list.GapLine(18f);
-
-				// Checkbox for enabling detailed power AI insight
-				list.CheckboxLabeled("Enable Detailed Power AI Insight", ref settings.reportEnergyStatus,
-												 "Provides the AI with detailed power grid statistics.");
-
-				list.Gap(16f);
-
-				// Checkbox for enabling detailed research AI insight
-				list.CheckboxLabeled("Enable Detailed Research AI Insight", ref settings.reportResearchStatus,
-												 "Allows the AI awareness of all researched tech, current research progress, and available research.");
-
-				list.Gap(16f);
-
-				// Checkbox for enabling detailed thoughts & mood AI insight
-				list.CheckboxLabeled("Enable Detailed Thoughts & Mood AI Insight", ref settings.reportColonistThoughts,
-												 "Enables periodic in-depth analysis by the AI of colonists' recent thoughts and their effects on mood.");
-
-				list.Gap(16f);
-
-				// Checkbox for enabling detailed colonist opinion AI insight
-				list.CheckboxLabeled("Enable Detailed Colonist Opinion AI Insight", ref settings.reportColonistOpinions,
-												 "Regularly feeds the AI a holistic view of interpersonal dynamics and mood. " +
-												 "Ad-hoc opinion reports will continue regardless of this setting—for example, " +
-												 "social interaction reports still include opinions—but this adds a holistic picture periodically.");
-
-				list.Gap(16f);
-
-				// Checkbox for enabling detailed colonist roster AI insight (Experimental feature)
-				list.CheckboxLabeled("Enable Detailed Colonist Roster AI Insight (Experimental)", ref settings.reportColonistRoster,
-												 "Gives the AI continuous updates on all colonists, including demographics, skills, traits, and health conditions. " +
-												 "Note: May be resource-intensive.");
-
-				list.Gap(16f);
-
-				// Checkbox for enabling detailed room data AI insight (Experimental feature)
-				list.CheckboxLabeled("Enable Detailed Room Data AI Insight (Experimental)", ref settings.reportRoomStatus,
-												 "Activates comprehensive room reporting to AI, covering aspects such as cleanliness, wealth, and more. " +
-												 "Warning: This is resource-heavy.");
-
-				// End the group for AI Insights settings
-				list.End();
-			}
-		}
-
-
-
-
-
 	}
 }

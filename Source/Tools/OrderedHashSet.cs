@@ -12,7 +12,7 @@ namespace RimGPT
 			if (max <= 0)
 				return;
 			var count = Math.Min(max, Count);
-			for (int i = 0; i < count; i++)
+			for (var i = 0; i < count; i++)
 				RemoveAt(0);
 		}
 	}
