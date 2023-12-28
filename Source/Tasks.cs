@@ -177,8 +177,7 @@ namespace RimGPT
 			if (totalPowerNeeds > 0 || totalPowerGenerated > 0)
 				// dont talk about power if there is no power
 				Personas.Add("Energy Analysis: " + powerStatus + "\n" + messages.Join(), priority);
-			else
-				Logger.Message("Skip Power Generation evaluation.");
+
 		}
 
 		public static float CalculateTotalPowerNeeds(Map map, List<string> messages)

@@ -533,7 +533,7 @@ namespace RimGPT
 
 			Personas.Add(message, 2);
 		}
-		
+
 		// this could be expanded with more types or different logic to determine the type
 		//
 		public static string GetPawnType(Pawn pawn)
@@ -597,11 +597,11 @@ namespace RimGPT
 			{
 				var key = taskEntry.Key;
 				var task = taskEntry.Value;
-
-				task.UpdateTicks++;
-				if (task.UpdateTicks % task.UpdateOn == 0)
+				// because startImmediate tasks are -1
+				if (task.UpdateTicks < 0 || task.UpdateTicks++ >= task.UpdateOn) {
 					task.Action(map);
-
+					task.UpdateTicks = 0;
+				}
 				updateTasks[key] = task;
 			}
 		}
