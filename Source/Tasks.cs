@@ -105,7 +105,7 @@ namespace RimGPT
 				{
 					if (colonist == otherColonist)
 						continue;
-					
+
 					var currentOpinion = colonist.relations.OpinionOf(otherColonist);
 
 					if (lastOpinions.TryGetValue((colonist, otherColonist), out var previousOpinion))
@@ -135,7 +135,7 @@ namespace RimGPT
 		{
 			if (RimGPTMod.Settings.reportEnergyStatus == false)
 				return;
-		
+
 			var messages = new List<string>();
 
 			var totalPowerGenerated = 0f;
@@ -163,14 +163,13 @@ namespace RimGPT
 			(var powerStatus, var priority) = DeterminePowerStatus(powerDelta);
 
 			var allBuildingsWithPowerThatUseFuelComp = map.listerBuildings.allBuildingsColonist
-				// to avoid getting stuff like braziers and torches, we want to make sure the refuelable generates power
-				.Where(building => building.GetComp<CompRefuelable>() != null && building.GetComp<CompPowerPlant>() != null).ToList();
+				.Where(building =>
+				{
+					var compRefuelable = building.GetComp<CompRefuelable>();
+					var compPowerPlant = building.GetComp<CompPowerPlant>();
+					return compRefuelable != null && compPowerPlant != null && compPowerPlant.PowerOn;
+				}).ToList();
 
-			if (allBuildingsWithPowerThatUseFuelComp.Count > 0 && powerDelta > 500)
-			{
-				powerStatus = "Excessive surplus, fuel is being wasted.";
-				priority = 3;
-			}
 
 			var totalPowerNeedsMessage = $"Total Power needs: {totalPowerNeeds}, Total Power Generated: {totalPowerGenerated}";
 			messages.Add(totalPowerNeedsMessage);
@@ -197,7 +196,9 @@ namespace RimGPT
 			var powerConsumptionMessages = new List<string>();
 			foreach (var (label, compPowerTrader) in allCompPowerTraders)
 			{
+
 				var powerConsumed = compPowerTrader.PowerOn ? compPowerTrader.Props.basePowerConsumption : 0f;
+				if (powerConsumed <= 0) break; // dont add power generators, they get added here too because they're power trader
 				totalPowerNeeds += powerConsumed;
 
 				// add each building's power consumption details to the list
@@ -231,7 +232,7 @@ namespace RimGPT
 
 			if (map.areaManager == null)
 				return;
-			
+
 			if (map.ParentFaction != Faction.OfPlayer)
 				return;
 
@@ -241,11 +242,11 @@ namespace RimGPT
 			foreach (var room in map.regionGrid.allRooms)
 			{
 				var roleLabel = room.Role?.label ?? "Undefined";
-				
+
 				// prevent reporting any room that is not properly named - such as single doors or hallways
 				if (roleLabel == "Undefined" || roleLabel == "none" || roleLabel == "room")
 					continue;
-				
+
 				foreach (var cell in room.Cells)
 				{
 					if (homeArea[cell])
@@ -255,7 +256,7 @@ namespace RimGPT
 							foreach (var statPair in room.stats)
 								if (statPair.Key != null)
 									statsStringBuilder.Append($"{statPair.Key.label} is {statPair.Value}, ");
-						
+
 						var statsString = statsStringBuilder.ToString().TrimEnd(',', ' ');
 
 						var article = roleLabel.IndexOf("'s", StringComparison.OrdinalIgnoreCase) != -1 ? "" : "A ";
