@@ -612,24 +612,19 @@ namespace RimGPT
 
 
 
-
-	// when player designates an order
 	[HarmonyPatch(typeof(DesignationManager), nameof(DesignationManager.AddDesignation))]
 	public static class DesignationManager_AddDesignation_Patch
 	{
 		public static void Postfix(Designation newDes)
 		{
-			string order = !string.IsNullOrEmpty(newDes.def.label) ? newDes.def.label :
-						   !string.IsNullOrEmpty(newDes.def.LabelCap) ? newDes.def.LabelCap :
-						   !string.IsNullOrEmpty(newDes.def.description) ? newDes.def.description :
-						   newDes.def.defName; // Fall back to defName which should always have a value.
+			(string order, string targetLabel) = DesignationHelpers.GetOrderAndTargetLabel(newDes);
 
-			string target = newDes.target.Thing?.LabelShort ?? "an area";
+			// bail if its a plan, the AI gets confused and thinks we're building stuff when its just planning.  using string because
+			// of mods.  it might not be full-proof but should cover most use-cases.
+			if (targetLabel.ToLowerInvariant().Contains("plan"))
+				return;
 
-			if (order == "HarvestPlant" && target.Contains("tree"))
-				order = "Chopping";
-
-			DesignationQueueManager.EnqueueDesignation("designated", order, target);
+			DesignationQueueManager.EnqueueDesignation(OrderType.Designate, order, targetLabel);
 		}
 	}
 
@@ -638,21 +633,57 @@ namespace RimGPT
 	{
 		public static void Postfix(Designation des)
 		{
-			string order = !string.IsNullOrEmpty(des.def.label) ? des.def.label :
-						   !string.IsNullOrEmpty(des.def.LabelCap) ? des.def.LabelCap :
-						   !string.IsNullOrEmpty(des.def.description) ? des.def.description :
-						   des.def.defName; // Use the same defName as before.
+			(string order, string targetLabel) = DesignationHelpers.GetOrderAndTargetLabel(des);
 
-			string target = des.target.Thing?.LabelShort ?? "an area";
+			// bail if its a plan, the AI gets confused and thinks we're building stuff when its just planning.  using string because
+			// of mods.  it might not be full-proof but should cover most use-cases.
+			if (targetLabel.ToLowerInvariant().Contains("plan"))
+				return;
 
-			if (order == "HarvestPlant" && target.Contains("tree"))
-				order = "Chopping";
+			DesignationQueueManager.EnqueueDesignation(OrderType.Cancel, order, targetLabel);
+		}
+	}
+	// Patch for when the blueprint is placed (construction is designated)
+	[HarmonyPatch(typeof(GenConstruct), nameof(GenConstruct.PlaceBlueprintForBuild))]
+	public static class GenConstruct_PlaceBlueprintForBuild_Patch
+	{
+		public static void Postfix(BuildableDef sourceDef, IntVec3 center, Map map, Rot4 rotation, Faction faction, ThingStyleDef styleDef, ref ThingDef stuff)
+		{
+			Blueprint blueprint = map.thingGrid.ThingAt<Blueprint>(center);
 
-			// Use a distinctive action string for cancellations.
-			DesignationQueueManager.EnqueueDesignation("Cancel", order, target);
+			if (blueprint != null)
+			{
+				string targetLabel = sourceDef.label;
+
+				ThingDef stuffToUse = ((Blueprint_Build)blueprint).stuffToUse;
+				string stuffLabel = stuffToUse?.label ?? "";
+
+				DesignationQueueManager.EnqueueDesignation(OrderType.Designate, "WorkTagConstructing".Translate(), $"{stuffLabel} {targetLabel}");
+			}
 		}
 	}
 
+
+	[HarmonyPatch(typeof(Blueprint), nameof(Blueprint.DeSpawn))]
+	public static class Blueprint_Cancel_Patch
+	{
+		public static void Postfix(Blueprint __instance, DestroyMode mode)
+		{
+			if (mode == DestroyMode.Cancel)
+			{
+				if (__instance is Blueprint_Build blueprintBuild)
+				{
+					ThingDef stuffToUse = blueprintBuild.stuffToUse;
+					string stuffLabel = stuffToUse?.label ?? "";
+
+					// we dont want the word (blueprint) here
+					string labelWithoutBlueprint = __instance.def.label.Replace("(blueprint)", "").Trim();
+
+					DesignationQueueManager.EnqueueDesignation(OrderType.Cancel, "WorkTagConstructing".Translate(), $"{stuffLabel} {labelWithoutBlueprint}");
+				}
+			}
+		}
+	}
 
 	// on every tick, regardless if game is paused or not
 	[HarmonyPatch(typeof(TickManager), "DoSingleTick")]
@@ -664,6 +695,89 @@ namespace RimGPT
 			if (map == null)
 				return;
 			DesignationQueueManager.Update();
+		}
+	}
+
+	[HarmonyPatch(typeof(Pawn_JobTracker), "TryTakeOrderedJobPrioritizedWork")]
+	public static class TryTakeOrderedJobPrioritizedWorkPatch
+	{
+		public static void Postfix(Job job, Pawn_JobTracker __instance)
+		{
+			Pawn pawn = __instance.pawn;
+			string targetLabels = GetTargetLabels(job);
+
+			List<string> queueList = new List<string>();
+			if (job.targetQueueA != null && job.targetQueueA.Count > 0)
+				queueList.Add("A");
+			if (job.targetQueueB != null && job.targetQueueB.Count > 0)
+				queueList.Add("B");
+
+			string queueMessagePart = queueList.Count > 0 ? $" and is queuing {string.Join(", ", queueList)}" : "";
+			string spaceIfNeeded = string.IsNullOrEmpty(targetLabels) ? "" : " ";
+			string message = $"Player orders {pawn.LabelShort} to prioritize '{job.def.defName.Translate()}' on{spaceIfNeeded}{targetLabels}{queueMessagePart}.";
+
+			Personas.Add(message, 2); // Add the resolved message to the message queue.
+		}
+
+		private static string GetTargetLabels(Job job)
+		{
+			List<string> labels = new List<string>();
+
+			if (job.targetA.IsValid)
+				labels.Add(GetLabelFor(job.targetA));
+			if (job.targetB.IsValid)
+				labels.Add(GetLabelFor(job.targetB));
+			if (job.targetC.IsValid)
+				labels.Add(GetLabelFor(job.targetC));
+
+			AddQueueLabels(labels, job.targetQueueA, "A");
+			AddQueueLabels(labels, job.targetQueueB, "B");
+
+			return labels.Count > 0 ? string.Join(", ", labels) : "";
+		}
+
+		private static void AddQueueLabels(List<string> labels, List<LocalTargetInfo> targetQueue, string queueLabel)
+		{
+			if (targetQueue != null)
+			{
+				foreach (var target in targetQueue)
+				{
+					if (target.IsValid)
+						labels.Add($"{GetLabelFor(target)} (queued {queueLabel})"); // Add queue label to each target label
+				}
+			}
+		}
+
+		private static string GetLabelFor(LocalTargetInfo target)
+		{
+			return target.HasThing ? target.Thing.LabelShort : target.ToString();
+		}
+	}
+
+
+	// when pawn is forced to quit working on something.
+	[HarmonyPatch(typeof(Pawn_JobTracker), "EndCurrentJob")]
+	public static class Pawn_JobTracker_EndCurrentJob_Patch
+	{
+		// Prefix runs before EndCurrentJob method is called.
+		public static void Prefix(Pawn_JobTracker __instance, JobCondition condition)
+		{
+			// Access the current job before it's potentially set to null.
+			if (__instance.curJob != null && condition == JobCondition.InterruptForced)
+			{
+				string jobLabel = __instance.curJob.def.label;
+
+				// If the job label is empty, do not proceed with reporting.
+				if (string.IsNullOrEmpty(jobLabel))
+					return;
+
+				Pawn pawn = __instance.pawn;
+				string pawnName = pawn.LabelShort.CapitalizeFirst();
+
+				string message = $"{pawnName} was forced to quit working on {jobLabel}.";
+
+				Personas.Add(message, 2); // Add the resolved message to the message queue.
+			}
 		}
 	}
 }

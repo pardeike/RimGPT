@@ -26,6 +26,7 @@ namespace RimGPT
 				AddSkillsInformation(dataBuilder, colonist);
 				AddTraitsInformation(dataBuilder, colonist);
 				AddHealthInformation(dataBuilder, colonist);
+				AddWorkInformation(dataBuilder, colonist);
 
 				return dataBuilder.ToString();
 
@@ -83,5 +84,14 @@ namespace RimGPT
 				builder.Append($" {colonist.Name} has {hediffsText}.");
 			}
 		}
+
+		private static void AddWorkInformation(StringBuilder builder, ColonistData colonist)
+		{
+			if (colonist.AllowedWorkTypes?.Any() == true)
+			{
+				builder.Append($" {colonist.Name}'s allowed work types are: {GenText.ToCommaList(colonist.AllowedWorkTypes, true)}.");
+			}
+		}
+
 	}
 }

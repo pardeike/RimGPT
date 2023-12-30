@@ -61,13 +61,14 @@ namespace RimGPT
 
 			return new List<string>
 			{  $"You are {currentPersona.name}\n",
-				$"The narrative needs to fit within the context of Rimworld, your responses should reflect the game's events and setting appropriately..\n",
+				$"The narrative needs to fit within the context of the game, Rimworld.\n",
 				$"Your input comes from the game, and will be json like this: {exampleInput}\n",
 				$"Your output must only be in json like this: {exampleOutput}\n",
 				$"Limit ResponseText to no more than {currentPersona.phraseMaxWordCount} words.\n",
 				$"When constructing the 'ResponseText', consider vocal clarity and pacing so that it is easily understandable when spoken by Microsoft Azure Speech Services.\n",
-				$"Limit NewHistoricalKeyEvents to no more than {currentPersona.historyMaxWordCount} words.\n",
+				$"Limit NewHistoricalKeyEvents to no more than {currentPersona.historyMaxWordCount} words.\n",				
 				$"{currentPersona.personality}\n",
+				$"Rephrase NewHistoricalKeyEvents into your own words to help keep your narrative fresh.\n",		
 				$"Remember: your output is in the format: {{\"ResponseText\":\"Your narrative response goes here, within the word limit.\",\"NewHistoricalKeyEvents\":[\"...\",\"...\"]}}",
 			}.Join(delimiter: "");
 		}
@@ -153,7 +154,6 @@ namespace RimGPT
 						response = response.Substring(firstIdx, lastIndex - firstIdx + 1);
 				}
 				response = response.Replace("ResponseText:", "");
-
 				if (Tools.DEBUG)
 					Logger.Warning($"OUTPUT: {response}");
 				try
