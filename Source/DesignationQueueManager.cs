@@ -1,18 +1,17 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Verse;
 
 namespace RimGPT
 {
-	public static class DesignationQueueManager
-	{
-		private static readonly Dictionary<(string Action, string Label, string ThingLabel), int> designationCounts = new();
+    public static class DesignationQueueManager
+    {
+        private static Dictionary<(OrderType orderType, string workOrderVerb, string targetObject), int> designationCounts
+    = new Dictionary<(OrderType orderType, string workOrderVerb, string targetObject), int>();
 
-		private static readonly int threshold = 30; // Threshold for sending messages
-		private static readonly int timeLimitTicks = 600; // Time limit in game ticks (600 ticks = 10 seconds)
-		private static int currentTickCounter = 0;
+        private static readonly int threshold = 30; // Threshold for sending messages
+        private static readonly int timeLimitTicks = 600; // Time limit in game ticks (600 ticks = 10 seconds)
+        private static int currentTickCounter = 0;
 
         public static void Update()
         {
@@ -30,9 +29,9 @@ namespace RimGPT
                     FlushQueue();
                 }
             }
-            catch (Exception ex)
+            catch 
             {
-                Log.Error($"An error occurred during the updating of DesignationQueueManager: {ex}");
+                Log.Error($"An error occurred during the updating of DesignationQueueManager");
             }
         }
         public static void FlushQueue(bool forceFlush = false)
@@ -65,6 +64,7 @@ namespace RimGPT
                 }
 
 
+
                 foreach (var key in keysToRemove)
                 {
                     designationCounts.Remove(key);
@@ -76,9 +76,9 @@ namespace RimGPT
                     Personas.Add($"The player {combinedMessage}", 3);
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Log.Error($"An error occurred while flushing the queue in DesignationQueueManager: {ex}");
+                Log.Error($"An error occurred while flushing the queue in DesignationQueueManager");
             }
         }
 
@@ -102,9 +102,9 @@ namespace RimGPT
                     FlushQueue();
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Log.Error($"An error occurred while enqueuing a designation in DesignationQueueManager: {ex}");
+                Log.Error($"An error occurred while enqueuing a designation in DesignationQueueManager");
             }
         }
     }

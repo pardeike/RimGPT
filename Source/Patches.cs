@@ -1,11 +1,10 @@
-﻿using HarmonyLib;
+﻿﻿using HarmonyLib;
 using RimWorld;
 using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Security.Cryptography;
 using UnityEngine;
 using Verse;
 using Verse.AI;
@@ -14,7 +13,6 @@ using Verse.AI;
 // - injuries
 // - raider ai
 // - player changes to config
-// - player designating (buttons & construction) (is it done now??)
 
 namespace RimGPT
 {
@@ -611,48 +609,90 @@ namespace RimGPT
 		}
 	}
 
-	// when player designates an order
-	//
+
+
 	[HarmonyPatch(typeof(DesignationManager), nameof(DesignationManager.AddDesignation))]
 	public static class DesignationManager_AddDesignation_Patch
 	{
 		public static void Postfix(Designation newDes)
 		{
-			var target = newDes.target.Thing?.LabelShort ?? "an area";
+			(string order, string targetLabel) = DesignationHelpers.GetOrderAndTargetLabel(newDes);
 
-			var order = newDes.OrderString();
-			if (order == "HarvestPlant" && target.Contains("tree"))
-				order = "Chopping";
+			// bail if its a plan, the AI gets confused and thinks we're building stuff when its just planning.  using string because
+			// of mods.  it might not be full-proof but should cover most use-cases.
+			if (targetLabel.ToLowerInvariant().Contains("plan"))
+				return;
 
-			DesignationQueueManager.EnqueueDesignation("designated", order, target);
+			DesignationQueueManager.EnqueueDesignation(OrderType.Designate, order, targetLabel);
 		}
 	}
 
-	// when player removes an order
-	//
 	[HarmonyPatch(typeof(DesignationManager), nameof(DesignationManager.RemoveDesignation))]
 	public static class DesignationManager_RemoveDesignation_Patch
 	{
 		public static void Postfix(Designation des)
 		{
-			var target = des.target.Thing?.LabelShort ?? "an area";
+			(string order, string targetLabel) = DesignationHelpers.GetOrderAndTargetLabel(des);
 
-			var order = des.OrderString();
-			if (order == "HarvestPlant" && target.Contains("tree"))
-				order = "Chopping";
+			// bail if its a plan, the AI gets confused and thinks we're building stuff when its just planning.  using string because
+			// of mods.  it might not be full-proof but should cover most use-cases.
+			if (targetLabel.ToLowerInvariant().Contains("plan"))
+				return;
 
-			// Use a distinctive action string for cancellations.
-			DesignationQueueManager.EnqueueDesignation("Cancel", order, target);
+			DesignationQueueManager.EnqueueDesignation(OrderType.Cancel, order, targetLabel);
+		}
+	}
+	// Patch for when the blueprint is placed (construction is designated)
+	[HarmonyPatch(typeof(GenConstruct), nameof(GenConstruct.PlaceBlueprintForBuild))]
+	public static class GenConstruct_PlaceBlueprintForBuild_Patch
+	{
+		public static void Postfix(BuildableDef sourceDef, IntVec3 center, Map map, Rot4 rotation, Faction faction, ThingStyleDef styleDef, ref ThingDef stuff)
+		{
+			Blueprint blueprint = map.thingGrid.ThingAt<Blueprint>(center);
+
+			if (blueprint != null)
+			{
+				string targetLabel = sourceDef.label;
+
+				ThingDef stuffToUse = ((Blueprint_Build)blueprint).stuffToUse;
+				string stuffLabel = stuffToUse?.label ?? "";
+
+				DesignationQueueManager.EnqueueDesignation(OrderType.Designate, "WorkTagConstructing".Translate(), $"{stuffLabel} {targetLabel}");
+			}
+		}
+	}
+
+
+	[HarmonyPatch(typeof(Blueprint), nameof(Blueprint.DeSpawn))]
+	public static class Blueprint_Cancel_Patch
+	{
+		public static void Postfix(Blueprint __instance, DestroyMode mode)
+		{
+			if (mode == DestroyMode.Cancel)
+			{
+				if (__instance is Blueprint_Build blueprintBuild)
+				{
+					ThingDef stuffToUse = blueprintBuild.stuffToUse;
+					string stuffLabel = stuffToUse?.label ?? "";
+
+					// we dont want the word (blueprint) here
+					string labelWithoutBlueprint = __instance.def.label.Replace("(blueprint)", "").Trim();
+
+					DesignationQueueManager.EnqueueDesignation(OrderType.Cancel, "WorkTagConstructing".Translate(), $"{stuffLabel} {labelWithoutBlueprint}");
+				}
+			}
 		}
 	}
 
 	// on every tick, regardless if game is paused or not
-	//
 	[HarmonyPatch(typeof(TickManager), "DoSingleTick")]
 	public static class TickManager_DoSingleTick_Patch
 	{
 		public static void Postfix()
 		{
+			var map = Find.CurrentMap;
+			if (map == null)
+				return;
 			DesignationQueueManager.Update();
 		}
 	}
@@ -663,7 +703,7 @@ namespace RimGPT
 		public static void Postfix(Job job, Pawn_JobTracker __instance)
 		{
 			Pawn pawn = __instance.pawn;
-			if (pawn == null || job?.def == null) return; // Safety check for null references
+if (pawn == null || job?.def == null) return; // Safety check for null references
 
 			string targetLabels = GetTargetLabels(job);
 
@@ -673,7 +713,7 @@ namespace RimGPT
 			if (job.targetQueueB != null && job.targetQueueB.Count > 0)
 				queueList.Add("B");
 
-			string jobDefName;
+string jobDefName;
 			try
 			{
 				jobDefName = job.def.defName.Translate();
@@ -695,18 +735,18 @@ namespace RimGPT
 		{
 			List<string> labels = new List<string>();
 
-			try
+try
 			{
-				if (job.targetA.IsValid)
-					labels.Add(GetLabelFor(job.targetA));
-				if (job.targetB.IsValid)
-					labels.Add(GetLabelFor(job.targetB));
-				if (job.targetC.IsValid)
-					labels.Add(GetLabelFor(job.targetC));
+			if (job.targetA.IsValid)
+				labels.Add(GetLabelFor(job.targetA));
+			if (job.targetB.IsValid)
+				labels.Add(GetLabelFor(job.targetB));
+			if (job.targetC.IsValid)
+				labels.Add(GetLabelFor(job.targetC));
 
-				AddQueueLabels(labels, job.targetQueueA, "A");
-				AddQueueLabels(labels, job.targetQueueB, "B");
-			}
+			AddQueueLabels(labels, job.targetQueueA, "A");
+			AddQueueLabels(labels, job.targetQueueB, "B");
+}
 			catch
 			{
 				// We can choose to log this exception or silently continue with a default/fallback value.
@@ -729,7 +769,6 @@ namespace RimGPT
 
 		private static string GetLabelFor(LocalTargetInfo target)
 		{
-			// Here we handle the case where target.Thing could be null
 			return target.HasThing ? target.Thing.LabelShort : target.ToString();
 		}
 	}
@@ -739,6 +778,7 @@ namespace RimGPT
 	[HarmonyPatch(typeof(Pawn_JobTracker), "EndCurrentJob")]
 	public static class Pawn_JobTracker_EndCurrentJob_Patch
 	{
+		// Prefix runs before EndCurrentJob method is called.
 		public static void Prefix(Pawn_JobTracker __instance, JobCondition condition)
 		{
 			try
@@ -746,21 +786,22 @@ namespace RimGPT
 				// Accessing the current job before it's potentially set to null and ensuring all references are valid.
 				Job curJob = __instance?.curJob;
 				if (curJob != null && curJob.def != null && condition == JobCondition.InterruptForced)
-				{
-					string jobLabel = curJob.def.label;
+			{
+				string jobLabel = __instance.curJob.def.label;
 
-					if (string.IsNullOrEmpty(jobLabel))
-						return; // If the job label is empty, do not proceed with reporting.
+				// If the job label is empty, do not proceed with reporting.
+				if (string.IsNullOrEmpty(jobLabel))
+					return; // If the job label is empty, do not proceed with reporting.
 
-					// Ensuring pawn reference is not null before accessing its properties.
-					Pawn pawn = __instance.pawn;
-					if (pawn == null) return;
+// Ensuring pawn reference is not null before accessing its properties.
+				Pawn pawn = __instance.pawn;
+if (pawn == null) return;
 
-					string pawnName = pawn.LabelShort.CapitalizeFirst();
+				string pawnName = pawn.LabelShort.CapitalizeFirst();
 
-					// Construct and add message safely.
-					string message = $"{pawnName} was forced to quit working on {jobLabel}.";
-					Personas.Add(message, 2);
+// Construct and add message safely.
+				string message = $"{pawnName} was forced to quit working on {jobLabel}.";
+Personas.Add(message, 2);
 				}
 			}
 			catch (Exception ex)
