@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Verse;
+using Verse.AI;
 using Verse.Steam;
 
 namespace RimGPT
@@ -271,7 +272,64 @@ namespace RimGPT
 			else if (entry is BattleLogEntry_StateTransition transition)
 				from = transition.subjectPawn;
 		}
+		public static string GetIndefiniteArticleFor(string noun)
+		{
+			// Simple English rule: if it starts with a vowel sound use "an", otherwise "a"
+			// This does not cover all English language edge cases.
+			char firstLetter = noun.TrimStart()[0];
+			bool isVowel = "aeiouAEIOU".IndexOf(firstLetter) >= 0;
+			return isVowel ? "an" : "a";
+		}
 
+		// gets the job label from a specific pawn
+		public static string GetJobLabelFromPawn(Job job, Pawn driverPawn)
+		{
+			return job.GetReport(driverPawn).CapitalizeFirst();
+		}
+		
+		// simple pluralization tool, not exhaustive and doesnt cover all cases.
+		public static string SimplePluralize(string noun)
+		{
+
+			// Basic pluralization rule: add 's' or 'es'
+			// Note: This does not cover all English language special cases.
+			if (noun.EndsWith("s") || noun.EndsWith("sh") || noun.EndsWith("ch") || noun.EndsWith("x") || noun.EndsWith("z"))
+			{
+				return $"{noun}es";
+			}
+			else if (noun.EndsWith("y") && noun.Length > 1 && !"aeiou".Contains(noun[noun.Length - 2]))
+			{
+				// Words ending in 'y' following a consonant should change the 'y' to 'ies'
+				return $"{noun.Substring(0, noun.Length - 1)}ies";
+			}
+			else if (noun.EndsWith("f") || noun.EndsWith("fe"))
+			{
+				// Words ending in 'f' or 'fe' may change to "ves" in the plural form
+				if (noun.EndsWith("fe"))
+				{
+					return $"{noun.Substring(0, noun.Length - 2)}ves";
+				}
+				else
+				{
+					return $"{noun.Substring(0, noun.Length - 1)}ves";
+				}
+			}
+			// Default pluralization
+			else
+			{
+				return $"{noun}s";
+			}
+		}
+		// Helper method to find a valid translation key.
+		public static string FindValidTranslationKey(params string[] keys)
+		{
+			foreach (var key in keys)
+			{
+				if (LanguageDatabase.activeLanguage.HaveTextForKey(key))
+					return key;
+			}
+			return null; // No valid key found
+		}
 		public static readonly string[] commonLanguages =
 		[
 			"Alien",

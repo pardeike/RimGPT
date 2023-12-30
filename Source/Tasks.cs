@@ -370,7 +370,8 @@ namespace RimGPT
 					Mood = colonist.needs.mood?.CurLevelPercentage.ToStringPercent() ?? "Unknown",
 					Skills = [],
 					Traits = [],
-					Health = []
+					Health = [],
+					AllowedWorkTypes = [],
 				};
 
 				foreach (var skill in colonist.skills.skills)
@@ -380,10 +381,16 @@ namespace RimGPT
 						XpSinceLastLevel = skill.xpSinceLastLevel,
 						XpRequiredForLevelUp = skill.XpRequiredForLevelUp
 					});
-
+				
 				foreach (var trait in colonist.story.traits.allTraits)
 					colonistData.Traits.Add(trait.Label);
-
+				foreach (var workTypeDef in DefDatabase<WorkTypeDef>.AllDefsListForReading)
+				{
+					if (!colonist.WorkTypeIsDisabled(workTypeDef))
+					{
+						colonistData.AllowedWorkTypes.Add(workTypeDef.labelShort);
+					}
+				}
 				foreach (var hediff in colonist.health.hediffSet.hediffs)
 				{
 					var immunityComp = (hediff as HediffWithComps)?.TryGetComp<HediffComp_Immunizable>();

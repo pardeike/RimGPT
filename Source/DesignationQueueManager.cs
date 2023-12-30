@@ -1,14 +1,17 @@
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Text;
+using RimWorld;
 using Verse;
+using Verse.Noise;
 
 namespace RimGPT
 {
     public static class DesignationQueueManager
     {
-        private static Dictionary<(string Action, string Label, string ThingLabel), int> designationCounts
-    = new Dictionary<(string Action, string Label, string ThingLabel), int>();
+        private static Dictionary<(OrderType orderType, string workOrderVerb, string targetObject), int> designationCounts
+    = new Dictionary<(OrderType orderType, string workOrderVerb, string targetObject), int>();
 
         private static int threshold = 30; // Threshold for sending messages
         private static int timeLimitTicks = 600; // Time limit in game ticks (600 ticks = 10 seconds)
@@ -30,21 +33,31 @@ namespace RimGPT
         }
         public static void FlushQueue(bool forceFlush = false)
         {
-            var stringBuilder = new StringBuilder();
-            
-            var keysToRemove = new List<(string Action, string Label, string ThingLabel)>();
+            var orders = new List<string>();
+
+            var keysToRemove = new List<(OrderType orderType, string workOrderVerb, string targetObject)>();
 
             foreach (var entry in designationCounts)
             {
                 if (entry.Value >= threshold || forceFlush)
                 {
-                    string actionText = entry.Key.Action == "Cancel" ? "cancelled" : "designated";
-                    string message = $"(player {actionText} {entry.Key.ThingLabel} x{entry.Value} for {entry.Key.Label})";
-                    stringBuilder.AppendLine(message);
+                    string message = $"{entry.Key.orderType.ToActionVerb()} '{entry.Key.workOrderVerb}' for";
+                    if (entry.Value > 1)
+                    {
+                        message += $" {entry.Value} {Tools.SimplePluralize(entry.Key.targetObject)}";
+                    }
+                    else
+                    {
+                        string indefiniteArticle = Tools.GetIndefiniteArticleFor(entry.Key.targetObject);
+                        message += $" {indefiniteArticle} {entry.Key.targetObject}";
+                    }
+                    orders.Add(message);
 
-                    keysToRemove.Add(entry.Key); 
+
+                    keysToRemove.Add(entry.Key);
                 }
             }
+
 
 
             foreach (var key in keysToRemove)
@@ -52,16 +65,16 @@ namespace RimGPT
                 designationCounts.Remove(key);
             }
 
-            string combinedMessage = stringBuilder.ToString().TrimEnd();
-            if (!string.IsNullOrEmpty(combinedMessage))
+            string combinedMessage = GenText.ToCommaList(orders, true);
+            if (!string.IsNullOrEmpty(combinedMessage) && combinedMessage != "none")
             {
-                Personas.Add(combinedMessage, 3);
+                Personas.Add($"The player {combinedMessage}", 3);
             }
         }
 
-        public static void EnqueueDesignation(string action, string label, string thingLabel)
+        public static void EnqueueDesignation(OrderType orderType, string workOrderVerb, string targetObject)
         {
-            var key = (action, label, thingLabel);
+            var key = (orderType, workOrderVerb, targetObject);
 
             if (designationCounts.ContainsKey(key))
             {
@@ -76,6 +89,25 @@ namespace RimGPT
             {
                 FlushQueue();
             }
+        }
+    }
+
+    public enum OrderType
+    {
+        Designate,
+        Cancel
+    }
+    public static class OrderTypeExtensions
+    {
+        private static readonly Dictionary<OrderType, string> orderTypeStringMapping = new Dictionary<OrderType, string>
+    {
+        { OrderType.Designate, "designated" },
+        { OrderType.Cancel, "cancelled" }
+    };
+
+        public static string ToActionVerb(this OrderType orderType)
+        {
+            return orderTypeStringMapping.TryGetValue(orderType, out var stringValue) ? stringValue : null;
         }
     }
 }
