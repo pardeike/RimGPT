@@ -67,13 +67,12 @@ namespace RimGPT
 					var immunityInfo = hediff.Immunity.HasValue ? $" with an immunity of {hediff.Immunity:P1}" : "";
 					var bleedingInfo = hediff.Bleeding ? ", currently bleeding" : "";
 					return $"{hediff.Label}{locationInfo}: Severity: {hediff.Severity:F2}{immunityInfo}{bleedingInfo}";
-				}).ToList();
+				})
+				.ToList();
 
 				string hediffsText;
 				if (hediffDescriptions.Count == 1)
-				{
 					hediffsText = $"a {hediffDescriptions.Single()}";
-				}
 				else
 				{
 					var lastElementIndex = hediffDescriptions.Count - 1;
@@ -88,10 +87,7 @@ namespace RimGPT
 		private static void AddWorkInformation(StringBuilder builder, ColonistData colonist)
 		{
 			if (colonist.AllowedWorkTypes?.Any() == true)
-			{
 				builder.Append($" {colonist.Name}'s allowed work types are: {GenText.ToCommaList(colonist.AllowedWorkTypes, true)}.");
-			}
 		}
-
 	}
 }

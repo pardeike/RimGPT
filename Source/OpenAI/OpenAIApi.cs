@@ -14,9 +14,9 @@ namespace OpenAI
 	public class OpenAIApi
 	{
 		/// <summary>
-		///     Reads and sets user credentials from %User%/.openai/auth.json
-		///     Remember that your API key is a secret! Do not share it with others or expose it in any client-side code (browsers, apps).
-		///     Production requests must be routed through your own backend server where your API key can be securely loaded from an environment variable or key management service.
+		/// Reads and sets user credentials from %User%/.openai/auth.json
+		/// Remember that your API key is a secret! Do not share it with others or expose it in any client-side code (browsers, apps).
+		/// Production requests must be routed through your own backend server where your API key can be securely loaded from an environment variable or key management service.
 		/// </summary>
 		private Configuration configuration;
 
@@ -95,9 +95,7 @@ namespace OpenAI
 			}
 		}
 
-		/// <summary>
-		///     Dispatches an HTTP request to the specified path with the specified method and optional payload.
-		/// </summary>
+		/// <summary>Dispatches an HTTP request to the specified path with the specified method and optional payload.</summary>
 		/// <param name="path">The path to send the request to.</param>
 		/// <param name="method">The HTTP method to use for the request.</param>
 		/// <param name="payload">An optional byte array of json payload to include in the request.</param>
@@ -111,9 +109,7 @@ namespace OpenAI
 			return await ProcessRequest<T>(request, errorCallback);
 		}
 
-		/// <summary>
-		///     Dispatches an HTTP request to the specified path with a multi-part data form.
-		/// </summary>
+		/// <summary>Dispatches an HTTP request to the specified path with a multi-part data form.</summary>
 		/// <param name="path">The path to send the request to.</param>
 		/// <param name="form">A multi-part data form to upload with the request.</param>
 		/// <typeparam name="T">Response type of the request.</typeparam>
@@ -130,9 +126,7 @@ namespace OpenAI
 			return await ProcessRequest<T>(request, errorCallback);
 		}
 
-		/// <summary>
-		///     Create byte array payload from the given request object that contains the parameters.
-		/// </summary>
+		/// <summary>Create byte array payload from the given request object that contains the parameters.</summary>
 		/// <param name="request">The request object that contains the parameters of the payload.</param>
 		/// <typeparam name="T">type of the request object.</typeparam>
 		/// <returns>Byte array payload.</returns>
@@ -142,18 +136,14 @@ namespace OpenAI
 			return Encoding.UTF8.GetBytes(json);
 		}
 
-		/// <summary>
-		///     Lists the currently available models, and provides basic information about each one such as the owner and availability.
-		/// </summary>
+		/// <summary>Lists the currently available models, and provides basic information about each one such as the owner and availability.</summary>
 		public async Task<ListModelsResponse> ListModels()
 		{
 			var path = $"{BASE_PATH}/models";
 			return await DispatchRequest<ListModelsResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
-		/// <summary>
-		///     Retrieves a model instance, providing basic information about the model such as the owner and permissioning.
-		/// </summary>
+		/// <summary>Retrieves a model instance, providing basic information about the model such as the owner and permissioning.</summary>
 		/// <param name="id">The ID of the model to use for this request</param>
 		/// <returns>See <see cref="Model"/></returns>
 		public async Task<OpenAIModel> RetrieveModel(string id)
@@ -162,9 +152,7 @@ namespace OpenAI
 			return await DispatchRequest<OpenAIModelResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
-		/// <summary>
-		///     Creates a completion for the provided prompt and parameters.
-		/// </summary>
+		/// <summary>Creates a completion for the provided prompt and parameters.</summary>
 		/// <param name="request">See <see cref="CreateCompletionRequest"/></param>
 		/// <returns>See <see cref="CreateCompletionResponse"/></returns>
 		public async Task<CreateCompletionResponse> CreateCompletion(CreateCompletionRequest request)
@@ -174,9 +162,7 @@ namespace OpenAI
 			return await DispatchRequest<CreateCompletionResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, null);
 		}
 
-		/// <summary>
-		///     Creates a chat completion request as in ChatGPT.
-		/// </summary>
+		/// <summary>Creates a chat completion request as in ChatGPT.</summary>
 		/// <param name="request">See <see cref="CreateChatCompletionRequest"/></param>
 		/// <returns>See <see cref="CreateChatCompletionResponse"/></returns>
 		public async Task<CreateChatCompletionResponse> CreateChatCompletion(CreateChatCompletionRequest request, Action<string> errorCallback)
@@ -186,9 +172,7 @@ namespace OpenAI
 			return await DispatchRequest<CreateChatCompletionResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, errorCallback);
 		}
 
-		/// <summary>
-		///     Creates a new edit for the provided input, instruction, and parameters.
-		/// </summary>
+		/// <summary>Creates a new edit for the provided input, instruction, and parameters.</summary>
 		/// <param name="request">See <see cref="CreateEditRequest"/></param>
 		/// <returns>See <see cref="CreateEditResponse"/></returns>
 		public async Task<CreateEditResponse> CreateEdit(CreateEditRequest request)
@@ -198,9 +182,7 @@ namespace OpenAI
 			return await DispatchRequest<CreateEditResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, null);
 		}
 
-		/// <summary>
-		///     Creates an image given a prompt.
-		/// </summary>
+		/// <summary>Creates an image given a prompt.</summary>
 		/// <param name="request">See <see cref="CreateImageRequest"/></param>
 		/// <returns>See <see cref="CreateImageResponse"/></returns>
 		public async Task<CreateImageResponse> CreateImage(CreateImageRequest request)
@@ -210,9 +192,7 @@ namespace OpenAI
 			return await DispatchRequest<CreateImageResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, null);
 		}
 
-		/// <summary>
-		///     Creates an edited or extended image given an original image and a prompt.
-		/// </summary>
+		/// <summary>Creates an edited or extended image given an original image and a prompt.</summary>
 		/// <param name="request">See <see cref="CreateImageEditRequest"/></param>
 		/// <returns>See <see cref="CreateImageResponse"/></returns>
 		public async Task<CreateImageResponse> CreateImageEdit(CreateImageEditRequest request)
@@ -230,9 +210,7 @@ namespace OpenAI
 			return await DispatchRequest<CreateImageResponse>(path, form, null);
 		}
 
-		/// <summary>
-		///     Creates a variation of a given image.
-		/// </summary>
+		/// <summary>Creates a variation of a given image.</summary>
 		/// <param name="request">See <see cref="CreateImageVariationRequest"/></param>
 		/// <returns>See <see cref="CreateImageResponse"/></returns>
 		public async Task<CreateImageResponse> CreateImageVariation(CreateImageVariationRequest request)
@@ -249,9 +227,7 @@ namespace OpenAI
 			return await DispatchRequest<CreateImageResponse>(path, form, null);
 		}
 
-		/// <summary>
-		///     Creates an embedding vector representing the input text.
-		/// </summary>
+		/// <summary>Creates an embedding vector representing the input text.</summary>
 		/// <param name="request">See <see cref="CreateEmbeddingsRequest"/></param>
 		/// <returns>See <see cref="CreateEmbeddingsResponse"/></returns>
 		public async Task<CreateEmbeddingsResponse> CreateEmbeddings(CreateEmbeddingsRequest request)
@@ -261,9 +237,7 @@ namespace OpenAI
 			return await DispatchRequest<CreateEmbeddingsResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, null);
 		}
 
-		/// <summary>
-		///     Transcribes audio into the input language.
-		/// </summary>
+		/// <summary>Transcribes audio into the input language.</summary>
 		/// <param name="request">See <see cref="CreateAudioTranscriptionsRequest"/></param>
 		/// <returns>See <see cref="CreateAudioResponse"/></returns>
 		public async Task<CreateAudioResponse> CreateAudioTranscription(CreateAudioTranscriptionsRequest request)
@@ -288,9 +262,7 @@ namespace OpenAI
 			return await DispatchRequest<CreateAudioResponse>(path, form, null);
 		}
 
-		/// <summary>
-		///     Translates audio into into English.
-		/// </summary>
+		/// <summary>Translates audio into into English.</summary>
 		/// <param name="request">See <see cref="CreateAudioTranslationRequest"/></param>
 		/// <returns>See <see cref="CreateAudioResponse"/></returns>
 		public async Task<CreateAudioResponse> CreateAudioTranslation(CreateAudioTranslationRequest request)
@@ -314,9 +286,7 @@ namespace OpenAI
 			return await DispatchRequest<CreateAudioResponse>(path, form, null);
 		}
 
-		/// <summary>
-		///     Returns a list of files that belong to the user's organization.
-		/// </summary>
+		/// <summary>Returns a list of files that belong to the user's organization.</summary>
 		/// <returns>See <see cref="ListFilesResponse"/></returns>
 		public async Task<ListFilesResponse> ListFiles()
 		{
@@ -325,9 +295,9 @@ namespace OpenAI
 		}
 
 		/// <summary>
-		///     Upload a file that contains document(s) to be used across various endpoints/features.
-		///     Currently, the size of all the files uploaded by one organization can be up to 1 GB.
-		///     Please contact us if you need to increase the storage limit.
+		/// Upload a file that contains document(s) to be used across various endpoints/features.
+		/// Currently, the size of all the files uploaded by one organization can be up to 1 GB.
+		/// Please contact us if you need to increase the storage limit.
 		/// </summary>
 		/// <param name="request">See <see cref="CreateFileRequest"/></param>
 		/// <returns>See <see cref="OpenAIFile"/></returns>
@@ -342,9 +312,7 @@ namespace OpenAI
 			return await DispatchRequest<OpenAIFileResponse>(path, form, null);
 		}
 
-		/// <summary>
-		///     Delete a file.
-		/// </summary>
+		/// <summary>Delete a file. </summary>
 		/// <param name="id">The ID of the file to use for this request</param>
 		/// <returns>See <see cref="DeleteResponse"/></returns>
 		public async Task<DeleteResponse> DeleteFile(string id)
@@ -353,9 +321,7 @@ namespace OpenAI
 			return await DispatchRequest<DeleteResponse>(path, UnityWebRequest.kHttpVerbDELETE, null, null);
 		}
 
-		/// <summary>
-		///     Returns information about a specific file.
-		/// </summary>
+		/// <summary>Returns information about a specific file.</summary>
 		/// <param name="id">The ID of the file to use for this request</param>
 		/// <returns>See <see cref="OpenAIFile"/></returns>
 		public async Task<OpenAIFile> RetrieveFile(string id)
@@ -364,9 +330,7 @@ namespace OpenAI
 			return await DispatchRequest<OpenAIFileResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
-		/// <summary>
-		///     Returns the contents of the specified file
-		/// </summary>
+		/// <summary>Returns the contents of the specified file</summary>
 		/// <param name="id">The ID of the file to use for this request</param>
 		/// <returns>See <see cref="OpenAIFile"/></returns>
 		public async Task<OpenAIFile> DownloadFile(string id)
@@ -376,8 +340,8 @@ namespace OpenAI
 		}
 
 		/// <summary>
-		///     Manage fine-tuning jobs to tailor a model to your specific training data.
-		///     Related guide: <a href="https://beta.openai.com/docs/guides/fine-tuning">Fine-tune models</a>
+		/// Manage fine-tuning jobs to tailor a model to your specific training data.
+		/// Related guide: <a href="https://beta.openai.com/docs/guides/fine-tuning">Fine-tune models</a>
 		/// </summary>
 		/// <param name="request">See <see cref="CreateFineTuneRequest"/></param>
 		/// <returns>See <see cref="FineTune"/></returns>
@@ -388,9 +352,7 @@ namespace OpenAI
 			return await DispatchRequest<FineTuneResponse>(path, UnityWebRequest.kHttpVerbPOST, payload, null);
 		}
 
-		/// <summary>
-		///     List your organization's fine-tuning jobs
-		/// </summary>
+		/// <summary>List your organization's fine-tuning jobs</summary>
 		/// <returns>See <see cref="ListFineTunesResponse"/></returns>
 		public async Task<ListFineTunesResponse> ListFineTunes()
 		{
@@ -398,9 +360,7 @@ namespace OpenAI
 			return await DispatchRequest<ListFineTunesResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
-		/// <summary>
-		///     Gets info about the fine-tune job.
-		/// </summary>
+		/// <summary>Gets info about the fine-tune job.</summary>
 		/// <param name="id">The ID of the fine-tune job</param>
 		/// <returns>See <see cref="FineTune"/></returns>
 		public async Task<FineTune> RetrieveFineTune(string id)
@@ -409,9 +369,7 @@ namespace OpenAI
 			return await DispatchRequest<FineTuneResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
-		/// <summary>
-		///     Immediately cancel a fine-tune job.
-		/// </summary>
+		/// <summary>Immediately cancel a fine-tune job.</summary>
 		/// <param name="id">The ID of the fine-tune job to cancel</param>
 		/// <returns>See <see cref="FineTune"/></returns>
 		public async Task<FineTune> CancelFineTune(string id)
@@ -420,9 +378,7 @@ namespace OpenAI
 			return await DispatchRequest<FineTuneResponse>(path, UnityWebRequest.kHttpVerbPOST, null, null);
 		}
 
-		/// <summary>
-		///     Get fine-grained status updates for a fine-tune job.
-		/// </summary>
+		/// <summary>Get fine-grained status updates for a fine-tune job.</summary>
 		/// <param name="id">The ID of the fine-tune job to get events for.</param>
 		/// <param name="stream">Whether to stream events for the fine-tune job.
 		/// If set to true, events will be sent as data-only <a href="https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format">server-sent events</a> as they become available.
@@ -435,9 +391,7 @@ namespace OpenAI
 			return await DispatchRequest<ListFineTuneEventsResponse>(path, UnityWebRequest.kHttpVerbGET, null, null);
 		}
 
-		/// <summary>
-		///     Delete a fine-tuned model. You must have the Owner role in your organization.
-		/// </summary>
+		/// <summary>Delete a fine-tuned model. You must have the Owner role in your organization.</summary>
 		/// <param name="model">The model to delete</param>
 		/// <returns>See <see cref="DeleteResponse"/></returns>
 		public async Task<DeleteResponse> DeleteFineTunedModel(string model)
@@ -446,9 +400,7 @@ namespace OpenAI
 			return await DispatchRequest<DeleteResponse>(path, UnityWebRequest.kHttpVerbDELETE, null, null);
 		}
 
-		/// <summary>
-		///     Classifies if text violates OpenAI's Content Policy
-		/// </summary>
+		/// <summary>Classifies if text violates OpenAI's Content Policy</summary>
 		/// <param name="request">See <see cref="CreateModerationRequest"/></param>
 		/// <returns>See <see cref="CreateModerationResponse"/></returns>
 		public async Task<CreateModerationResponse> CreateModeration(CreateModerationRequest request)

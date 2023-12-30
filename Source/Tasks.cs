@@ -337,13 +337,13 @@ namespace RimGPT
 			}
 			var quadrumsMonthsSeasonsString = quadrumsMonthsSeasons.Join();
 
-			var message = $"Current Season: {seasonName}, Yearly Seasons Overview: {quadrumsMonthsSeasonsString}\n " +
-							  $"Each Quadrum lasts 15 days, and there are 4 Quadrums per year\n" +
-							  $"Today is: {fullDateString}, The current Settlement name is: {settlementName}\n " +
-							  $"Our colony is {years} years {quadrums} quadrums {days} days old\n " +
-							  $"Current weather: {currentWeather.LabelCap}\n " +
-							  $"Temperature: {map.mapTemperature.OutdoorTemp:0.#}°C\n " +
-							  $"Area: {biomeName}, {biomeDescription}";
+			var message =  $"Current Season: {seasonName}, Yearly Seasons Overview: {quadrumsMonthsSeasonsString}\n " +
+								$"Each Quadrum lasts 15 days, and there are 4 Quadrums per year\n" +
+								$"Today is: {fullDateString}, The current Settlement name is: {settlementName}\n " +
+								$"Our colony is {years} years {quadrums} quadrums {days} days old\n " +
+								$"Current weather: {currentWeather.LabelCap}\n " +
+								$"Temperature: {map.mapTemperature.OutdoorTemp:0.#}°C\n " +
+								$"Area: {biomeName}, {biomeDescription}";
 			Personas.Add(message, 3);
 		}
 	}
@@ -384,6 +384,7 @@ namespace RimGPT
 				
 				foreach (var trait in colonist.story.traits.allTraits)
 					colonistData.Traits.Add(trait.Label);
+
 				foreach (var workTypeDef in DefDatabase<WorkTypeDef>.AllDefsListForReading)
 				{
 					if (!colonist.WorkTypeIsDisabled(workTypeDef))
@@ -391,6 +392,7 @@ namespace RimGPT
 						colonistData.AllowedWorkTypes.Add(workTypeDef.labelShort);
 					}
 				}
+
 				foreach (var hediff in colonist.health.hediffSet.hediffs)
 				{
 					var immunityComp = (hediff as HediffWithComps)?.TryGetComp<HediffComp_Immunizable>();

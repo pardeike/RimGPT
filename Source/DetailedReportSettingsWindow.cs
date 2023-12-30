@@ -8,7 +8,7 @@ namespace RimGPT
 		private class DetailedReportSettingsWindow : Window
 		{
 			// Reference to the settings to allow us to modify them
-			private RimGPTSettings settings;
+			private readonly RimGPTSettings settings;
 
 			// Constructor to pass in the settings reference
 			public DetailedReportSettingsWindow(RimGPTSettings settings)
@@ -21,12 +21,12 @@ namespace RimGPT
 			}
 
 			// Override the method to specify the initial size of the window
-			public override Vector2 InitialSize => new Vector2(800f, 600f);
+			public override Vector2 InitialSize => new(800f, 600f);
 
 
 			public override void DoWindowContents(Rect inRect)
 			{
-				Listing_Standard listing = new Listing_Standard();
+				var listing = new Listing_Standard();
 				listing.Begin(inRect);
 				Text.Font = GameFont.Medium;
 				listing.Label("AI Insights Configuration");
@@ -35,16 +35,16 @@ namespace RimGPT
 				Text.Font = GameFont.Small;
 
 				// Description paragraph explaining permanently monitored aspects by the AI
-				string description = "RimGPT automatically monitors a range of essential data points to create adaptive and responsive " +
+				var description = "RimGPT automatically monitors a range of essential data points to create adaptive and responsive " +
 									 "personas. This includes game state, weather, colonist activities, messages, alerts, letters, and resources.\n\n" +
 									 "Below you can enable additional insight feeds for more in-depth analysis:";
 				listing.Label(description);
 
 				listing.GapLine(18f);
 
-				float yOffset = listing.CurHeight; // Current Y position after the headers and description
-				float rowHeight = 60f; // Set the height for each row
-				float gapBetweenRows = 10f; // Gap between rows
+				var yOffset = listing.CurHeight; // Current Y position after the headers and description
+				var rowHeight = 60f; // Set the height for each row
+				var gapBetweenRows = 10f; // Gap between rows
 
 				// Reset font size after headers
 				Text.Font = GameFont.Small;
@@ -113,16 +113,16 @@ namespace RimGPT
 
 			private void DrawSettingRow(Rect overallRect, string label, ref int frequencySetting, ref bool enabled, ref bool immediate, string tooltip)
 			{
-				float padding = 8f; // Padding between controls
+				var padding = 8f; // Padding between controls
 
 				// Calculate widths for each control's Rect based on the percentage of the overallRect's width
-				float sliderWidth = overallRect.width * 0.7f - padding;
-				float enabledWidth = (overallRect.width * 0.15f) - padding;
-				float immediateWidth = (overallRect.width * 0.15f) - padding;
+				var sliderWidth = overallRect.width * 0.7f - padding;
+				var enabledWidth = (overallRect.width * 0.15f) - padding;
+				var immediateWidth = (overallRect.width * 0.15f) - padding;
 
 				// Rect for the slider
-				Rect sliderRect = new Rect(overallRect.x, overallRect.y, sliderWidth, overallRect.height);
-				Listing_Standard sliderListing = new Listing_Standard();
+				var sliderRect = new Rect(overallRect.x, overallRect.y, sliderWidth, overallRect.height);
+				var sliderListing = new Listing_Standard();
 				sliderListing.Begin(sliderRect);
 				sliderListing.Label(label);
 				if (enabled) {
@@ -133,7 +133,7 @@ namespace RimGPT
 				// If the slider is disabled, overlay a 'Disabled' label
 				if (!enabled)
 				{
-					 Rect disabledOverlayRect = new Rect(sliderRect.x + (sliderRect.width / 2)-16, sliderRect.y, sliderRect.width / 2-16, sliderRect.height);
+					 var disabledOverlayRect = new Rect(sliderRect.x + (sliderRect.width / 2)-16, sliderRect.y, sliderRect.width / 2-16, sliderRect.height);
 
 					// More opaque overlay
 					GUI.color = new Color(0f, 0f, 0f, 0.8f); // Dark overlay with higher opacity
@@ -147,15 +147,15 @@ namespace RimGPT
 				}
 
 				// Rect for the enabled checkbox
-				Rect enabledRect = new Rect(sliderRect.xMax + padding, overallRect.y + 16f, enabledWidth, overallRect.height);
-				Listing_Standard enabledListing = new Listing_Standard();
+				var enabledRect = new Rect(sliderRect.xMax + padding, overallRect.y + 16f, enabledWidth, overallRect.height);
+				var enabledListing = new Listing_Standard();
 				enabledListing.Begin(enabledRect);
 				enabledListing.CheckboxLabeled("Enabled:", ref enabled, tooltip);
 				enabledListing.End();
 
 				// Rect for the immediate checkbox
-				Rect immediateRect = new Rect(enabledRect.xMax + padding, overallRect.y + 16f, immediateWidth, overallRect.height);
-				Listing_Standard immediateListing = new Listing_Standard();
+				var immediateRect = new Rect(enabledRect.xMax + padding, overallRect.y + 16f, immediateWidth, overallRect.height);
+				var immediateListing = new Listing_Standard();
 				immediateListing.Begin(immediateRect);
 				immediateListing.CheckboxLabeled("Immediate:", ref immediate, tooltip: "If checked, the AI will gain " + label + " insight immediately when starting or loading a game.");
 				immediateListing.End();
@@ -178,7 +178,7 @@ namespace RimGPT
 
 			private string FormatFrequencyLabel(int ticks)
 			{
-				float readableValue = ReadableTicks(ticks);
+				var readableValue = ReadableTicks(ticks);
 				if (readableValue >= 1)
 				{
 					return $"{readableValue:0.#} days"; // Days

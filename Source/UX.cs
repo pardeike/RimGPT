@@ -138,7 +138,7 @@ namespace RimGPT
 
 		public static void GPTVersionMenu(Action<string> action)
 		{
-			var options = new List<FloatMenuOption> { new FloatMenuOption("ChatGPT Version", () => action(default)) };
+			var options = new List<FloatMenuOption> { new("ChatGPT Version", () => action(default)) };
 			foreach (var version in Tools.chatGPTModels)
 			{
 				var label = version;
@@ -163,7 +163,7 @@ namespace RimGPT
 
 		public static void LanguageChoiceMenu<T>(IEnumerable<T> languages, Func<T, string> itemFunc, Action<T> action)
 		{
-			var options = new List<FloatMenuOption> { new FloatMenuOption("Game Language", () => action(default)) };
+			var options = new List<FloatMenuOption> { new("Game Language", () => action(default)) };
 			foreach (var language in languages)
 				options.Add(new FloatMenuOption(itemFunc(language), () => action(language)));
 			Find.WindowStack.Add(new FloatMenu(options));

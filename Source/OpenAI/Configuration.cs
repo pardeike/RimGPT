@@ -13,9 +13,9 @@ namespace OpenAI
 		/// Used for serializing and deserializing PascalCase request object fields into snake_case format for JSON. Ignores null fields when creating JSON strings.
 		private readonly JsonSerializerSettings jsonSerializerSettings = new()
 		{
-			NullValueHandling = NullValueHandling.Ignore,
-            MissingMemberHandling = MissingMemberHandling.Ignore,
-            ContractResolver = new DefaultContractResolver()
+			NullValueHandling = NullValueHandling.Ignore, 
+			MissingMemberHandling = MissingMemberHandling.Ignore, 
+			ContractResolver = new DefaultContractResolver()
 			{
 				NamingStrategy = new CustomNamingStrategy()
 			}

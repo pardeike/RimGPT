@@ -6,9 +6,7 @@ namespace OpenAI
 {
 	public static class ExtensionMethods
 	{
-		/// <summary>
-		///     Read a file and add it to this form.
-		/// </summary>
+		/// <summary>Read a file and add it to this form.</summary>
 		/// <param name="form">List of multipart form sections.</param>
 		/// <param name="path">Path of the file to read.</param>
 		/// <param name="name">Name of the form field.</param>
@@ -23,9 +21,7 @@ namespace OpenAI
 			}
 		}
 
-		/// <summary>
-		///     Read a file and add it to this form.
-		/// </summary>
+		/// <summary>Read a file and add it to this form.</summary>
 		/// <param name="form">List of multipart form sections.</param>
 		/// <param name="data">Byte array data of the file to attach.</param>
 		/// <param name="name">Name of the form field.</param>
@@ -39,9 +35,7 @@ namespace OpenAI
 			}
 		}
 
-		/// <summary>
-		///     Add a primitive value to the form.
-		/// </summary>
+		/// <summary>Add a primitive value to the form.</summary>
 		/// <param name="form">List of multipart form sections.</param>
 		/// <param name="value">Value of the form field.</param>
 		/// <param name="name">Name of the form field.</param>
@@ -53,9 +47,7 @@ namespace OpenAI
 			}
 		}
 
-		/// <summary>
-		///     Set headers of the HTTP request with user credentials.
-		/// </summary>
+		/// <summary>Set headers of the HTTP request with user credentials.</summary>
 		/// <param name="request">this UnityWebRequest</param>
 		/// <param name="configuration">Configuration file that contains user credentials.</param>
 		/// <param name="type">The value of the Accept header for an HTTP request.</param>

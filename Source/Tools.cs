@@ -61,6 +61,17 @@ namespace RimGPT
 			Logger.Message($"Loaded {chatGPTModels.Length} GPT models");
 		}
 
+		public static bool NonEmpty(this string str) => string.IsNullOrEmpty(str) == false;
+		public static bool NonEmpty(this TaggedString str) => string.IsNullOrEmpty(str) == false;
+
+		public static string OrderString(this Designation des)
+		{
+			return des.def.label.NonEmpty() ? des.def.label :
+				des.def.LabelCap.NonEmpty() ? des.def.LabelCap :
+				des.def.description.NonEmpty() ? des.def.description :
+				des.def.defName;
+		}
+
 		public static void SafeAsync(Func<Task> function)
 		{
 			_ = Task.Run(async () =>
@@ -272,12 +283,13 @@ namespace RimGPT
 			else if (entry is BattleLogEntry_StateTransition transition)
 				from = transition.subjectPawn;
 		}
+
 		public static string GetIndefiniteArticleFor(string noun)
 		{
 			// Simple English rule: if it starts with a vowel sound use "an", otherwise "a"
 			// This does not cover all English language edge cases.
-			char firstLetter = noun.TrimStart()[0];
-			bool isVowel = "aeiouAEIOU".IndexOf(firstLetter) >= 0;
+			var firstLetter = noun.TrimStart()[0];
+			var isVowel = "aeiouAEIOU".IndexOf(firstLetter) >= 0;
 			return isVowel ? "an" : "a";
 		}
 
@@ -290,7 +302,6 @@ namespace RimGPT
 		// simple pluralization tool, not exhaustive and doesnt cover all cases.
 		public static string SimplePluralize(string noun)
 		{
-
 			// Basic pluralization rule: add 's' or 'es'
 			// Note: This does not cover all English language special cases.
 			if (noun.EndsWith("s") || noun.EndsWith("sh") || noun.EndsWith("ch") || noun.EndsWith("x") || noun.EndsWith("z"))
@@ -320,6 +331,7 @@ namespace RimGPT
 				return $"{noun}s";
 			}
 		}
+
 		// Helper method to find a valid translation key.
 		public static string FindValidTranslationKey(params string[] keys)
 		{
@@ -330,6 +342,7 @@ namespace RimGPT
 			}
 			return null; // No valid key found
 		}
+
 		public static readonly string[] commonLanguages =
 		[
 			"Alien",

@@ -21,7 +21,7 @@ namespace RimGPT
 		public Dictionary<string, SkillData> Skills { get; set; }
 		public List<string> Traits { get; set; }
 		public List<HediffData> Health { get; set; }
-		public List<string> AllowedWorkTypes  { get; set; }		
+		public List<string> AllowedWorkTypes { get; set; }		
 	}
 
 	public class SkillData

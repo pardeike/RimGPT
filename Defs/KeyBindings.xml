@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 
 <Defs>
-    <KeyBindingDef ParentName="SelectionSpecialKeyBinding">
-        <defName>Command_OpenRimGPT</defName>
-        <label>open rimgpt</label>
-        <defaultKeyCodeA>Quote</defaultKeyCodeA>
-    </KeyBindingDef>
+	<KeyBindingDef ParentName="SelectionSpecialKeyBinding">
+		<defName>Command_OpenRimGPT</defName>
+		<label>open rimgpt</label>
+		<defaultKeyCodeA>Quote</defaultKeyCodeA>
+	</KeyBindingDef>
 </Defs>
