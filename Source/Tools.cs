@@ -284,21 +284,34 @@ namespace RimGPT
 				from = transition.subjectPawn;
 		}
 
-		public static string GetIndefiniteArticleFor(string noun)
-		{
-			// Simple English rule: if it starts with a vowel sound use "an", otherwise "a"
-			// This does not cover all English language edge cases.
-			var firstLetter = noun.TrimStart()[0];
-			var isVowel = "aeiouAEIOU".IndexOf(firstLetter) >= 0;
-			return isVowel ? "an" : "a";
-		}
 
 		// gets the job label from a specific pawn
 		public static string GetJobLabelFromPawn(Job job, Pawn driverPawn)
 		{
-			return job.GetReport(driverPawn).CapitalizeFirst();
+			if (job == null)
+			{
+				// Returns "Working" as a safe default if job is null.
+				return "Working";
+			}
+
+			try
+			{
+				var report = job.GetReport(driverPawn);
+				// Ensures report is not null or empty before trying to capitalize.
+				if (!string.IsNullOrEmpty(report))
+				{
+					return report.CapitalizeFirst();
+				}
+			}
+			catch
+			{
+				// In case of an exception, return "Working" as a safe default.
+				return "Working";
+			}
+
+			// If GetReport returned null or an empty string, return "Working".
+			return "Working";
 		}
-		
 		// simple pluralization tool, not exhaustive and doesnt cover all cases.
 		public static string SimplePluralize(string noun)
 		{
@@ -335,14 +348,37 @@ namespace RimGPT
 		// Helper method to find a valid translation key.
 		public static string FindValidTranslationKey(params string[] keys)
 		{
+			// Check if the input array is null or empty
+			if (keys == null || keys.Length == 0)
+				return null;
+
 			foreach (var key in keys)
 			{
-				if (LanguageDatabase.activeLanguage.HaveTextForKey(key))
+				if (!string.IsNullOrEmpty(key) && LanguageDatabase.activeLanguage.HaveTextForKey(key))
 					return key;
 			}
 			return null; // No valid key found
 		}
+		public static string GetIndefiniteArticleFor(string noun)
+		{
+			// Check for null, empty string, or white space string.
+			if (string.IsNullOrWhiteSpace(noun))
+			{
+				return string.Empty; // Return an empty string if there's an issue.
+			}
 
+			try
+			{
+				char firstLetter = noun.TrimStart()[0];
+				bool isVowel = "aeiouAEIOU".IndexOf(firstLetter) >= 0;
+				return isVowel ? "an" : "a";
+			}
+			catch
+			{
+				// If an exception occurs (e.g., the string is empty after TrimStart), return an empty string.
+				return string.Empty;
+			}
+		}
 		public static readonly string[] commonLanguages =
 		[
 			"Alien",

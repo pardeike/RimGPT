@@ -656,4 +656,118 @@ namespace RimGPT
 			DesignationQueueManager.Update();
 		}
 	}
+
+	[HarmonyPatch(typeof(Pawn_JobTracker), "TryTakeOrderedJobPrioritizedWork")]
+	public static class TryTakeOrderedJobPrioritizedWorkPatch
+	{
+		public static void Postfix(Job job, Pawn_JobTracker __instance)
+		{
+			Pawn pawn = __instance.pawn;
+			if (pawn == null || job?.def == null) return; // Safety check for null references
+
+			string targetLabels = GetTargetLabels(job);
+
+			List<string> queueList = new List<string>();
+			if (job.targetQueueA != null && job.targetQueueA.Count > 0)
+				queueList.Add("A");
+			if (job.targetQueueB != null && job.targetQueueB.Count > 0)
+				queueList.Add("B");
+
+			string jobDefName;
+			try
+			{
+				jobDefName = job.def.defName.Translate();
+
+			}
+			catch (Exception)
+			{
+				jobDefName = "working"; // Fallback safe word
+			}
+
+			string queueMessagePart = queueList.Count > 0 ? $" and is queuing {string.Join(", ", queueList)}" : "";
+			string spaceIfNeeded = string.IsNullOrEmpty(targetLabels) ? "" : " ";
+			string message = $"Player orders {pawn.LabelShort} to prioritize '{jobDefName}' on{spaceIfNeeded}{targetLabels}{queueMessagePart}.";
+
+			Personas.Add(message, 2); // Add the resolved message to the message queue.
+		}
+
+		private static string GetTargetLabels(Job job)
+		{
+			List<string> labels = new List<string>();
+
+			try
+			{
+				if (job.targetA.IsValid)
+					labels.Add(GetLabelFor(job.targetA));
+				if (job.targetB.IsValid)
+					labels.Add(GetLabelFor(job.targetB));
+				if (job.targetC.IsValid)
+					labels.Add(GetLabelFor(job.targetC));
+
+				AddQueueLabels(labels, job.targetQueueA, "A");
+				AddQueueLabels(labels, job.targetQueueB, "B");
+			}
+			catch
+			{
+				// We can choose to log this exception or silently continue with a default/fallback value.
+			}
+
+			return labels.Count > 0 ? string.Join(", ", labels) : "";
+		}
+
+		private static void AddQueueLabels(List<string> labels, List<LocalTargetInfo> targetQueue, string queueLabel)
+		{
+			if (targetQueue != null)
+			{
+				foreach (var target in targetQueue)
+				{
+					if (target.IsValid)
+						labels.Add($"{GetLabelFor(target)} (queued {queueLabel})"); // Add queue label to each target label
+				}
+			}
+		}
+
+		private static string GetLabelFor(LocalTargetInfo target)
+		{
+			// Here we handle the case where target.Thing could be null
+			return target.HasThing ? target.Thing.LabelShort : target.ToString();
+		}
+	}
+
+
+	// when pawn is forced to quit working on something.
+	[HarmonyPatch(typeof(Pawn_JobTracker), "EndCurrentJob")]
+	public static class Pawn_JobTracker_EndCurrentJob_Patch
+	{
+		public static void Prefix(Pawn_JobTracker __instance, JobCondition condition)
+		{
+			try
+			{
+				// Accessing the current job before it's potentially set to null and ensuring all references are valid.
+				Job curJob = __instance?.curJob;
+				if (curJob != null && curJob.def != null && condition == JobCondition.InterruptForced)
+				{
+					string jobLabel = curJob.def.label;
+
+					if (string.IsNullOrEmpty(jobLabel))
+						return; // If the job label is empty, do not proceed with reporting.
+
+					// Ensuring pawn reference is not null before accessing its properties.
+					Pawn pawn = __instance.pawn;
+					if (pawn == null) return;
+
+					string pawnName = pawn.LabelShort.CapitalizeFirst();
+
+					// Construct and add message safely.
+					string message = $"{pawnName} was forced to quit working on {jobLabel}.";
+					Personas.Add(message, 2);
+				}
+			}
+			catch (Exception ex)
+			{
+				Log.Error($"There was an exception in Pawn_JobTracker_EndCurrentJob_Patch: {ex}");
+				
+			}
+		}
+	}
 }

@@ -3,16 +3,21 @@ using Verse;
 
 namespace RimGPT
 {
-	public static class DesignationHelpers
-	{
-		public static (string order, string targetLabel) GetOrderAndTargetLabel(Designation des)
-		{
-			// Determine translation key.
-			var translationKey = des.def.defName == "HarvestPlant"
-											&& des.target.Thing is Plant plant
-											&& plant.def.plant.IsTree
-				 ? "DesignatorHarvestWood"
-				 : $"Designator{des.def.defName}";
+    public static class DesignationHelpers
+    {
+        public static (string order, string targetLabel) GetOrderAndTargetLabel(Designation des)
+        {            
+            string translationKey;
+            try {
+            // Determine translation key.
+            translationKey = des.def.defName == "HarvestPlant"
+                                    && des.target.Thing is Plant plant
+                                    && plant.def.plant.IsTree
+                ? "DesignatorHarvestWood"
+                : $"Designator{des.def.defName}";
+            } catch {
+                translationKey = $"Designator{des.def.defName}"; // Fallback to generic designation if cast fails.
+            }
 
 			// Find a valid translation if available.
 			var validKey = Tools.FindValidTranslationKey(translationKey);
