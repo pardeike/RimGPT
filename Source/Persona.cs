@@ -117,7 +117,7 @@ namespace RimGPT
 			nextPhraseTime = DateTime.Now.AddMinutes(5);
 
 			// avoid spam if there's no new phrases and this persona has already spoken recently.
-			if (timesSpoken != 0 && batch.Length < phraseBatchSize && timesSkipped < limit)
+			if (timesSpoken != 0 && timesSkipped < limit)
 			{
 				ExtendWaitBeforeNextJob($"too chatty ({timesSkipped}/{limit})");
 				return;
