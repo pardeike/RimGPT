@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using System.Xml.Linq;
 using Verse;
+using Verse.Noise;
 
 namespace RimGPT
 {
@@ -15,7 +16,8 @@ namespace RimGPT
 		public OrderedHashSet<Phrase> phrases = [];
 		public string lastSpokenText = "";
 		public DateTime nextPhraseTime = DateTime.Now;
-
+		private int timesSkipped = 0;
+		private int timesSpoken = 0;
 		[Setting] public string azureVoiceLanguage = "-";
 		[Setting] public string azureVoice = "en-CA-LiamNeural";
 		[Setting] public string azureVoiceStyle = "default";
@@ -92,9 +94,106 @@ namespace RimGPT
 				}
 			}
 		}
+		public void ScheduleNextJob()
+		{
+			int limit = getReasonableSkipLimit(phraseDelayMin, phraseDelayMax);
 
+			// Check if there is already a completed job in the queue that hasn't started playback
+			if (Personas.IsAnyCompletedJobWaiting())
+			{
+				ExtendWaitBeforeNextJob("Other personas are speaking");
+				return;
+			}
+			// we could do the batching before-hand, but I figured we want the freshest data and we dont want any outstanding jbos.
+			var batch = new Phrase[0];
+			lock (phrases)
+			{
+				batch = phrases.Take(phraseBatchSize).ToArray();
+				phrases.RemoveFromStart(phraseBatchSize);
+			}
+
+			// this gets overridden when createSpeechJob complets, much less than 5 mins - so its probably a safety measure to ensure we can 
+			// call this again if the callback in createSpeechJob never executes.
+			nextPhraseTime = DateTime.Now.AddMinutes(5);
+
+			// avoid spam if there's no new phrases and this persona has already spoken recently.
+			if (timesSpoken != 0 && batch.Length < phraseBatchSize && timesSkipped < limit)
+			{
+				ExtendWaitBeforeNextJob($"too chatty ({timesSkipped}/{limit})");
+				return;
+			}
+			// Alternative Strategy, always talk anyway but remember the last thing said:
+			// if persona has no new phrases, add a phrase of the last thing a recent persona said, to help with the conversation.
+			// if (timesSpoken != 0 && batch.Length == 0 && Personas.lastSpeakingPersona != null && Personas.lastSpeakingPersona != this)
+			// {
+			// 	var lastSpokenPhrase = new Phrase
+			// 	{
+			// 		text = Personas.lastSpeakingPersona.lastSpokenText,
+			// 		persona = Personas.lastSpeakingPersona,
+			// 		priority = 3
+			// 	};
+			// 	batch.AddItem(lastSpokenPhrase);
+			// }
+		
+			Log.Message($"chat ({timesSkipped}/{limit}) {name}");
+			timesSkipped = 0;
+			// Create the speech job immediately
+			Personas.CreateSpeechJob(this, batch, e => Logger.Error(e), () =>
+			{
+				timesSpoken++;
+				var secs = Rand.Range(phraseDelayMin, phraseDelayMax);
+				nextPhraseTime = DateTime.Now.AddSeconds(secs);
+			});
+
+		}
+		/// <summary>
+		/// Calculates a reasonable limit for the number of times a job can be skipped based on given minimum and maximum delay values.
+		/// The skip limit is determined by the mean delay and ranges from 1 to 5, with shorter delays allowing more skips.
+		/// </summary>
+		/// <param name="a">The minimum delay before a phrase can be repeated, in seconds.</param>
+		/// <param name="b">The maximum delay before a phrase can be repeated, in seconds.</param>
+		/// <returns>An integer representing the calculated skip limit.</returns>
+		public int getReasonableSkipLimit(float a, float b)
+		{
+		
+			double meanDelayInSeconds = (a + b) / 2.0;
+
+			if (meanDelayInSeconds <= 30)
+			{
+				// If mean delay is 30 seconds or less, return the maximum skip limit of 10
+				return 10;
+			}
+			else if (meanDelayInSeconds >= 120)
+			{
+				// If mean delay is 120 seconds or more, return the minimum skip limit of 1
+				return 1;
+			}
+			else
+			{
+				// Linearly interpolate the skip limit between 1 and 10 based on the mean delay
+				double slope = (1 - 10) / (120.0 - 30.0);
+				int limit = (int)Math.Round(5 + slope * (meanDelayInSeconds - 30));
+				return Math.Max(1, Math.Min(limit, 10)); // Ensure the skip limit stays within the range 1 to 10
+			}
+		}
+		public void OnAudioPlayed()
+		{
+
+			Logger.Message($"{name}: The audio '{lastSpokenText}' has completed playing.");
+
+		}
+
+		public void ExtendWaitBeforeNextJob(string reason)
+		{
+			Log.Message($"Skipping {this.name}: {reason}");
+			timesSkipped++;
+			var secs = Rand.Range(phraseDelayMin, phraseDelayMax);
+			nextPhraseTime = DateTime.Now.AddSeconds(secs);
+		}
 		public void Reset(string[] reason)
 		{
+			timesSkipped = 0;
+			timesSpoken = 0;
 			lock (phrases)
 			{
 				phrases.Clear();
@@ -108,36 +207,12 @@ namespace RimGPT
 				return;
 
 			var now = DateTime.Now;
-			if (now < nextPhraseTime || Personas.IsAudioQueueFull)
-			{
-				//FileLog.Log($"{name}: delayed by {((int)(nextPhraseTime - now).TotalSeconds)} secs");
-				return;
-			}
+			if (now < nextPhraseTime || Personas.IsAudioQueueFull) return;
 
 			var game = Current.Game;
-			if (game != null && game.tickManager.ticksGameInt > 100 && game.tickManager.Paused)
-			{
-				//FileLog.Log($"{name}: paused");
-				return;
-			}
+			if (game != null && game.tickManager.ticksGameInt > 100 && game.tickManager.Paused) return;
 
-			var batch = new Phrase[0];
-			lock (phrases)
-			{
-				batch = phrases.Take(phraseBatchSize).ToArray();
-				phrases.RemoveFromStart(phraseBatchSize);
-			}
-			//FileLog.Log($"{name}: consumed {batch.Length}, remaining {phrases.Count}");
-			if (batch.Length == 0)
-				return;
-
-			nextPhraseTime = DateTime.Now.AddMinutes(5);
-			Personas.CreateSpeechJob(this, batch, e => Logger.Error(e), () =>
-			{
-				var secs = Rand.Range(phraseDelayMin, phraseDelayMax);
-				//FileLog.Log($"{name}: nextPhraseTime now + {secs}");
-				nextPhraseTime = DateTime.Now.AddSeconds(secs);
-			});
+			ScheduleNextJob();
 		}
 
 		public string ToXml()

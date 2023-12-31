@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Verse;
@@ -9,7 +10,7 @@ namespace RimGPT
         private static Dictionary<(OrderType orderType, string workOrderVerb, string targetObject), int> designationCounts
     = new Dictionary<(OrderType orderType, string workOrderVerb, string targetObject), int>();
 
-        private static readonly int threshold = 30; // Threshold for sending messages
+        private static readonly int threshold = 90; // Threshold for sending messages
         private static readonly int timeLimitTicks = 600; // Time limit in game ticks (600 ticks = 10 seconds)
         private static int currentTickCounter = 0;
 
@@ -29,9 +30,9 @@ namespace RimGPT
                     FlushQueue();
                 }
             }
-            catch 
+              catch (Exception ex)
             {
-                Log.Error($"An error occurred during the updating of DesignationQueueManager");
+                Log.Error($"An error occurred during the updating of DesignationQueueManager {ex}");
             }
         }
         public static void FlushQueue(bool forceFlush = false)
@@ -76,9 +77,9 @@ namespace RimGPT
                     Personas.Add($"The player {combinedMessage}", 3);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                Log.Error($"An error occurred while flushing the queue in DesignationQueueManager");
+                Log.Error($"An error occurred while flushing the queue in DesignationQueueManager {ex}");
             }
         }
 
@@ -102,9 +103,9 @@ namespace RimGPT
                     FlushQueue();
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                Log.Error($"An error occurred while enqueuing a designation in DesignationQueueManager");
+                Log.Error($"An error occurred while enqueuing a designation in DesignationQueueManager {ex}");
             }
         }
     }

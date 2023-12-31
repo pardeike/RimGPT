@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using Verse;
 
@@ -11,9 +12,13 @@ namespace RimGPT
 		public static bool IsAudioQueueFull => speechQueue.Count >= maxQueueSize;
 		public static ConcurrentQueue<SpeechJob> speechQueue = new();
 		public static string currentText = "";
-
+		public static Persona currentSpeakingPersona = null;
+		private static OrderedHashSet<Phrase> allPhrases = new OrderedHashSet<Phrase>();
+		public static Persona lastSpeakingPersona = null;
+		
 		static Personas()
 		{
+			StartNextPersona();
 			Tools.SafeLoop(() =>
 			{
 				foreach (var persona in RimGPTMod.Settings.personas)
@@ -35,15 +40,74 @@ namespace RimGPT
 				return false;
 			});
 		}
+		public static void StartNextPersona(Persona lastSpeaker = null)
+		{
+			var candidates = RimGPTMod.Settings.personas.Where(p => p.nextPhraseTime > DateTime.Now);
+			lastSpeakingPersona = lastSpeaker;
+			Persona nextPersona;
+
+			if (!candidates.Any())
+			{
+				// If there are no future phrase times, simply use the round-robin approach.
+				int currentIndex = lastSpeaker != null ? RimGPTMod.Settings.personas.IndexOf(lastSpeaker) : 0;
+				if (currentIndex == -1 || currentIndex >= RimGPTMod.Settings.personas.Count - 1)
+					currentIndex = 0;
+				else
+					currentIndex++;
+
+				nextPersona = RimGPTMod.Settings.personas[currentIndex];
+			}
+			else
+			{
+				// Select the candidate with the closest nextPhraseTime
+				nextPersona = candidates.OrderBy(p => p.nextPhraseTime).First();
+			}
+
+			int transferCount = Math.Min(nextPersona.phrasesLimit, allPhrases.Count);
+
+			var phrasesToTransfer = new List<Phrase>();
+			for (int i = 0; i < transferCount; i++)
+			{
+				phrasesToTransfer.Add(allPhrases[i]);
+			}
+
+			allPhrases.RemoveFromStart(transferCount);
+
+			foreach (var phrase in phrasesToTransfer)
+			{
+				nextPersona.phrases.Add(phrase);
+			}
+
+			// Add last spoken phrase from the previous speaker if it's not null
+			if (lastSpeaker != null)
+			{
+				var lastSpokenPhrase = new Phrase
+				{
+					text = lastSpeaker.lastSpokenText,
+					persona = lastSpeaker,
+					priority = 3 // Assuming priority is always 3 for last spoken phrases
+				};
+
+				nextPersona.phrases.Add(lastSpokenPhrase);
+			}
+		}
+
+		public static bool IsAnyCompletedJobWaiting()
+		{
+			return speechQueue.Any(job => job.readyForNextJob && !job.isPlaying);
+		}
 
 		public static void Add(string text, int priority, Persona speaker = null)
 		{
 			var phrase = new Phrase(speaker, text, priority);
+			var existingPhrase = allPhrases.FirstOrDefault(p => p.text == text);
+			if (existingPhrase.text != null) return;
 			Logger.Message(phrase.ToString());
 
-			foreach (var persona in RimGPTMod.Settings.personas.Where(p => p != speaker))
-				persona.AddPhrase(phrase);
+			allPhrases.Add(phrase);
+
 		}
+
 
 		public static void RemoveSpeechDelayForPersona(Persona persona)
 		{
@@ -71,6 +135,9 @@ namespace RimGPT
 
 		public static void CreateSpeechJob(Persona persona, Phrase[] phrases, Action<string> errorCallback, Action doneCallback)
 		{
+
+			Logger.Message($"[{persona.name}] Speech Job: {string.Join(", ", phrases.Select(ph => ph.ToString()))}");
+
 			lock (speechQueue)
 			{
 				if (IsAudioQueueFull == false && RimGPTMod.Settings.azureSpeechKey != "" && RimGPTMod.Settings.azureSpeechRegion != "")

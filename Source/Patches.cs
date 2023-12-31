@@ -627,21 +627,53 @@ namespace RimGPT
 		}
 	}
 
+
+
+	// Patch for Designator_Cancel to track when the player issues a cancel
+	[HarmonyPatch(typeof(Designator_Cancel))]
+	public static class Designator_Cancel_Patch
+	{
+		[HarmonyPostfix, HarmonyPatch(nameof(Designator_Cancel.DesignateSingleCell))]
+		public static void PostfixForDesignateSingleCell(IntVec3 c)
+		{
+			//Log.Message($"track cancel cell at  {c}");
+			DesignationHelpers.TrackCancelCell(c);
+		}
+
+		[HarmonyPostfix, HarmonyPatch(nameof(Designator_Cancel.DesignateThing))]
+		public static void PostfixForDesignateThing(Thing t)
+		{
+			//Log.Message($"track cancel thing  {t}");
+			DesignationHelpers.TrackCancelThing(t);
+		}
+	}
+
+
+	// Patch for DesignationManager.RemoveDesignation to process only player-initiated cancellations
 	[HarmonyPatch(typeof(DesignationManager), nameof(DesignationManager.RemoveDesignation))]
 	public static class DesignationManager_RemoveDesignation_Patch
 	{
 		public static void Postfix(Designation des)
 		{
+        // Checks if the action was cancelled for either a Thing or Cell target, bailing out only if neither is found.
+        bool wasCancelledByPlayer = des.target.HasThing
+            ? DesignationHelpers.IsTrackedCancelThing(des.target.Thing)
+            : (des.target.Cell != null ? DesignationHelpers.IsTrackedCancelCell(des.target.Cell) : false);
+
+        if (!wasCancelledByPlayer)
+            return;
+
+
 			(string order, string targetLabel) = DesignationHelpers.GetOrderAndTargetLabel(des);
 
-			// bail if its a plan, the AI gets confused and thinks we're building stuff when its just planning.  using string because
-			// of mods.  it might not be full-proof but should cover most use-cases.
+			// Bail if it's a plan to avoid ChatGPT getting confused.
 			if (targetLabel.ToLowerInvariant().Contains("plan"))
 				return;
 
 			DesignationQueueManager.EnqueueDesignation(OrderType.Cancel, order, targetLabel);
 		}
 	}
+
 	// Patch for when the blueprint is placed (construction is designated)
 	[HarmonyPatch(typeof(GenConstruct), nameof(GenConstruct.PlaceBlueprintForBuild))]
 	public static class GenConstruct_PlaceBlueprintForBuild_Patch
@@ -703,7 +735,7 @@ namespace RimGPT
 		public static void Postfix(Job job, Pawn_JobTracker __instance)
 		{
 			Pawn pawn = __instance.pawn;
-if (pawn == null || job?.def == null) return; // Safety check for null references
+			if (pawn == null || job?.def == null) return; // Safety check for null references
 
 			string targetLabels = GetTargetLabels(job);
 
@@ -713,7 +745,7 @@ if (pawn == null || job?.def == null) return; // Safety check for null reference
 			if (job.targetQueueB != null && job.targetQueueB.Count > 0)
 				queueList.Add("B");
 
-string jobDefName;
+			string jobDefName;
 			try
 			{
 				jobDefName = job.def.defName.Translate();
@@ -735,18 +767,18 @@ string jobDefName;
 		{
 			List<string> labels = new List<string>();
 
-try
+			try
 			{
-			if (job.targetA.IsValid)
-				labels.Add(GetLabelFor(job.targetA));
-			if (job.targetB.IsValid)
-				labels.Add(GetLabelFor(job.targetB));
-			if (job.targetC.IsValid)
-				labels.Add(GetLabelFor(job.targetC));
+				if (job.targetA.IsValid)
+					labels.Add(GetLabelFor(job.targetA));
+				if (job.targetB.IsValid)
+					labels.Add(GetLabelFor(job.targetB));
+				if (job.targetC.IsValid)
+					labels.Add(GetLabelFor(job.targetC));
 
-			AddQueueLabels(labels, job.targetQueueA, "A");
-			AddQueueLabels(labels, job.targetQueueB, "B");
-}
+				AddQueueLabels(labels, job.targetQueueA, "A");
+				AddQueueLabels(labels, job.targetQueueB, "B");
+			}
 			catch
 			{
 				// We can choose to log this exception or silently continue with a default/fallback value.
@@ -786,28 +818,28 @@ try
 				// Accessing the current job before it's potentially set to null and ensuring all references are valid.
 				Job curJob = __instance?.curJob;
 				if (curJob != null && curJob.def != null && condition == JobCondition.InterruptForced)
-			{
-				string jobLabel = __instance.curJob.def.label;
+				{
+					string jobLabel = __instance.curJob.def.label;
 
-				// If the job label is empty, do not proceed with reporting.
-				if (string.IsNullOrEmpty(jobLabel))
-					return; // If the job label is empty, do not proceed with reporting.
+					// If the job label is empty, do not proceed with reporting.
+					if (string.IsNullOrEmpty(jobLabel))
+						return; // If the job label is empty, do not proceed with reporting.
 
-// Ensuring pawn reference is not null before accessing its properties.
-				Pawn pawn = __instance.pawn;
-if (pawn == null) return;
+					// Ensuring pawn reference is not null before accessing its properties.
+					Pawn pawn = __instance.pawn;
+					if (pawn == null) return;
 
-				string pawnName = pawn.LabelShort.CapitalizeFirst();
+					string pawnName = pawn.LabelShort.CapitalizeFirst();
 
-// Construct and add message safely.
-				string message = $"{pawnName} was forced to quit working on {jobLabel}.";
-Personas.Add(message, 2);
+					// Construct and add message safely.
+					string message = $"{pawnName} was forced to quit working on {jobLabel}.";
+					Personas.Add(message, 2);
 				}
 			}
 			catch (Exception ex)
 			{
 				Log.Error($"There was an exception in Pawn_JobTracker_EndCurrentJob_Patch: {ex}");
-				
+
 			}
 		}
 	}

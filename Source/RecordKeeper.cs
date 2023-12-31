@@ -8,7 +8,7 @@ namespace RimGPT
 {
 	public static class RecordKeeper
 	{
-		public static List<ColonistData> colonistRecords = [];
+		public static List<ColonistData> colonistRecords = new List<ColonistData>();
 		public static string colonySetting = "Unknown as of now...";
 
 		public static void CollectColonistData(List<ColonistData> colonists)
@@ -87,7 +87,11 @@ namespace RimGPT
 		private static void AddWorkInformation(StringBuilder builder, ColonistData colonist)
 		{
 			if (colonist.AllowedWorkTypes?.Any() == true)
-				builder.Append($" {colonist.Name}'s allowed work types are: {GenText.ToCommaList(colonist.AllowedWorkTypes, true)}.");
+			{
+				string workTypes = string.Join(", ", colonist.AllowedWorkTypes.Select(wt => wt.ToString()).ToArray());
+				builder.Append($"{colonist.Name}'s allowed work types are: {workTypes}.");
+			}
+
 		}
 	}
 }

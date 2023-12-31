@@ -12,7 +12,8 @@ namespace RimGPT
 		public AudioClip audioClip = null;
 		public Action doneCallback = null;
 		public bool completed = false;
-
+		public bool isPlaying = false;
+		public bool readyForNextJob = false;
 		public SpeechJob(Persona persona, Phrase[] phrases, Action<string> errorCallback, Action doneCallback)
 		{
 			this.persona = persona;
@@ -39,9 +40,9 @@ namespace RimGPT
 		public async Task Play(bool immediately)
 		{
 			if (persona != null)
-			{
-				Personas.Add($"{persona.name} said: {spokenText}", 1, persona);
+			{				
 				persona.lastSpokenText = spokenText;
+				Personas.StartNextPersona(persona);
 			}
 
 			var showText = RimGPTMod.Settings.showAsText || RimGPTMod.Settings.azureSpeechRegion == "" || RimGPTMod.Settings.azureSpeechKey == "";
@@ -50,6 +51,7 @@ namespace RimGPT
 
 			if (audioClip != null)
 			{
+				isPlaying = true;
 				float length = 0;
 				var source = TTS.GetAudioSource();
 				if (immediately)
@@ -84,7 +86,7 @@ namespace RimGPT
 
 			doneCallback?.Invoke();
 			completed = true;
-
+			isPlaying = false;
 			Personas.currentText = "";
 		}
 	}
