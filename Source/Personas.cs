@@ -15,7 +15,7 @@ namespace RimGPT
 		public static Persona currentSpeakingPersona = null;
 		private static OrderedHashSet<Phrase> allPhrases = new OrderedHashSet<Phrase>();
 		public static Persona lastSpeakingPersona = null;
-		
+
 		static Personas()
 		{
 			StartNextPersona();
@@ -42,53 +42,56 @@ namespace RimGPT
 		}
 		public static void StartNextPersona(Persona lastSpeaker = null)
 		{
-			var candidates = RimGPTMod.Settings.personas.Where(p => p.nextPhraseTime > DateTime.Now);
-			lastSpeakingPersona = lastSpeaker;
-			Persona nextPersona;
-
-			if (!candidates.Any())
+			lock (allPhrases)
 			{
-				// If there are no future phrase times, simply use the round-robin approach.
-				int currentIndex = lastSpeaker != null ? RimGPTMod.Settings.personas.IndexOf(lastSpeaker) : 0;
-				if (currentIndex == -1 || currentIndex >= RimGPTMod.Settings.personas.Count - 1)
-					currentIndex = 0;
-				else
-					currentIndex++;
+				var candidates = RimGPTMod.Settings.personas.Where(p => p.nextPhraseTime > DateTime.Now);
+				lastSpeakingPersona = lastSpeaker;
+				Persona nextPersona;
 
-				nextPersona = RimGPTMod.Settings.personas[currentIndex];
-			}
-			else
-			{
-				// Select the candidate with the closest nextPhraseTime
-				nextPersona = candidates.OrderBy(p => p.nextPhraseTime).First();
-			}
-
-			int transferCount = Math.Min(nextPersona.phrasesLimit, allPhrases.Count);
-
-			var phrasesToTransfer = new List<Phrase>();
-			for (int i = 0; i < transferCount; i++)
-			{
-				phrasesToTransfer.Add(allPhrases[i]);
-			}
-
-			allPhrases.RemoveFromStart(transferCount);
-
-			foreach (var phrase in phrasesToTransfer)
-			{
-				nextPersona.phrases.Add(phrase);
-			}
-
-			// Add last spoken phrase from the previous speaker if it's not null
-			if (lastSpeaker != null)
-			{
-				var lastSpokenPhrase = new Phrase
+				if (!candidates.Any())
 				{
-					text = lastSpeaker.lastSpokenText,
-					persona = lastSpeaker,
-					priority = 3 // Assuming priority is always 3 for last spoken phrases
-				};
+					// If there are no future phrase times, simply use the round-robin approach.
+					int currentIndex = lastSpeaker != null ? RimGPTMod.Settings.personas.IndexOf(lastSpeaker) : 0;
+					if (currentIndex == -1 || currentIndex >= RimGPTMod.Settings.personas.Count - 1)
+						currentIndex = 0;
+					else
+						currentIndex++;
 
-				nextPersona.phrases.Add(lastSpokenPhrase);
+					nextPersona = RimGPTMod.Settings.personas[currentIndex];
+				}
+				else
+				{
+					// Select the candidate with the closest nextPhraseTime
+					nextPersona = candidates.OrderBy(p => p.nextPhraseTime).First();
+				}
+
+				int transferCount = Math.Min(nextPersona.phrasesLimit, allPhrases.Count);
+
+				var phrasesToTransfer = new List<Phrase>();
+				for (int i = 0; i < transferCount; i++)
+				{
+					phrasesToTransfer.Add(allPhrases[i]);
+				}
+
+				allPhrases.RemoveFromStart(transferCount);
+
+				foreach (var phrase in phrasesToTransfer)
+				{
+					nextPersona.phrases.Add(phrase);
+				}
+
+				// Add last spoken phrase from the previous speaker if it's not null
+				if (lastSpeaker != null)
+				{
+					var lastSpokenPhrase = new Phrase
+					{
+						text = lastSpeaker.lastSpokenText,
+						persona = lastSpeaker,
+						priority = 3 // Assuming priority is always 3 for last spoken phrases
+					};
+
+					nextPersona.phrases.Add(lastSpokenPhrase);
+				}
 			}
 		}
 

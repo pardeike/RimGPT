@@ -34,7 +34,7 @@ namespace RimGPT
 		[Setting] public int historyMaxWordCount = 200;
 		[Setting] public string personality = AI.defaultPersonality;
 		[Setting] public string personalityLanguage = "-";
-
+		public int maximumSkipLimit = 5;
 		public void ExposeData()
 		{
 			Scribe_Values.Look(ref name, "name", "RimGPT");
@@ -106,9 +106,17 @@ namespace RimGPT
 			}
 			// we could do the batching before-hand, but I figured we want the freshest data and we dont want any outstanding jbos.
 			var batch = new Phrase[0];
+
+
 			lock (phrases)
 			{
 				batch = phrases.Take(phraseBatchSize).ToArray();
+				// avoid spam if there's no new phrases and this persona has already spoken recently.
+				if (timesSpoken != 0 && batch.Length == 0 && timesSkipped < limit)
+				{
+					ExtendWaitBeforeNextJob($"too chatty ({timesSkipped}/{limit})");
+					return;
+				}
 				phrases.RemoveFromStart(phraseBatchSize);
 			}
 
@@ -116,12 +124,7 @@ namespace RimGPT
 			// call this again if the callback in createSpeechJob never executes.
 			nextPhraseTime = DateTime.Now.AddMinutes(5);
 
-			// avoid spam if there's no new phrases and this persona has already spoken recently.
-			if (timesSpoken != 0 && batch.Length < 2 && timesSkipped < limit)
-			{
-				ExtendWaitBeforeNextJob($"too chatty ({timesSkipped}/{limit})");
-				return;
-			}
+
 			// Alternative Strategy, always talk anyway but remember the last thing said:
 			// if persona has no new phrases, add a phrase of the last thing a recent persona said, to help with the conversation.
 			// if (timesSpoken != 0 && batch.Length == 0 && Personas.lastSpeakingPersona != null && Personas.lastSpeakingPersona != this)
@@ -134,8 +137,7 @@ namespace RimGPT
 			// 	};
 			// 	batch.AddItem(lastSpokenPhrase);
 			// }
-		
-			Log.Message($"chat ({timesSkipped}/{limit}) {name}");
+
 			timesSkipped = 0;
 			// Create the speech job immediately
 			Personas.CreateSpeechJob(this, batch, e => Logger.Error(e), () =>
@@ -155,13 +157,13 @@ namespace RimGPT
 		/// <returns>An integer representing the calculated skip limit.</returns>
 		public int getReasonableSkipLimit(float a, float b)
 		{
-		
+
 			double meanDelayInSeconds = (a + b) / 2.0;
 
 			if (meanDelayInSeconds <= 30)
 			{
-				// If mean delay is 30 seconds or less, return the maximum skip limit of 10
-				return 10;
+				// If mean delay is 30 seconds or less, return the maximum skip limit
+				return maximumSkipLimit;
 			}
 			else if (meanDelayInSeconds >= 120)
 			{
@@ -170,18 +172,13 @@ namespace RimGPT
 			}
 			else
 			{
-				// Linearly interpolate the skip limit between 1 and 10 based on the mean delay
-				double slope = (1 - 10) / (120.0 - 30.0);
+				// Linearly interpolate the skip limit between 1 and max skip limit based on the mean delay
+				double slope = (1 - maximumSkipLimit) / (120.0 - 30.0);
 				int limit = (int)Math.Round(5 + slope * (meanDelayInSeconds - 30));
-				return Math.Max(1, Math.Min(limit, 10)); // Ensure the skip limit stays within the range 1 to 10
+				return Math.Max(1, Math.Min(limit, maximumSkipLimit)); // Ensure the skip limit stays within the range 1 to max
 			}
 		}
-		public void OnAudioPlayed()
-		{
 
-			Logger.Message($"{name}: The audio '{lastSpokenText}' has completed playing.");
-
-		}
 
 		public void ExtendWaitBeforeNextJob(string reason)
 		{
