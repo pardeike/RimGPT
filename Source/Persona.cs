@@ -112,7 +112,7 @@ namespace RimGPT
 			{
 				batch = phrases.Take(phraseBatchSize).ToArray();
 				// avoid spam if there's no new phrases and this persona has already spoken recently.
-				if (timesSpoken != 0 && batch.Length == 0 && timesSkipped < limit)
+				if (timesSpoken != 0 && batch.Length <= 2 && timesSkipped < limit)
 				{
 					ExtendWaitBeforeNextJob($"too chatty ({timesSkipped}/{limit})");
 					return;
