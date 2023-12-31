@@ -633,15 +633,15 @@ namespace RimGPT
 	[HarmonyPatch(typeof(Designator_Cancel))]
 	public static class Designator_Cancel_Patch
 	{
-		[HarmonyPostfix, HarmonyPatch(nameof(Designator_Cancel.DesignateSingleCell))]
-		public static void PostfixForDesignateSingleCell(IntVec3 c)
+		[HarmonyPrefix, HarmonyPatch(nameof(Designator_Cancel.DesignateSingleCell))]
+		public static void PrefixForDesignateSingleCell(IntVec3 c)
 		{
 			//Log.Message($"track cancel cell at  {c}");
 			DesignationHelpers.TrackCancelCell(c);
 		}
 
-		[HarmonyPostfix, HarmonyPatch(nameof(Designator_Cancel.DesignateThing))]
-		public static void PostfixForDesignateThing(Thing t)
+		[HarmonyPrefix, HarmonyPatch(nameof(Designator_Cancel.DesignateThing))]
+		public static void PrefixForDesignateThing(Thing t)
 		{
 			//Log.Message($"track cancel thing  {t}");
 			DesignationHelpers.TrackCancelThing(t);
@@ -655,13 +655,12 @@ namespace RimGPT
 	{
 		public static void Postfix(Designation des)
 		{
-        // Checks if the action was cancelled for either a Thing or Cell target, bailing out only if neither is found.
-        bool wasCancelledByPlayer = des.target.HasThing
-            ? DesignationHelpers.IsTrackedCancelThing(des.target.Thing)
-            : (des.target.Cell != null ? DesignationHelpers.IsTrackedCancelCell(des.target.Cell) : false);
 
-        if (!wasCancelledByPlayer)
-            return;
+			// Checks if the action was cancelled for either a Thing or Cell target, bailing out only if neither is found.
+			bool wasCancelledByPlayer = des.target.Cell != null && DesignationHelpers.IsTrackedCancelCell(des.target.Cell);
+
+			if (!wasCancelledByPlayer)
+				return;
 
 
 			(string order, string targetLabel) = DesignationHelpers.GetOrderAndTargetLabel(des);
