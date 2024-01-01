@@ -9,26 +9,26 @@ namespace RimGPT
 {
 	public static class RecordKeeper
 	{
-		 private static ConcurrentBag<ColonistData> colonistRecords = new ConcurrentBag<ColonistData>();
+		private static ConcurrentBag<ColonistData> colonistRecords = new ConcurrentBag<ColonistData>();
 		private static ResearchData researchData = new ResearchData();
 		public static string ColonySetting = "Unknown as of now...";
 		private static string resourceData = "";
 		public static EnergyData EnergyStatus { get; set; }
 		private static ConcurrentBag<string> roomsData = new ConcurrentBag<string>();
-		
+		private static readonly object resetLock = new object();
 		public static IEnumerable<ColonistData> ColonistRecords
 		{
 			get => colonistRecords;
-        set
-        {
-            colonistRecords = new ConcurrentBag<ColonistData>(value);
-        }
+			set
+			{
+				colonistRecords = new ConcurrentBag<ColonistData>(value);
+			}
 		}
 
 		public static ResearchData ResearchData
 		{
-				get => researchData;
-				set => researchData = value;
+			get => researchData;
+			set => researchData = value;
 		}
 		public static string ResourceData
 		{
@@ -39,7 +39,7 @@ namespace RimGPT
 		public static IEnumerable<string> RoomsData
 		{
 			get => roomsData;
-			set => roomsData =  new ConcurrentBag<string>(value);
+			set => roomsData = new ConcurrentBag<string>(value);
 		}
 
 		public static List<ResearchProjectDef> CompletedResearch
@@ -60,23 +60,23 @@ namespace RimGPT
 			set => researchData.Available = value;
 		}
 
-    public static string EnergySummary
-    {
-        get
-        {
-            if (EnergyStatus != null)
-            {
-                return EnergyStatus.ToString();
-            }
-            else
-            {
-                return "";
-            }
-        }
-    }
+		public static string EnergySummary
+		{
+			get
+			{
+				if (EnergyStatus != null)
+				{
+					return EnergyStatus.ToString();
+				}
+				else
+				{
+					return "";
+				}
+			}
+		}
 		public static string RoomsDataSummary => string.Join(", ", RoomsData);
- 	 	public static string ResearchDataSummary => researchData != null ? researchData.ToString() : "";
-		
+		public static string ResearchDataSummary => researchData != null ? researchData.ToString() : "";
+
 		public static string[] ColonistDataSummary => ColonistRecords.Select(colonist =>
 		{
 			var dataBuilder = new StringBuilder();
@@ -146,6 +146,22 @@ namespace RimGPT
 			}
 		}
 
+
+		// this should only be used for when we are clearing personas for now, i'm not sure if this creates a memory leak or not
+		// or if this causes any other lock related issues
+		// worst case: since this only is called when player resets personas, its prob an edge case anyway
+		public static void Reset()
+		{
+			lock (resetLock)
+			{
+				colonistRecords = new ConcurrentBag<ColonistData>();
+				researchData = new ResearchData();
+				ColonySetting = "Unknown as of now...";
+				resourceData = "";
+				EnergyStatus = new EnergyData();
+				roomsData = new ConcurrentBag<string>();
+			}
+		}
 
 
 	}

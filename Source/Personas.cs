@@ -153,6 +153,7 @@ namespace RimGPT
 				foreach (var persona in RimGPTMod.Settings.personas)
 					persona.Reset(reason);
 				
+				RecordKeeper.Reset();
 				allPhrases.Clear();
 			}
 		}
