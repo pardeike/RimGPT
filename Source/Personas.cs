@@ -51,7 +51,7 @@ namespace RimGPT
 					// Transfer all available phrases to each chronicler
 					foreach (var phrase in allPhrases)
 					{
-						if (!chronicler.phrases.Contains(phrase)) chronicler.phrases.Add(phrase);
+						if (!chronicler.phrases.Contains(phrase)) chronicler.AddPhrase(phrase);
 					}
 				}
 
@@ -76,10 +76,10 @@ namespace RimGPT
 					nextPersona = candidates.OrderBy(p => p.nextPhraseTime).First();
 				}
 
-				foreach (var phrase in allPhrases)
-				{
-					if (!nextPersona.phrases.Contains(phrase)) nextPersona.phrases.Add(phrase);
-				}
+					foreach (var phrase in allPhrases)
+					{
+						if (!nextPersona.phrases.Contains(phrase)) nextPersona.AddPhrase(phrase);
+					}
 
 				// add the high priority ones to all personas last, so its most recent
 				// we want to ensure they're aware that the hunter has his weapon ffs
@@ -90,13 +90,13 @@ namespace RimGPT
 
 					foreach (var phrase in highPriorityPhrases)
 					{
-						if (!persona.phrases.Contains(phrase)) persona.phrases.Add(phrase);
+						if (!persona.phrases.Contains(phrase)) nextPersona.AddPhrase(phrase);
 					}
 				}
 
-
+				// Clear
 				allPhrases.Clear();
-
+				
 				// To help keep the conversation going, 
 				// Add last spoken phrase from the previous speaker if it's not null
 				if (lastSpeaker != null)
@@ -107,7 +107,7 @@ namespace RimGPT
 						persona = lastSpeaker,
 						priority = 3
 					};
-					if (!nextPersona.phrases.Contains(lastSpokenPhrase)) nextPersona.phrases.Add(lastSpokenPhrase);
+					if (!nextPersona.phrases.Contains(lastSpokenPhrase)) nextPersona.AddPhrase(lastSpokenPhrase);
 
 				}
 			}
@@ -152,7 +152,7 @@ namespace RimGPT
 				speechQueue.Clear();
 				foreach (var persona in RimGPTMod.Settings.personas)
 					persona.Reset(reason);
-
+				
 				allPhrases.Clear();
 			}
 		}
