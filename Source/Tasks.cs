@@ -9,7 +9,7 @@ namespace RimGPT
 {
 	// reports on colony resources
 	//
-	public static class ReportResources
+	public static class UpdateResources
 	{
 		public static int lastTotal = -1;
 		public static readonly HashSet<ThingCategoryDef> thingCategories =
@@ -40,7 +40,8 @@ namespace RimGPT
 				lastTotal = total;
 				var colonistCount = map.mapPawns.FreeColonistsCount;
 				var amountList = amounts.Select(pair => $"{pair.Value} {pair.Key.label.CapitalizeFirst()}").Join();
-				Personas.Add($"Minor update: total {colonistCount} colonist(s), {amountList}", 2);
+				RecordKeeper.ResourceData = $"total {colonistCount} colonist(s), {amountList}";
+				//Logger.Message($"RecordKeeper.ResourceData: {RecordKeeper.ResourceData}");
 			}
 		}
 	}
@@ -129,101 +130,68 @@ namespace RimGPT
 
 	// reports on colony Energy status, is skipped if the colony does not have any energy buildings or needs
 	//
-	public static class ReportEnergyStatus
+	public static class UpdateEnergyStatus
 	{
 		public static void Task(Map map)
 		{
-			if (RimGPTMod.Settings.reportEnergyStatus == false)
-				return;
+			// Early exit if energy status reporting is disabled
+			if (!RimGPTMod.Settings.reportEnergyStatus) return;
 
-			var messages = new List<string>();
+			// Initialize lists for producers and consumers
+			var producers = new List<EnergyProducer>();
+			var consumers = new List<EnergyConsumer>();
 
-			var totalPowerGenerated = 0f;
-
-			var powerGeneratorBuildings = new List<string>();
-			var allPowerGeneratingBuildings = map.listerBuildings.allBuildingsColonist
-				.Where(building => building.GetComp<CompPowerPlant>() != null);
-
-			foreach (var powerPlant in allPowerGeneratingBuildings)
+			// Calculate Total Power Generated and populate producers list
+			float totalPowerGenerated = 0f;
+			foreach (var powerPlant in map.listerBuildings.allBuildingsColonist.Where(building => building.GetComp<CompPowerPlant>() != null))
 			{
 				var compPowerPlant = powerPlant.GetComp<CompPowerPlant>();
-				totalPowerGenerated += compPowerPlant.PowerOn ? compPowerPlant.PowerOutput : 0f;
-				var message = $"{powerPlant.Label} (Power Output: {compPowerPlant.PowerOutput})";
-				powerGeneratorBuildings.Add(message);
+				if (compPowerPlant.PowerOn)
+				{
+					totalPowerGenerated += compPowerPlant.PowerOutput;
+					producers.Add(new EnergyProducer { Label = powerPlant.Label, PowerOutput = compPowerPlant.PowerOutput });
+				}
 			}
 
-			if (allPowerGeneratingBuildings.Any() == false)
-				messages.Add("Power Generators: None");
-			else
-				messages.Add("Power Generators: " + powerGeneratorBuildings.Join());
-
-			var totalPowerNeeds = CalculateTotalPowerNeeds(map, messages);
-
-			var powerDelta = totalPowerGenerated - totalPowerNeeds;
-			(var powerStatus, var priority) = DeterminePowerStatus(powerDelta);
-
-			var allBuildingsWithPowerThatUseFuelComp = map.listerBuildings.allBuildingsColonist
-				.Where(building =>
-				{
-					var compRefuelable = building.GetComp<CompRefuelable>();
-					var compPowerPlant = building.GetComp<CompPowerPlant>();
-					return compRefuelable != null && compPowerPlant != null && compPowerPlant.PowerOn;
-				}).ToList();
-
-
-			var totalPowerNeedsMessage = $"Total Power needs: {totalPowerNeeds}, Total Power Generated: {totalPowerGenerated}";
-			messages.Add(totalPowerNeedsMessage);
-			if (totalPowerNeeds > 0 || totalPowerGenerated > 0)
-				// dont talk about power if there is no power
-				Personas.Add("Energy Analysis: " + powerStatus + "\n" + messages.Join(), priority);
-
-		}
-
-		public static float CalculateTotalPowerNeeds(Map map, List<string> messages)
-		{
-			var totalPowerNeeds = 0f;
-
-			var allCompPowerTraders = map.listerBuildings.allBuildingsColonist
-				.Select(building =>
-				{
-					var compPowerTrader = building.GetComp<CompPowerTrader>();
-					if (compPowerTrader?.PowerOutput < 0)
-						return (null, null);
-					return (label: building.Label, comp: compPowerTrader);
-				})
-				.Where(pair => pair.comp != null);
-
-			var powerConsumptionMessages = new List<string>();
-			foreach (var (label, compPowerTrader) in allCompPowerTraders)
+			// Calculate Total Power Needs and populate consumers list
+			float totalPowerNeeded = 0f;
+			foreach (var consumerBuilding in map.listerBuildings.allBuildingsColonist.Select(building => building.GetComp<CompPowerTrader>()).Where(comp => comp != null && comp.PowerOutput < 0))
 			{
-
-				var powerConsumed = compPowerTrader.PowerOn ? compPowerTrader.Props.basePowerConsumption : 0f;
-				if (powerConsumed <= 0) break; // dont add power generators, they get added here too because they're power trader
-				totalPowerNeeds += powerConsumed;
-
-				// add each building's power consumption details to the list
-				var message = $"{label} (Power Consumption: {powerConsumed})";
-				powerConsumptionMessages.Add(message);
+				if (consumerBuilding.PowerOn)
+				{
+					float powerConsumed = consumerBuilding.Props.basePowerConsumption;
+					totalPowerNeeded += powerConsumed;
+					consumers.Add(new EnergyConsumer { Label = consumerBuilding.parent.Label, PowerConsumed = powerConsumed });
+				}
 			}
 
-			if (powerConsumptionMessages.Any())
-				messages.Add("Power Consumption: " + powerConsumptionMessages.Join());
+			// Determine the overall power status
+			var powerDelta = totalPowerGenerated - totalPowerNeeded;
+			string powerStatus;
+			if (powerDelta < 0) powerStatus = "Failure";
+			else if (powerDelta < 200) powerStatus = "Unstable (Brownouts possible)";
+			else if (powerDelta > 700) powerStatus = "Surplus";
+			else powerStatus = "Stable";
 
-			return totalPowerNeeds;
+
+			EnergyData energyData = new EnergyData
+			{
+				Producers = producers,
+				Consumers = consumers,
+				TotalPowerGenerated = totalPowerGenerated,
+				TotalPowerNeeded = totalPowerNeeded,
+				PowerStatus = powerStatus
+			};
+
+			RecordKeeper.EnergyStatus = energyData;
+			//Logger.Message($"RecordKeeper.EnergyStatus: {RecordKeeper.EnergySummary}");
 		}
 
-		public static (string, int) DeterminePowerStatus(float powerDelta)
-		{
-			if (powerDelta < 0) return ("Failure", 3);
-			if (powerDelta < 200) return ("Unstable (Brownouts possible)", 3);
-			if (powerDelta > 700) return ("Surplus", 4);
-			return ("Stable", 4);
-		}
 	}
 
 	// reports on notable rooms, avoiding unlabeled or undefined rooms, or rooms simply defined as "room"
 	//
-	public static class ReportRoomStatus
+	public static class UpdateRoomStatus
 	{
 		public static void Task(Map map)
 		{
@@ -269,13 +237,14 @@ namespace RimGPT
 			}
 
 			if (roomsList.Count > 0)
-				Personas.Add("Notable Rooms in the Colony: " + roomsList.Join(delimiter: "\n"), 1);
+				RecordKeeper.RoomsData = roomsList;
+				//Logger.Message($"RecordKeeper.RoomsDataSummary: {RecordKeeper.RoomsDataSummary}");
 		}
 	}
 
 	// reports on current Research, helping AI understand research context in the game
 	//
-	public static class ReportResearchStatus
+	public static class UpdateResearchStatus
 	{
 		public static void Task(Map map)
 		{
@@ -285,22 +254,20 @@ namespace RimGPT
 			if (map.IsPlayerHome == false)
 				return;
 
-			// already researched projects
-			var completedResearch = DefDatabase<ResearchProjectDef>.AllDefsListForReading.Where(research => research.IsFinished);
-			var completedResearchNames = completedResearch.Select(r => r.label).Join();
-			var completedMessage = $"Already Known: {completedResearchNames}";
+			var currentResearchDef = Find.ResearchManager.currentProj; // could be null if no current research
 
-			// Now do current research
-			var currentResearch = Find.ResearchManager.currentProj;
-			var researchInProgress = currentResearch != null ? currentResearch.label : "None";
-			var currentMessage = $"Current Research: {researchInProgress}";
+			var completedResearchDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading
+																			.Where(r => r.IsFinished)
+																			.ToList();
 
-			// Now do available research that is not locked
-			var availableResearch = DefDatabase<ResearchProjectDef>.AllDefsListForReading.Where(research => !research.IsFinished && research.PrerequisitesCompleted);
-			var availableResearchNames = availableResearch.Select(r => r.label).Join();
-			var availableMessage = $"Available Research: {availableResearchNames}";
+			var availableResearchDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading
+																			.Where(r => !r.IsFinished && r.PrerequisitesCompleted)
+																			.ToList();
 
-			Personas.Add($"Research Update: {completedMessage}\n{currentMessage}\n{availableMessage}", 1);
+			RecordKeeper.CurrentResearch = currentResearchDef;
+			RecordKeeper.CompletedResearch = completedResearchDefs;
+			RecordKeeper.AvailableResearch = availableResearchDefs;
+			//Logger.Message($"RecordKeeper.ResearchDataSummary: {RecordKeeper.ResearchDataSummary}");
 		}
 	}
 
@@ -337,14 +304,16 @@ namespace RimGPT
 			}
 			var quadrumsMonthsSeasonsString = quadrumsMonthsSeasons.Join();
 
-			var message =  $"Current Season: {seasonName}, Yearly Seasons Overview: {quadrumsMonthsSeasonsString}\n " +
+			var message = $"Current Season: {seasonName}, Yearly Seasons Overview: {quadrumsMonthsSeasonsString}\n " +
 								$"Each Quadrum lasts 15 days, and there are 4 Quadrums per year\n" +
 								$"Today is: {fullDateString}, The current Settlement name is: {settlementName}\n " +
 								$"Our colony is {years} years {quadrums} quadrums {days} days old\n " +
 								$"Current weather: {currentWeather.LabelCap}\n " +
 								$"Temperature: {map.mapTemperature.OutdoorTemp:0.#}°C\n " +
 								$"Area: {biomeName}, {biomeDescription}";
-			Personas.Add(message, 3);
+			Personas.Add(message, 1);
+			RecordKeeper.ColonySetting = message;
+			//Logger.Message($"RecordKeeper.ColonySetting: {RecordKeeper.ColonySetting}");			
 		}
 	}
 
@@ -381,7 +350,7 @@ namespace RimGPT
 						XpSinceLastLevel = skill.xpSinceLastLevel,
 						XpRequiredForLevelUp = skill.XpRequiredForLevelUp
 					});
-				
+
 				foreach (var trait in colonist.story.traits.allTraits)
 					colonistData.Traits.Add(trait.Label);
 
@@ -410,8 +379,8 @@ namespace RimGPT
 				colonists.Add(colonistData);
 			}
 
-			RecordKeeper.CollectColonistData(colonists);
-			Log.Message(RecordKeeper.FetchColonistData().Join(delimiter: "\n\n"));
+			RecordKeeper.ColonistRecords = colonists;
+			//Logger.Message($"RecordKeeper.ColonistDataSummary: {RecordKeeper.ColonistDataSummary.Join()}");
 		}
 	}
 }

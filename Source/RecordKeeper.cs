@@ -1,4 +1,5 @@
 using HarmonyLib;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,32 +9,84 @@ namespace RimGPT
 {
 	public static class RecordKeeper
 	{
-		public static List<ColonistData> colonistRecords = new List<ColonistData>();
-		public static string colonySetting = "Unknown as of now...";
-
-		public static void CollectColonistData(List<ColonistData> colonists)
+		 private static ConcurrentBag<ColonistData> colonistRecords = new ConcurrentBag<ColonistData>();
+		private static ResearchData researchData = new ResearchData();
+		public static string ColonySetting = "Unknown as of now...";
+		private static string resourceData = "";
+		public static EnergyData EnergyStatus { get; set; }
+		private static ConcurrentBag<string> roomsData = new ConcurrentBag<string>();
+		
+		public static IEnumerable<ColonistData> ColonistRecords
 		{
-			colonistRecords = colonists;
+			get => colonistRecords;
+        set
+        {
+            colonistRecords = new ConcurrentBag<ColonistData>(value);
+        }
 		}
 
-		public static string[] FetchColonistData()
+		public static ResearchData ResearchData
 		{
-			return colonistRecords.Select(colonist =>
-			{
-				var dataBuilder = new StringBuilder();
-
-				AddBasicInformation(dataBuilder, colonist);
-				AddSkillsInformation(dataBuilder, colonist);
-				AddTraitsInformation(dataBuilder, colonist);
-				AddHealthInformation(dataBuilder, colonist);
-				AddWorkInformation(dataBuilder, colonist);
-
-				return dataBuilder.ToString();
-
-			}).ToArray();
+				get => researchData;
+				set => researchData = value;
+		}
+		public static string ResourceData
+		{
+			get => resourceData;
+			set => resourceData = value;
 		}
 
-		public static string FetchColonySetting() => colonySetting;
+		public static IEnumerable<string> RoomsData
+		{
+			get => roomsData;
+			set => roomsData =  new ConcurrentBag<string>(value);
+		}
+
+		public static List<ResearchProjectDef> CompletedResearch
+		{
+			get => researchData.Completed;
+			set => researchData.Completed = value;
+		}
+
+		public static ResearchProjectDef CurrentResearch
+		{
+			get => researchData.Current;
+			set => researchData.Current = value;
+		}
+
+		public static List<ResearchProjectDef> AvailableResearch
+		{
+			get => researchData.Available;
+			set => researchData.Available = value;
+		}
+
+    public static string EnergySummary
+    {
+        get
+        {
+            if (EnergyStatus != null)
+            {
+                return EnergyStatus.ToString();
+            }
+            else
+            {
+                return "";
+            }
+        }
+    }
+		public static string RoomsDataSummary => string.Join(", ", RoomsData);
+ 	 	public static string ResearchDataSummary => researchData != null ? researchData.ToString() : "";
+		
+		public static string[] ColonistDataSummary => ColonistRecords.Select(colonist =>
+		{
+			var dataBuilder = new StringBuilder();
+			AddBasicInformation(dataBuilder, colonist);
+			AddSkillsInformation(dataBuilder, colonist);
+			AddTraitsInformation(dataBuilder, colonist);
+			AddHealthInformation(dataBuilder, colonist);
+			AddWorkInformation(dataBuilder, colonist);
+			return dataBuilder.ToString();
+		}).ToArray();
 
 		private static void AddBasicInformation(StringBuilder builder, ColonistData colonist)
 		{
@@ -91,7 +144,9 @@ namespace RimGPT
 				string workTypes = string.Join(", ", colonist.AllowedWorkTypes.Select(wt => wt.ToString()).ToArray());
 				builder.Append($"{colonist.Name}'s allowed work types are: {workTypes}.");
 			}
-
 		}
+
+
+
 	}
 }

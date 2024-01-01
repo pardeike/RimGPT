@@ -1,4 +1,7 @@
 ﻿using System.Collections.Generic;
+using Verse;
+using System.Linq;
+using System;
 
 namespace RimGPT
 {
@@ -21,7 +24,7 @@ namespace RimGPT
 		public Dictionary<string, SkillData> Skills { get; set; }
 		public List<string> Traits { get; set; }
 		public List<HediffData> Health { get; set; }
-		public List<string> AllowedWorkTypes { get; set; }		
+		public List<string> AllowedWorkTypes { get; set; }
 	}
 
 	public class SkillData
@@ -30,4 +33,29 @@ namespace RimGPT
 		public float XpSinceLastLevel { get; set; }
 		public float XpRequiredForLevelUp { get; set; }
 	}
+
+	public class ResearchData
+	{
+		public List<ResearchProjectDef> Completed { get; set; }
+		public ResearchProjectDef Current { get; set; } // Can be null if there is no current research
+		public List<ResearchProjectDef> Available { get; set; }
+
+		public override string ToString()
+		{
+			if (Completed == null) return "";
+			if (Available == null) return "";
+			// Join function must be provided or use String.Join for handling arrays
+			string completedResearchString = string.Join(", ", Completed.Select(r => r.label).ToArray());
+			string currentResearchString = Current?.label ?? "None";
+			string availableResearchString = string.Join(", ", Available.Select(r => r.label).ToArray());
+
+			return $"Already Known: {completedResearchString}\n" +
+						 $"Current Research: {currentResearchString}\n" +
+						 $"Available Research: {availableResearchString}";
+		}
+	}
+
+
+
+
 }

@@ -22,9 +22,14 @@ namespace RimGPT
 			public string CurrentWindow { get; set; }
 			public string[] PreviousHistoricalKeyEvents { get; set; }
 			public string LastSpokenText { get; set; }
-			public List<string> CurrentGameState { get; set; }
+			public List<string> ActivityFeed { get; set; }
 			public string[] ColonyRoster { get; set; }
 			public string ColonySetting { get; set; }
+			public string ResearchSummary { get; set; }
+			public string ResourceData { get; set; }
+			public string EnergyStatus { get; set; }
+			public string EnergySummary { get; set; }
+			public string RoomsSummary { get; set; }
 		}
 
 		struct Output
@@ -47,11 +52,16 @@ namespace RimGPT
 			var exampleInput = JsonConvert.SerializeObject(new Input
 			{
 				CurrentWindow = "<Info about currently open window>",
-				CurrentGameState = ["Event1", "Event2", "Event3"],
+				ActivityFeed = ["Event1", "Event2", "Event3"],
 				PreviousHistoricalKeyEvents = ["OldEvent1", "OldEvent2", "OldEvent3"],
 				LastSpokenText = "<Previous Output>",
 				ColonyRoster = ["Colonist 1", "Colonist 2", "Colonist 3"],
-				ColonySetting = "<A description about the colony and setting>"
+				ColonySetting = "<A description about the colony and setting>",
+				ResourceData = "<A summary of resources in the colony>",
+				RoomsSummary = "<A summary of notable rooms in the colony>",
+				ResearchSummary = "<A potential summary of what's already been researched, what is currently researched, and what is available for research>",
+				EnergySummary = "<A possible report of the colony's power generation and consumption needs>"
+
 			}, settings);
 			var exampleOutput = JsonConvert.SerializeObject(new Output
 			{
@@ -66,9 +76,10 @@ namespace RimGPT
 				$"Your output must only be in json like this: {exampleOutput}\n",
 				$"Limit ResponseText to no more than {currentPersona.phraseMaxWordCount} words.\n",
 				$"When constructing the 'ResponseText', consider vocal clarity and pacing so that it is easily understandable when spoken by Microsoft Azure Speech Services.\n",
-				$"Limit NewHistoricalKeyEvents to no more than {currentPersona.historyMaxWordCount} words.\n",				
+				$"Limit NewHistoricalKeyEvents to no more than {currentPersona.historyMaxWordCount} words.\n",
+				$"Prioritize the ActivityFeed for updates unless directed otherwise. The other fields should serve as supplementary information, giving you a broader perspective on ongoing events.\n",
 				$"{currentPersona.personality}\n",
-				$"Rephrase NewHistoricalKeyEvents into your own words to help keep your narrative fresh.\n",		
+				$"Rephrase NewHistoricalKeyEvents into your own words to help keep your narrative fresh.\n",
 				$"Remember: your output is in the format: {{\"ResponseText\":\"Your narrative response goes here, within the word limit.\",\"NewHistoricalKeyEvents\":[\"...\",\"...\"]}}",
 			}.Join(delimiter: "");
 		}
@@ -79,11 +90,14 @@ namespace RimGPT
 
 			modelSwitchCounter++;
 
-			if (modelSwitchCounter == RimGPTMod.Settings.ModelSwitchRatio) {
+			if (modelSwitchCounter == RimGPTMod.Settings.ModelSwitchRatio)
+			{
 				modelSwitchCounter = 0;
 
 				return RimGPTMod.Settings.ChatGPTModelSecondary;
-			} else {
+			}
+			else
+			{
 				return RimGPTMod.Settings.ChatGPTModelPrimary;
 			}
 		}
@@ -94,11 +108,15 @@ namespace RimGPT
 
 			var gameInput = new Input
 			{
-				CurrentGameState = observations.Select(o => o.text).ToList(),
+				ActivityFeed = observations.Select(o => o.text).ToList(),
 				PreviousHistoricalKeyEvents = history,
 				LastSpokenText = persona.lastSpokenText,
-				ColonyRoster = RecordKeeper.FetchColonistData(),
-				ColonySetting = RecordKeeper.FetchColonySetting()
+				ColonyRoster = RecordKeeper.ColonistDataSummary,
+				ColonySetting = RecordKeeper.ColonySetting,
+				ResearchSummary = RecordKeeper.ResearchDataSummary,
+				ResourceData = RecordKeeper.ResourceData,
+				RoomsSummary = RecordKeeper.RoomsDataSummary,
+				EnergySummary = RecordKeeper.EnergySummary
 			};
 
 			var windowStack = Find.WindowStack;
@@ -120,14 +138,16 @@ namespace RimGPT
 
 			var input = JsonConvert.SerializeObject(gameInput, settings);
 
+			Logger.Message($"prompt (persona:{persona.name}): {input}");
+
 			var systemPrompt = SystemPrompt(persona);
 			var request = new CreateChatCompletionRequest()
 			{
 				Model = GetCurrentChatGPTModel(),
 				ResponseFormat = GetCurrentChatGPTModel().Contains("1106") ? new ResponseFormat { Type = "json_object" } : null,
-				// FrequencyPenalty = 1.0f,
-				// PresencePenalty = 1.0f,
-				// Temperature = 1.5f,
+				FrequencyPenalty = 0.8f,
+				PresencePenalty = 0.6f,
+				Temperature = 0.7f,
 				Messages =
 				[
 					new ChatMessage() { Role = "system", Content = systemPrompt },
@@ -163,7 +183,7 @@ namespace RimGPT
 						output = new Output { ResponseText = response, NewHistoricalKeyEvents = new string[0] };
 					else
 						output = JsonConvert.DeserializeObject<Output>(response);
-					history = output.NewHistoricalKeyEvents;
+					history = history.Concat(output.NewHistoricalKeyEvents).ToArray();
 					return output.ResponseText.Cleanup();
 				}
 				catch (Exception exception)

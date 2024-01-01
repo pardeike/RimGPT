@@ -452,7 +452,12 @@ namespace RimGPT
 				_ = list.Label("History");
 				list.Slider(ref selected.historyMaxWordCount, 200, 1200, n => $"Max words: {n}", 1, "RimGPT lets ChatGPT create a history summary that is then send together with new requests to form some kind of memory for ChatGPT. What is the maximum size of the history?");
 				list.Gap(16f);
-
+				TooltipHandler.TipRegion(new Rect(list.curX, list.curY, 200f, 24f),
+						"Less suitable for personas that speak frequently, and more suitable for a role whom chimes in on more rare occasions. The personality will still need to be customized to fully take advantage of this feature.");
+				bool chroniclerToggle = selected.isChronicler;
+				list.CheckboxLabeled("Is Chronicler", ref chroniclerToggle, "Enable if this persona should be treated as a Chronicler.  Otherwise they'll receive just the most recent phrases no other persona has received.");
+				selected.isChronicler = chroniclerToggle; // Update the persona's isChronicler flag
+				list.Gap(16f);
 				width = (list.ColumnWidth - 2 * 20) / 3;
 				rect = list.GetRect(UX.ButtonHeight);
 				rect.width = width;

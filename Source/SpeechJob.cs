@@ -24,6 +24,7 @@ namespace RimGPT
 			{
 				//FileLog.Log($"{persona?.name ?? "null"} ai request: {phrases.Join(p => p.text, "|")}");
 				spokenText = await persona.ai.Evaluate(persona, phrases);
+				Logger.Message($"[{persona.name}] response: {spokenText}");
 				//FileLog.Log($"{persona?.name ?? "null"} ai reponse: {spokenText}");
 				if (spokenText == null || spokenText == "")
 				{
@@ -44,7 +45,7 @@ namespace RimGPT
 				persona.lastSpokenText = spokenText;
 				Personas.StartNextPersona(persona);
 			}
-
+			Logger.Message($"[{persona.name}] start talking: {spokenText}");
 			var showText = RimGPTMod.Settings.showAsText || RimGPTMod.Settings.azureSpeechRegion == "" || RimGPTMod.Settings.azureSpeechKey == "";
 			if (showText)
 				Personas.currentText = persona == null ? spokenText : $"{persona.name}: {spokenText}";
@@ -87,6 +88,7 @@ namespace RimGPT
 			doneCallback?.Invoke();
 			completed = true;
 			isPlaying = false;
+			//Logger.Message($"[{persona.name}] finished talking: {spokenText}");
 			Personas.currentText = "";
 		}
 	}

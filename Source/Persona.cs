@@ -34,6 +34,7 @@ namespace RimGPT
 		[Setting] public int historyMaxWordCount = 200;
 		[Setting] public string personality = AI.defaultPersonality;
 		[Setting] public string personalityLanguage = "-";
+		[Setting] public bool isChronicler = false;
 		public int maximumSkipLimit = 5;
 		public void ExposeData()
 		{
@@ -53,6 +54,7 @@ namespace RimGPT
 			Scribe_Values.Look(ref phraseDelayMax, "phraseDelayMax", 20f);
 			Scribe_Values.Look(ref phraseMaxWordCount, "phraseMaxWordCount", 40);
 			Scribe_Values.Look(ref historyMaxWordCount, "historyMaxWordCount", 200);
+			Scribe_Values.Look(ref isChronicler, "isChronicler", false);
 			Scribe_Values.Look(ref personality, "personality", AI.defaultPersonality);
 			Scribe_Values.Look(ref personalityLanguage, "personalityLanguage", "-");
 

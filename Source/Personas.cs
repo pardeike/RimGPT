@@ -44,7 +44,17 @@ namespace RimGPT
 		{
 			lock (allPhrases)
 			{
-				var candidates = RimGPTMod.Settings.personas.Where(p => p.nextPhraseTime > DateTime.Now);
+				// Get all chroniclers and assign phrases to them first
+				foreach (var chronicler in RimGPTMod.Settings.personas.Where(p => p.isChronicler))
+				{
+					// Transfer all available phrases to each chronicler
+					foreach (var phrase in allPhrases)
+					{
+						chronicler.phrases.Add(phrase);
+					}
+				}
+
+				var candidates = RimGPTMod.Settings.personas.Where(p => p.nextPhraseTime > DateTime.Now && !p.isChronicler);
 				lastSpeakingPersona = lastSpeaker;
 				Persona nextPersona;
 
@@ -65,20 +75,16 @@ namespace RimGPT
 					nextPersona = candidates.OrderBy(p => p.nextPhraseTime).First();
 				}
 
+				// Transfer phrases to the selected candidate, respecting their phrases limit.
 				int transferCount = Math.Min(nextPersona.phrasesLimit, allPhrases.Count);
 
-				var phrasesToTransfer = new List<Phrase>();
 				for (int i = 0; i < transferCount; i++)
 				{
-					phrasesToTransfer.Add(allPhrases[i]);
+					nextPersona.phrases.Add(allPhrases[i]);
 				}
 
+				// Remove transferred phrases from the beginning of the list
 				allPhrases.RemoveFromStart(transferCount);
-
-				foreach (var phrase in phrasesToTransfer)
-				{
-					nextPersona.phrases.Add(phrase);
-				}
 
 				// Add last spoken phrase from the previous speaker if it's not null
 				if (lastSpeaker != null)
@@ -87,7 +93,7 @@ namespace RimGPT
 					{
 						text = lastSpeaker.lastSpokenText,
 						persona = lastSpeaker,
-						priority = 3 // Assuming priority is always 3 for last spoken phrases
+						priority = 3 
 					};
 
 					nextPersona.phrases.Add(lastSpokenPhrase);
@@ -138,8 +144,6 @@ namespace RimGPT
 
 		public static void CreateSpeechJob(Persona persona, Phrase[] phrases, Action<string> errorCallback, Action doneCallback)
 		{
-
-			Logger.Message($"[{persona.name}] Speech Job: {string.Join(", ", phrases.Select(ph => ph.ToString()))}");
 
 			lock (speechQueue)
 			{
