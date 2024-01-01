@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using UnityEngine;
 using Verse;
 
 namespace RimGPT
@@ -32,6 +33,7 @@ namespace RimGPT
 			public string RoomsSummary { get; set; }
 		}
 
+		private float FrequencyPenalty { get; set; } = 0.5f;
 		struct Output
 		{
 			public string ResponseText { get; set; }
@@ -54,13 +56,13 @@ namespace RimGPT
 				CurrentWindow = "<Info about currently open window>",
 				ActivityFeed = ["Event1", "Event2", "Event3"],
 				PreviousHistoricalKeyEvents = ["OldEvent1", "OldEvent2", "OldEvent3"],
-				LastSpokenText = "<Previous Output>",
+				LastSpokenText = "<Previous ResponseText, which is the last thing YOU said.>",
 				ColonyRoster = ["Colonist 1", "Colonist 2", "Colonist 3"],
 				ColonySetting = "<A description about the colony and setting>",
-				ResourceData = "<A summary of resources in the colony>",
-				RoomsSummary = "<A summary of notable rooms in the colony>",
-				ResearchSummary = "<A potential summary of what's already been researched, what is currently researched, and what is available for research>",
-				EnergySummary = "<A possible report of the colony's power generation and consumption needs>"
+				ResourceData = "<A periodically updated summary of some resources>",
+				RoomsSummary = "<A periodically updated summary, which may never be updated if a setting is disabled by the player, of notable rooms in the colony>",
+				ResearchSummary = "<A periodically updated summary, which may never be updated if a setting is disabled by the player, what's already been researched, what is currently researched, and what is available for research>",
+				EnergySummary = "<A periodically updated summary, which may never be updated if a setting is disabled by the player,A possible report of the colony's power generation and consumption needs>"
 
 			}, settings);
 			var exampleOutput = JsonConvert.SerializeObject(new Output
@@ -69,19 +71,25 @@ namespace RimGPT
 				NewHistoricalKeyEvents = ["OldEventsSummary", "Event 1 and 2", "Event3"]
 			}, settings);
 
+
 			return new List<string>
-			{  $"You are {currentPersona.name}\n",
-				$"The narrative needs to fit within the context of the game, Rimworld.\n",
-				$"Your input comes from the game, and will be json like this: {exampleInput}\n",
-				$"Your output must only be in json like this: {exampleOutput}\n",
-				$"Limit ResponseText to no more than {currentPersona.phraseMaxWordCount} words.\n",
-				$"When constructing the 'ResponseText', consider vocal clarity and pacing so that it is easily understandable when spoken by Microsoft Azure Speech Services.\n",
-				$"Limit NewHistoricalKeyEvents to no more than {currentPersona.historyMaxWordCount} words.\n",
-				$"Prioritize the ActivityFeed for updates unless directed otherwise. The other fields should serve as supplementary information, giving you a broader perspective on ongoing events.\n",
-				$"{currentPersona.personality}\n",
-				$"Rephrase NewHistoricalKeyEvents into your own words to help keep your narrative fresh.\n",
-				$"Remember: your output is in the format: {{\"ResponseText\":\"Your narrative response goes here, within the word limit.\",\"NewHistoricalKeyEvents\":[\"...\",\"...\"]}}",
-			}.Join(delimiter: "");
+				{
+						$"You are {currentPersona.name}.\n",
+				 		$"Unless otherwise specified, ", otherObservers.Any() ? $"your fellow observers are {otherObservers}. " : "",
+						$"Unless otherwise specified, ",(otherObservers.Any() ? $"you are all watching " : "You are watching") + $"'{player}' play Rimworld.\n",
+						$"Your input comes from the current game and will be json like this: {exampleInput}\n",
+						$"Your output must only be in json like this: {exampleOutput}\n",
+						$"Limit ResponseText to no more than {currentPersona.phraseMaxWordCount} words.\n",
+						$"Limit NewHistoricalKeyEvents to no more than {currentPersona.historyMaxWordCount} words.\n",
+						$"When constructing the 'ResponseText', consider vocal clarity and pacing so that it is easily understandable when spoken by Microsoft Azure Speech Services.\n",
+						$"Update prioritization: 1. ActivityFeed, 2. Additional Fields (as context).\n",
+						$"{currentPersona.personality}\n",
+						$"Synthesize the 'CurrentWindow', 'PreviousHistoricalKeyEvents', and 'ActivityFeed' into 'NewHistoricalKeyEvents', rephrased concisely while retaining meaning (limit {currentPersona.historyMaxWordCount} words). Combine or exclude as necessary to avoid redundancy.\n",
+						$"Items sequence in 'LastSpokenText, 'PreviousHistoricalKeyEvents' and 'ActivityFeed' reflects the event timeline; use it to construct coherent narratives.",
+						$"Remember: your output is in the format: {{\"ResponseText\":\"Your narrative response goes here, and no more than {currentPersona.phraseMaxWordCount} words.\",\"NewHistoricalKeyEvents\":[\"...\",\"...\"]}}",
+				}.Join(delimiter: "");
+
+
 		}
 
 		private string GetCurrentChatGPTModel()
@@ -101,9 +109,28 @@ namespace RimGPT
 				return RimGPTMod.Settings.ChatGPTModelPrimary;
 			}
 		}
+		private float CalculateFrequencyPenaltyBasedOnLevenshteinDistance(string source, string target)
+		{
+			int levenshteinDistance = LanguageHelper.CalculateLevenshteinDistance(source, target);
+
+			// You can adjust these constants based on the desired sensitivity.
+			const float maxPenalty = 1.0f; // Maximum penalty when there is little to no change.
+			const float minPenalty = 0.0f; // Minimum penalty when changes are significant.
+			const int threshold = 10;      // Distance threshold for maximum penalty.
+
+			// Apply maximum penalty when distance is below or equal to threshold.
+			if (levenshteinDistance <= threshold)
+				return maxPenalty;
+
+			// Apply scaled penalty for distances greater than threshold.
+			float penaltyScaleFactor = (float)(levenshteinDistance - threshold) / (Math.Max(source.Length, target.Length) - threshold);
+			float frequencyPenalty = maxPenalty * (1 - penaltyScaleFactor);
+
+			return Mathf.Clamp(frequencyPenalty, minPenalty, maxPenalty);
+		}
 
 
-		public async Task<string> Evaluate(Persona persona, IEnumerable<Phrase> observations)
+		public async Task<string> Evaluate(Persona persona, IEnumerable<Phrase> observations, bool isRetrying = false)
 		{
 
 			var gameInput = new Input
@@ -145,7 +172,7 @@ namespace RimGPT
 			{
 				Model = GetCurrentChatGPTModel(),
 				ResponseFormat = GetCurrentChatGPTModel().Contains("1106") ? new ResponseFormat { Type = "json_object" } : null,
-				FrequencyPenalty = 0.8f,
+				FrequencyPenalty = FrequencyPenalty,
 				PresencePenalty = 0.6f,
 				Temperature = 0.7f,
 				Messages =
@@ -183,8 +210,15 @@ namespace RimGPT
 						output = new Output { ResponseText = response, NewHistoricalKeyEvents = new string[0] };
 					else
 						output = JsonConvert.DeserializeObject<Output>(response);
-					history = history.Concat(output.NewHistoricalKeyEvents).ToArray();
-					return output.ResponseText.Cleanup();
+					history = output.NewHistoricalKeyEvents;
+
+					var responseText = output.ResponseText.Cleanup();
+
+					// Ideally we would want the last two things and call this sooner, but MEH.  
+					FrequencyPenalty = CalculateFrequencyPenaltyBasedOnLevenshteinDistance(persona.lastSpokenText, responseText);
+					if (FrequencyPenalty == 1 && !isRetrying) return await Evaluate(persona, observations, true);
+
+					return responseText;
 				}
 				catch (Exception exception)
 				{

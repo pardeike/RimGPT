@@ -44,7 +44,8 @@ namespace RimGPT
 		{
 			lock (allPhrases)
 			{
-				// Get all chroniclers and assign phrases to them first
+
+				// Chroniclers get all phrases regardless
 				foreach (var chronicler in RimGPTMod.Settings.personas.Where(p => p.isChronicler))
 				{
 					// Transfer all available phrases to each chronicler
@@ -71,11 +72,11 @@ namespace RimGPT
 				}
 				else
 				{
-					// Select the candidate with the closest nextPhraseTime
+
 					nextPersona = candidates.OrderBy(p => p.nextPhraseTime).First();
 				}
 
-				// Transfer phrases to the selected candidate, respecting their phrases limit.
+
 				int transferCount = Math.Min(nextPersona.phrasesLimit, allPhrases.Count);
 
 				for (int i = 0; i < transferCount; i++)
@@ -87,6 +88,19 @@ namespace RimGPT
 					}
 				}
 
+				// add the high priority ones to all personas last, so its most recent
+				// we want to ensure they're aware that the hunter has his weapon ffs
+				var highPriorityPhrases = allPhrases.Where(p => p.priority >= 4).ToList();
+				foreach (var persona in RimGPTMod.Settings.personas)
+				{
+					if (persona.isChronicler) break;
+
+					foreach (var phrase in highPriorityPhrases)
+					{
+						if (!persona.phrases.Contains(phrase)) persona.phrases.Add(phrase);
+					}
+				}
+
 				// Remove transferred phrases from the beginning of the list
 				allPhrases.RemoveFromStart(transferCount);
 
@@ -95,7 +109,7 @@ namespace RimGPT
 				{
 					var lastSpokenPhrase = new Phrase
 					{
-						text = lastSpeaker.lastSpokenText,
+						text = $"{lastSpeaker.name} said, \"{lastSpeaker.lastSpokenText}\"",
 						persona = lastSpeaker,
 						priority = 3
 					};

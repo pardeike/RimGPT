@@ -41,11 +41,11 @@ namespace RimGPT
 		public async Task Play(bool immediately)
 		{
 			if (persona != null)
-			{				
+			{
 				persona.lastSpokenText = spokenText;
 				Personas.StartNextPersona(persona);
 			}
-			Logger.Message($"[{persona.name}] start talking: {spokenText}");
+			Personas.Add($"{persona.name} said, \"{spokenText}\"", 3);
 			var showText = RimGPTMod.Settings.showAsText || RimGPTMod.Settings.azureSpeechRegion == "" || RimGPTMod.Settings.azureSpeechKey == "";
 			if (showText)
 				Personas.currentText = persona == null ? spokenText : $"{persona.name}: {spokenText}";
