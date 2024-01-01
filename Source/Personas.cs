@@ -109,12 +109,12 @@ namespace RimGPT
 		public static void Add(string text, int priority, Persona speaker = null)
 		{
 			var phrase = new Phrase(speaker, text, priority);
-			var existingPhrase = allPhrases.FirstOrDefault(p => p.text == text);
-			if (existingPhrase.text != null) return;
 			Logger.Message(phrase.ToString());
-
-			allPhrases.Add(phrase);
-
+			lock(allPhrases) {
+				if (allPhrases.Contains(phrase))
+					return;
+					allPhrases.Add(phrase);
+			}
 		}
 
 

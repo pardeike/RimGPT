@@ -15,6 +15,7 @@ namespace RimGPT
 			this.priority = priority;
 		}
 
+    public override readonly int GetHashCode() => text.GetHashCode();
 		public readonly bool Equals(Phrase other) => text == other.text;
 
 		public override readonly string ToString() => $"PRIO-{priority} {text}{(persona != null ? $" [by {persona.name}]" : "")}";
