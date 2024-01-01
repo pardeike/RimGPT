@@ -35,7 +35,7 @@ namespace RimGPT
 		[Setting] public string personality = AI.defaultPersonality;
 		[Setting] public string personalityLanguage = "-";
 		[Setting] public bool isChronicler = false;
-		public int maximumSkipLimit = 5;
+		public int maximumSkipLimit = 20;
 		public void ExposeData()
 		{
 			Scribe_Values.Look(ref name, "name", "RimGPT");
@@ -114,7 +114,7 @@ namespace RimGPT
 			{
 				batch = phrases.Take(phraseBatchSize).ToArray();
 				// avoid spam if there's no new phrases and this persona has already spoken recently.
-				if (timesSpoken != 0 && batch.Length <= 2 && timesSkipped < limit)
+				if (timesSpoken != 0 && batch.Length <= 1 && timesSkipped < limit)
 				{
 					ExtendWaitBeforeNextJob($"too chatty ({timesSkipped}/{limit})");
 					return;
@@ -152,7 +152,7 @@ namespace RimGPT
 		}
 		/// <summary>
 		/// Calculates a reasonable limit for the number of times a job can be skipped based on given minimum and maximum delay values.
-		/// The skip limit is determined by the mean delay and ranges from 1 to 5, with shorter delays allowing more skips.
+		/// The skip limit is determined by the mean delay and ranges from 1 to max, with shorter delays allowing more skips.
 		/// </summary>
 		/// <param name="a">The minimum delay before a phrase can be repeated, in seconds.</param>
 		/// <param name="b">The maximum delay before a phrase can be repeated, in seconds.</param>
@@ -162,12 +162,11 @@ namespace RimGPT
 
 			double meanDelayInSeconds = (a + b) / 2.0;
 
-			if (meanDelayInSeconds <= 30)
+			if (meanDelayInSeconds <= 60)
 			{
-				// If mean delay is 30 seconds or less, return the maximum skip limit
 				return maximumSkipLimit;
 			}
-			else if (meanDelayInSeconds >= 120)
+			else if (meanDelayInSeconds >= 1200)
 			{
 				// If mean delay is 120 seconds or more, return the minimum skip limit of 1
 				return 1;
@@ -175,7 +174,7 @@ namespace RimGPT
 			else
 			{
 				// Linearly interpolate the skip limit between 1 and max skip limit based on the mean delay
-				double slope = (1 - maximumSkipLimit) / (120.0 - 30.0);
+				double slope = (1 - maximumSkipLimit) / (1200.0 - 60.0);
 				int limit = (int)Math.Round(5 + slope * (meanDelayInSeconds - 30));
 				return Math.Max(1, Math.Min(limit, maximumSkipLimit)); // Ensure the skip limit stays within the range 1 to max
 			}

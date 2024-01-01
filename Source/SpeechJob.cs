@@ -24,7 +24,6 @@ namespace RimGPT
 			{
 				//FileLog.Log($"{persona?.name ?? "null"} ai request: {phrases.Join(p => p.text, "|")}");
 				spokenText = await persona.ai.Evaluate(persona, phrases);
-				Logger.Message($"[{persona.name}] response: {spokenText}");
 				//FileLog.Log($"{persona?.name ?? "null"} ai reponse: {spokenText}");
 				if (spokenText == null || spokenText == "")
 				{

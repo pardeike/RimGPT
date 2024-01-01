@@ -91,10 +91,9 @@ namespace RimGPT
 						// Prioritizes sources of information.
 						$"Update prioritization: 1. ActivityFeed, 2. Additional Fields (as context).\n",
 						// Further reinforces the AI's specific personality by resynthesizing different pieces of information and storing it in its own history
-						$"Combine CurrentWindow, PreviousHistoricalKeyEvents, and each event from the 'ActivityFeed' and synthesize it into a new, concise form for 'NewHistoricalKeyEvents', make sure that the new synthesis matches your persona.\n",
+						$"Combine PreviousHistoricalKeyEvents, and each event from the 'ActivityFeed' and synthesize it into a new, concise form for 'NewHistoricalKeyEvents', make sure that the new synthesis matches your persona.\n",
 						// Guides the AI in understanding the sequence of events, emphasizing the need for coherent and logical responses or interactions.
 						"Items sequence in 'LastSpokenText', 'PreviousHistoricalKeyEvents', and 'ActivityFeed' reflects the event timeline; use it to form coherent responses or interactions.\n",
-
 						$"Remember: your output is in the format: {{\"ResponseText\":\"Your narrative response goes here, and no more than {currentPersona.phraseMaxWordCount} words.\",\"NewHistoricalKeyEvents\":[\"...\",\"...\"]}}"
 				}.Join(delimiter: "");
 		}
@@ -172,7 +171,7 @@ namespace RimGPT
 
 			var input = JsonConvert.SerializeObject(gameInput, settings);
 
-			Logger.Message($"prompt (persona:{persona.name}): {input}");
+			Logger.Message($"prompt ({observations.Count()} activities) (persona:{persona.name}): {input}");
 
 			var systemPrompt = SystemPrompt(persona);
 			var request = new CreateChatCompletionRequest()

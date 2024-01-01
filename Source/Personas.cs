@@ -76,16 +76,9 @@ namespace RimGPT
 					nextPersona = candidates.OrderBy(p => p.nextPhraseTime).First();
 				}
 
-
-				int transferCount = Math.Min(nextPersona.phrasesLimit, allPhrases.Count);
-
-				for (int i = 0; i < transferCount; i++)
+				foreach (var phrase in allPhrases)
 				{
-
-					if (!nextPersona.phrases.Contains(allPhrases[i]))
-					{
-						nextPersona.phrases.Add(allPhrases[i]);
-					}
+					if (!nextPersona.phrases.Contains(phrase)) nextPersona.phrases.Add(phrase);
 				}
 
 				// add the high priority ones to all personas last, so its most recent
@@ -101,9 +94,10 @@ namespace RimGPT
 					}
 				}
 
-				// Remove transferred phrases from the beginning of the list
-				allPhrases.RemoveFromStart(transferCount);
 
+				allPhrases.Clear();
+
+				// To help keep the conversation going, 
 				// Add last spoken phrase from the previous speaker if it's not null
 				if (lastSpeaker != null)
 				{
@@ -158,6 +152,8 @@ namespace RimGPT
 				speechQueue.Clear();
 				foreach (var persona in RimGPTMod.Settings.personas)
 					persona.Reset(reason);
+
+				allPhrases.Clear();
 			}
 		}
 
