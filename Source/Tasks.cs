@@ -238,7 +238,7 @@ namespace RimGPT
 
 			if (roomsList.Count > 0)
 				RecordKeeper.RoomsData = roomsList;
-				//Logger.Message($"RecordKeeper.RoomsDataSummary: {RecordKeeper.RoomsDataSummary}");
+			//Logger.Message($"RecordKeeper.RoomsDataSummary: {RecordKeeper.RoomsDataSummary}");
 		}
 	}
 
