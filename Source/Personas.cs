@@ -50,7 +50,7 @@ namespace RimGPT
 					// Transfer all available phrases to each chronicler
 					foreach (var phrase in allPhrases)
 					{
-						chronicler.phrases.Add(phrase);
+						if (!chronicler.phrases.Contains(phrase)) chronicler.phrases.Add(phrase);
 					}
 				}
 
