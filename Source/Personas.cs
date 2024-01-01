@@ -80,7 +80,11 @@ namespace RimGPT
 
 				for (int i = 0; i < transferCount; i++)
 				{
-					nextPersona.phrases.Add(allPhrases[i]);
+
+					if (!nextPersona.phrases.Contains(allPhrases[i]))
+					{
+						nextPersona.phrases.Add(allPhrases[i]);
+					}
 				}
 
 				// Remove transferred phrases from the beginning of the list
@@ -93,10 +97,10 @@ namespace RimGPT
 					{
 						text = lastSpeaker.lastSpokenText,
 						persona = lastSpeaker,
-						priority = 3 
+						priority = 3
 					};
+					if (!nextPersona.phrases.Contains(lastSpokenPhrase)) nextPersona.phrases.Add(lastSpokenPhrase);
 
-					nextPersona.phrases.Add(lastSpokenPhrase);
 				}
 			}
 		}
@@ -110,10 +114,11 @@ namespace RimGPT
 		{
 			var phrase = new Phrase(speaker, text, priority);
 			Logger.Message(phrase.ToString());
-			lock(allPhrases) {
-				if (allPhrases.Contains(phrase))
-					return;
-					allPhrases.Add(phrase);
+			lock (allPhrases)
+			{
+				if (allPhrases.Contains(phrase)) return;
+
+				allPhrases.Add(phrase);
 			}
 		}
 
