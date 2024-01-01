@@ -75,21 +75,28 @@ namespace RimGPT
 			return new List<string>
 				{
 						$"You are {currentPersona.name}.\n",
-				 		$"Unless otherwise specified, ", otherObservers.Any() ? $"your fellow observers are {otherObservers}. " : "",
+						// Adds weight to using its the personality with its responses: as a chronicler, focusing on balanced storytelling, or as an interactor, focusing on personality-driven improvisation.						
+						currentPersona.isChronicler ? "Unless otherwise specified, balance major events and subtle details, and express them in your unique style."
+																				: "Unless otherwise specified, interact reflecting your unique personality, embracing an improvisational approach based on your background, the current situation, and others' actions",
+						$"Unless otherwise specified, ", otherObservers.Any() ? $"your fellow observers are {otherObservers}. " : "",
 						$"Unless otherwise specified, ",(otherObservers.Any() ? $"you are all watching " : "You are watching") + $"'{player}' play Rimworld.\n",
+						$"Your role/personality: {currentPersona.personality}\n",
 						$"Your input comes from the current game and will be json like this: {exampleInput}\n",
 						$"Your output must only be in json like this: {exampleOutput}\n",
 						$"Limit ResponseText to no more than {currentPersona.phraseMaxWordCount} words.\n",
 						$"Limit NewHistoricalKeyEvents to no more than {currentPersona.historyMaxWordCount} words.\n",
+
+						// Encourages the AI to consider how its responses would sound when spoken, ensuring clarity and accessibility.
 						$"When constructing the 'ResponseText', consider vocal clarity and pacing so that it is easily understandable when spoken by Microsoft Azure Speech Services.\n",
+						// Prioritizes sources of information.
 						$"Update prioritization: 1. ActivityFeed, 2. Additional Fields (as context).\n",
-						$"{currentPersona.personality}\n",
-						$"Synthesize the 'CurrentWindow', 'PreviousHistoricalKeyEvents', and 'ActivityFeed' into 'NewHistoricalKeyEvents', rephrased concisely while retaining meaning (limit {currentPersona.historyMaxWordCount} words). Combine or exclude as necessary to avoid redundancy.\n",
-						$"Items sequence in 'LastSpokenText, 'PreviousHistoricalKeyEvents' and 'ActivityFeed' reflects the event timeline; use it to construct coherent narratives.",
-						$"Remember: your output is in the format: {{\"ResponseText\":\"Your narrative response goes here, and no more than {currentPersona.phraseMaxWordCount} words.\",\"NewHistoricalKeyEvents\":[\"...\",\"...\"]}}",
+						// Further reinforces the AI's specific personality by resynthesizing different pieces of information and storing it in its own history
+						$"Combine CurrentWindow, PreviousHistoricalKeyEvents, and each event from the 'ActivityFeed' and synthesize it into a new, concise form for 'NewHistoricalKeyEvents', make sure that the new synthesis matches your persona.\n",
+						// Guides the AI in understanding the sequence of events, emphasizing the need for coherent and logical responses or interactions.
+						"Items sequence in 'LastSpokenText', 'PreviousHistoricalKeyEvents', and 'ActivityFeed' reflects the event timeline; use it to form coherent responses or interactions.\n",
+
+						$"Remember: your output is in the format: {{\"ResponseText\":\"Your narrative response goes here, and no more than {currentPersona.phraseMaxWordCount} words.\",\"NewHistoricalKeyEvents\":[\"...\",\"...\"]}}"
 				}.Join(delimiter: "");
-
-
 		}
 
 		private string GetCurrentChatGPTModel()
