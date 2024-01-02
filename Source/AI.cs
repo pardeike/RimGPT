@@ -94,7 +94,7 @@ namespace RimGPT
 						$"Combine PreviousHistoricalKeyEvents, and each event from the 'ActivityFeed' and synthesize it into a new, concise form for 'NewHistoricalKeyEvents', make sure that the new synthesis matches your persona.\n",
 						// Guides the AI in understanding the sequence of events, emphasizing the need for coherent and logical responses or interactions.
 						"Items sequence in 'LastSpokenText', 'PreviousHistoricalKeyEvents', and 'ActivityFeed' reflects the event timeline; use it to form coherent responses or interactions.\n",
-						$"Remember: your output MUST be valid JSON and is in the format: {{\"ResponseText\":\"Your narrative response goes here, and no more than {currentPersona.phraseMaxWordCount} words.\",\"NewHistoricalKeyEvents\":[\"...\",\"...\"]}}"
+						$"Remember: your output MUST be valid JSON and 'NewHistoricalKeyEvents' MUST ONLY contain simple text entries, each encapsulated in quotes as string literals. For example, \"NewHistoricalKeyEvents\": [\"Event description 1\", \"Event description 2\"]. No nested objects, arrays, or non-string data types are allowed within 'NewHistoricalKeyEvents'.\n",
 				}.Join(delimiter: "");
 		}
 
@@ -172,13 +172,16 @@ namespace RimGPT
 				// this is to ensure that if all else fails, we don't include any colony data and we clear history (as reset intended)
 				if (gameInput.ColonySetting != "Unknown as of now..." && gameInput.CurrentWindow == "The player is at the start screen")
 				{
-					// Make sure it really gets reset.
-					RecordKeeper.Reset();
-
+					
+					// I'm not sure why, but Personas are not being reset propery, they tend to have activityfeed of old stuff
+					// and recordKeeper contains colony data still.  I"m guessing the reset unloads a bunch of stuff before
+					// the actual reset could finish (or something...?) 
+					// this ensures the reset happens
+					Personas.Reset();
+					
 					// cheap imperfect heuristic to not include activities from the previous game.
 					// the start screen is not that valueable for context anyway.  its the start screen.
-					if (gameInput.ActivityFeed.Count > 0) gameInput.ActivityFeed = ["The player restarted the game"];
-					Personas.Add("The player restarted the game.", 5);
+					if (gameInput.ActivityFeed.Count > 0) gameInput.ActivityFeed = ["The player restarted the game"];					
 					gameInput.ColonyRoster = [];
 					gameInput.ColonySetting = "The player restarted the game";
 					gameInput.ResearchSummary = "";
@@ -188,6 +191,11 @@ namespace RimGPT
 					gameInput.PreviousHistoricalKeyEvents = [];
 					history = [];
 				}
+
+				// really just making sure we're not holding any history when the player is at the start screen.
+				// happens when quitting to main menu
+				if (gameInput.CurrentWindow == "The player is at the start screen")
+					history = [];
 			}
 
 			var input = JsonConvert.SerializeObject(gameInput, settings);
@@ -242,7 +250,10 @@ namespace RimGPT
 					else
 						output = JsonConvert.DeserializeObject<Output>(response);
 
-					history = output.NewHistoricalKeyEvents ?? [];
+					// start screen shouldnt have any history, this handles the case where AI adds improper historical data
+					// when player restarts, despite clearing previoushistoricalevents. 					
+					if (gameInput.CurrentWindow != "The player is at the start screen")
+						history = output.NewHistoricalKeyEvents ?? [];
 
 					var responseText = output.ResponseText?.Cleanup() ?? string.Empty;
 
