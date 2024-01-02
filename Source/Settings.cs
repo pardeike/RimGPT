@@ -392,14 +392,16 @@ namespace RimGPT
 				list.ColumnWidth += cw;
 				list.Gap(16f);
 
+    				var buttonWidth = (rect.width - 40) / 3; // Spacing between buttons is 20, hence 40 for two spaces.
+
 				list.Languages(LanguageDatabase.AllLoadedLanguages, selected.azureVoiceLanguage, l => l.DisplayName, l =>
 				{
 					selected.azureVoiceLanguage = l == null ? "-" : l.FriendlyNameEnglish;
 					Personas.UpdateVoiceInformation();
-				}, width / 2, 0);
-				list.Voices(selected, width / 2, 1);
+				}, buttonWidth, 0);
+				list.Voices(selected, buttonWidth, 1);
 				if (UX.HasVoiceStyles(selected))
-					list.VoiceStyles(selected, width, 2);
+					list.VoiceStyles(selected, buttonWidth, 2);
 				list.Gap(30f);
 
 				list.Gap(16f);
@@ -409,8 +411,6 @@ namespace RimGPT
 				list.Slider(ref selected.speechPitch, -0.5f, 0.5f, f => $"Speech pitch: {f.ToPercentage()}", 0.01f);
 
 				list.Gap(16f);
-
-				var buttonWidth = (rect.width - 40) / 3; // Spacing between buttons is 20, hence 40 for two spaces.
 
 				rect = list.GetRect(UX.ButtonHeight);
 				var buttonRect = new Rect(rect.x, rect.y, buttonWidth, rect.height);
