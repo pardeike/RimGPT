@@ -44,7 +44,8 @@ namespace RimGPT
 				persona.lastSpokenText = spokenText;
 				Personas.StartNextPersona(persona);
 			}
-			Personas.Add($"{persona.name} said, \"{spokenText}\"", 3);
+			if (!string.IsNullOrEmpty(spokenText)) Personas.Add($"{persona.name} said: {spokenText}", 3);
+
 			var showText = RimGPTMod.Settings.showAsText || RimGPTMod.Settings.azureSpeechRegion == "" || RimGPTMod.Settings.azureSpeechKey == "";
 			if (showText)
 				Personas.currentText = persona == null ? spokenText : $"{persona.name}: {spokenText}";
@@ -74,8 +75,7 @@ namespace RimGPT
 					});
 				}
 
-				if (waitForAudio)
-					await Tools.SafeWait((int)(length * 1000));
+				if (waitForAudio) await Tools.SafeWait((int)(length * 1000));
 				//FileLog.Log($"{persona.name}: play done");
 			}
 			else if (showText && spokenText != null)

@@ -128,25 +128,25 @@ namespace RimGPT
 			Scribe_Values.Look(ref speechVolume, "speechVolume", 4f);
 			Scribe_Values.Look(ref showAsText, "showAsText", true);
 
-			// Power Insight settings
-			Scribe_Values.Look(ref reportEnergyStatus, "reportEnergyStatus", defaultValue: true);
-			Scribe_Values.Look(ref reportEnergyFrequency, "reportEnergyFrequency", defaultValue: 8000);
-			Scribe_Values.Look(ref reportEnergyImmediate, "reportEnergyImmediate", defaultValue: false);
-
-			// Research Insight settings
-			Scribe_Values.Look(ref reportResearchStatus, "reportResearchStatus", defaultValue: true);
-			Scribe_Values.Look(ref reportResearchFrequency, "reportResearchFrequency", defaultValue: 60000);
-			Scribe_Values.Look(ref reportResearchImmediate, "reportResearchImmediate", defaultValue: false);
-
 			// Thoughts & Mood Insight settings
 			Scribe_Values.Look(ref reportColonistThoughts, "reportColonistThoughts", defaultValue: true);
 			Scribe_Values.Look(ref reportColonistThoughtsFrequency, "reportColonistThoughtsFrequency", defaultValue: 60000);
 			Scribe_Values.Look(ref reportColonistThoughtsImmediate, "reportColonistThoughtsImmediate", defaultValue: false);
 
 			// Interpersonal Insight settings
-			Scribe_Values.Look(ref reportColonistOpinions, "reportColonistOpinions", defaultValue: false);
+			Scribe_Values.Look(ref reportColonistOpinions, "reportColonistOpinions", defaultValue: true);
 			Scribe_Values.Look(ref reportColonistOpinionsFrequency, "reportColonistOpinionsFrequency", defaultValue: 60000);
 			Scribe_Values.Look(ref reportColonistOpinionsImmediate, "reportColonistOpinionsImmediate", defaultValue: false);
+
+			// Power Insight settings
+			Scribe_Values.Look(ref reportEnergyStatus, "reportEnergyStatus", defaultValue: false);
+			Scribe_Values.Look(ref reportEnergyFrequency, "reportEnergyFrequency", defaultValue: 8000);
+			Scribe_Values.Look(ref reportEnergyImmediate, "reportEnergyImmediate", defaultValue: false);
+
+			// Research Insight settings
+			Scribe_Values.Look(ref reportResearchStatus, "reportResearchStatus", defaultValue: false);
+			Scribe_Values.Look(ref reportResearchFrequency, "reportResearchFrequency", defaultValue: 60000);
+			Scribe_Values.Look(ref reportResearchImmediate, "reportResearchImmediate", defaultValue: false);
 
 			// Detailed Colonist Insight settings
 			Scribe_Values.Look(ref reportColonistRoster, "reportColonistRoster", defaultValue: false);

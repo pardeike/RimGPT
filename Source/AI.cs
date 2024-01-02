@@ -94,7 +94,7 @@ namespace RimGPT
 						$"Combine PreviousHistoricalKeyEvents, and each event from the 'ActivityFeed' and synthesize it into a new, concise form for 'NewHistoricalKeyEvents', make sure that the new synthesis matches your persona.\n",
 						// Guides the AI in understanding the sequence of events, emphasizing the need for coherent and logical responses or interactions.
 						"Items sequence in 'LastSpokenText', 'PreviousHistoricalKeyEvents', and 'ActivityFeed' reflects the event timeline; use it to form coherent responses or interactions.\n",
-						$"Remember: your output is in the format: {{\"ResponseText\":\"Your narrative response goes here, and no more than {currentPersona.phraseMaxWordCount} words.\",\"NewHistoricalKeyEvents\":[\"...\",\"...\"]}}"
+						$"Remember: your output MUST be valid JSON and is in the format: {{\"ResponseText\":\"Your narrative response goes here, and no more than {currentPersona.phraseMaxWordCount} words.\",\"NewHistoricalKeyEvents\":[\"...\",\"...\"]}}"
 				}.Join(delimiter: "");
 		}
 
@@ -120,9 +120,9 @@ namespace RimGPT
 			int levenshteinDistance = LanguageHelper.CalculateLevenshteinDistance(source, target);
 
 			// You can adjust these constants based on the desired sensitivity.
-			const float maxPenalty = 1.0f; // Maximum penalty when there is little to no change.
-			const float minPenalty = 0.0f; // Minimum penalty when changes are significant.
-			const int threshold = 10;      // Distance threshold for maximum penalty.
+			const float maxPenalty = 2.0f; // Maximum penalty when there is little to no change.
+			const float minPenalty = 0f; // Minimum penalty when changes are significant.
+			const int threshold = 30;      // Distance threshold for maximum penalty.
 
 			// Apply maximum penalty when distance is below or equal to threshold.
 			if (levenshteinDistance <= threshold)
@@ -167,11 +167,32 @@ namespace RimGPT
 					var dialogType = page.GetType().Name.Replace("Page_", "");
 					gameInput.CurrentWindow = $"The player is at the dialog {dialogType}";
 				}
+				// Due to async nature of the game, a reset of history and recordkeeper
+				// may have slipped through the cracks by the time this function is called.
+				// this is to ensure that if all else fails, we don't include any colony data and we clear history (as reset intended)
+				if (gameInput.ColonySetting != "Unknown as of now..." && gameInput.CurrentWindow == "The player is at the start screen")
+				{
+					// Make sure it really gets reset.
+					RecordKeeper.Reset();
+
+					// cheap imperfect heuristic to not include activities from the previous game.
+					// the start screen is not that valueable for context anyway.  its the start screen.
+					if (gameInput.ActivityFeed.Count > 0) gameInput.ActivityFeed = ["The player restarted the game"];
+					Personas.Add("The player restarted the game.", 5);
+					gameInput.ColonyRoster = [];
+					gameInput.ColonySetting = "The player restarted the game";
+					gameInput.ResearchSummary = "";
+					gameInput.ResourceData = "";
+					gameInput.RoomsSummary = "";
+					gameInput.EnergySummary = "";
+					gameInput.PreviousHistoricalKeyEvents = [];
+					history = [];
+				}
 			}
 
 			var input = JsonConvert.SerializeObject(gameInput, settings);
 
-			Logger.Message($"prompt ({observations.Count()} activities) (persona:{persona.name}): {input}");
+			Logger.Message($"prompt (FP:{FrequencyPenalty}) ({gameInput.ActivityFeed.Count()} activities) (persona:{persona.name}): {input}");
 
 			var systemPrompt = SystemPrompt(persona);
 			var request = new CreateChatCompletionRequest()
@@ -179,7 +200,7 @@ namespace RimGPT
 				Model = GetCurrentChatGPTModel(),
 				ResponseFormat = GetCurrentChatGPTModel().Contains("1106") ? new ResponseFormat { Type = "json_object" } : null,
 				FrequencyPenalty = FrequencyPenalty,
-				PresencePenalty = 0.6f,
+				PresencePenalty = 1.0f,
 				Temperature = 0.7f,
 				Messages =
 				[
@@ -212,23 +233,50 @@ namespace RimGPT
 				try
 				{
 					Output output;
+
+					if (string.IsNullOrEmpty(response))
+						throw new InvalidOperationException("Response is empty or null.");
+
 					if (response.Length > 0 && response[0] != '{')
-						output = new Output { ResponseText = response, NewHistoricalKeyEvents = new string[0] };
+						output = new Output { ResponseText = response, NewHistoricalKeyEvents = [] };
 					else
 						output = JsonConvert.DeserializeObject<Output>(response);
-					history = output.NewHistoricalKeyEvents;
 
-					var responseText = output.ResponseText.Cleanup();
+					history = output.NewHistoricalKeyEvents ?? [];
+
+					var responseText = output.ResponseText?.Cleanup() ?? string.Empty;
+
+					if (string.IsNullOrEmpty(responseText))
+						throw new InvalidOperationException("Response text is null or empty after cleanup.");
 
 					// Ideally we would want the last two things and call this sooner, but MEH.  
 					FrequencyPenalty = CalculateFrequencyPenaltyBasedOnLevenshteinDistance(persona.lastSpokenText, responseText);
-					if (FrequencyPenalty == 1 && !isRetrying) return await Evaluate(persona, observations, true);
+					if (FrequencyPenalty >= 1.5 && !isRetrying) return await Evaluate(persona, observations, true);
+
+					// we're not repeating ourselves again.
+					if (FrequencyPenalty >= 1.5) return "";
 
 					return responseText;
 				}
+				catch (JsonException jsonEx)
+				{
+					Logger.Error($"ChatGPT malformed output: {jsonEx.Message}. Response was: {response}");
+				}
+				catch (NullReferenceException nullRefEx)
+				{
+						Logger.Error($"Null Reference Exception: {nullRefEx.Message}");
+				}
+				catch (InvalidOperationException invalidOpEx)
+				{
+						Logger.Error($"Invalid Operation Exception: {invalidOpEx.Message}");
+				}
+				catch (ArgumentException argEx) 
+				{
+						Logger.Error($"Argument Exception: {argEx.Message}");
+				}				
 				catch (Exception exception)
 				{
-					Logger.Error($"ChatGPT malformed output: {response} [{exception.Message}]");
+					Logger.Error($"Error when processing output: [{exception.Message}]");
 				}
 			}
 			else if (Tools.DEBUG)

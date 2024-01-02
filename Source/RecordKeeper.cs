@@ -1,4 +1,5 @@
 using HarmonyLib;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +12,7 @@ namespace RimGPT
 	{
 		private static ConcurrentBag<ColonistData> colonistRecords = new ConcurrentBag<ColonistData>();
 		private static ResearchData researchData = new ResearchData();
-		public static string ColonySetting = "Unknown as of now...";
+		private static string colonySetting = "Unknown as of now...";
 		private static string resourceData = "";
 		public static EnergyData EnergyStatus { get; set; }
 		private static ConcurrentBag<string> roomsData = new ConcurrentBag<string>();
@@ -27,18 +28,23 @@ namespace RimGPT
 
 		public static ResearchData ResearchData
 		{
-			get => researchData;
+			get => researchData = Personas.isResetting ? new ResearchData() : researchData;
 			set => researchData = value;
+		}
+		public static string ColonySetting
+		{
+			get => Personas.isResetting ? "Unknown as of now..." : colonySetting;
+			set => colonySetting = value;
 		}
 		public static string ResourceData
 		{
-			get => resourceData;
+			get => Personas.isResetting ? "" : resourceData;
 			set => resourceData = value;
 		}
 
 		public static IEnumerable<string> RoomsData
 		{
-			get => roomsData;
+			get => Personas.isResetting ? Enumerable.Empty<string>() : roomsData;
 			set => roomsData = new ConcurrentBag<string>(value);
 		}
 
@@ -64,7 +70,7 @@ namespace RimGPT
 		{
 			get
 			{
-				if (EnergyStatus != null)
+				if (!Personas.isResetting && EnergyStatus != null)
 				{
 					return EnergyStatus.ToString();
 				}
@@ -74,10 +80,10 @@ namespace RimGPT
 				}
 			}
 		}
-		public static string RoomsDataSummary => string.Join(", ", RoomsData);
-		public static string ResearchDataSummary => researchData != null ? researchData.ToString() : "";
+		public static string RoomsDataSummary => Personas.isResetting ? "" : string.Join(", ", RoomsData);
+		public static string ResearchDataSummary => !Personas.isResetting && researchData != null ? researchData.ToString() : "";
 
-		public static string[] ColonistDataSummary => ColonistRecords.Select(colonist =>
+		public static string[] ColonistDataSummary => Personas.isResetting ? Array.Empty<string>() : ColonistRecords.Select(colonist =>
 		{
 			var dataBuilder = new StringBuilder();
 			AddBasicInformation(dataBuilder, colonist);

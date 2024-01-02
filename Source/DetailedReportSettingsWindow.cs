@@ -21,7 +21,7 @@ namespace RimGPT
 			}
 
 			// Override the method to specify the initial size of the window
-			public override Vector2 InitialSize => new(800f, 600f);
+			public override Vector2 InitialSize => new(800f, 680f);
 
 
 			public override void DoWindowContents(Rect inRect)
@@ -49,26 +49,6 @@ namespace RimGPT
 				// Reset font size after headers
 				Text.Font = GameFont.Small;
 
-				// Power Insight settings
-				DrawSettingRow(
-					new Rect(inRect.x, yOffset, inRect.width, rowHeight),
-					"Power Insight",
-					ref settings.reportEnergyFrequency,
-					ref settings.reportEnergyStatus,
-					ref settings.reportEnergyImmediate,
-					"Provides the AI with detailed power grid statistics, updating at the set frequency of in-game time."
-				);
-				yOffset += rowHeight + gapBetweenRows;
-				// Research Insight settings
-				DrawSettingRow(
-					new Rect(inRect.x, yOffset, inRect.width, rowHeight),
-					"Research Insight",
-					ref settings.reportResearchFrequency,
-					ref settings.reportResearchStatus,
-					ref settings.reportResearchImmediate,
-					"Allows the AI to be aware of all researched tech and progress, updating at the set frequency of in-game time."
-				);
-				yOffset += rowHeight + gapBetweenRows;
 				// Thoughts & Mood Insight settings
 				DrawSettingRow(
 					new Rect(inRect.x, yOffset, inRect.width, rowHeight),
@@ -86,7 +66,27 @@ namespace RimGPT
 					ref settings.reportColonistOpinionsFrequency,
 					ref settings.reportColonistOpinions,
 					ref settings.reportColonistOpinionsImmediate,
-					"Feeds the AI a holistic view of interpersonal dynamics and opinions periodically, based on the frequency setting of in-game time."
+					"Perioducally feeds the AI a holistic view of interpersonal dynamics and opinions periodically, based on the frequency setting of in-game time."
+				);
+				yOffset += rowHeight + gapBetweenRows;				
+				// Power Insight settings
+				DrawSettingRow(
+					new Rect(inRect.x, yOffset, inRect.width, rowHeight),
+					"Power Insight(Experimental)",
+					ref settings.reportEnergyFrequency,
+					ref settings.reportEnergyStatus,
+					ref settings.reportEnergyImmediate,
+					"Persistently provides the AI with detailed power grid statistics, updating at the set frequency of in-game time.\nWARNING: This embeds power data with each request. Depending on how many power generation/consumption buildings you have, this can use a lot of tokens."
+				);
+				yOffset += rowHeight + gapBetweenRows;
+				// Research Insight settings
+				DrawSettingRow(
+					new Rect(inRect.x, yOffset, inRect.width, rowHeight),
+					"Research Insight(Experimental)",
+					ref settings.reportResearchFrequency,
+					ref settings.reportResearchStatus,
+					ref settings.reportResearchImmediate,
+					"Pesristently provides the AI of all researched tech and progress, updating at the set frequency of in-game time.\nWARNING: This embeds research data with each request and may use a lot of tokens, depending on how many mods you have installed."
 				);
 				yOffset += rowHeight + gapBetweenRows;
 				// Detailed Colonist Insight settings
@@ -96,7 +96,7 @@ namespace RimGPT
 					ref settings.reportColonistRosterFrequency,
 					ref settings.reportColonistRoster,
 					ref settings.reportColonistRosterImmediate,
-					"Provides continuous updates to the AI on all colonists' details, including demographics and health. Adjust frequency (in-game time) carefully."
+					"Provides continuous updates to the AI on all colonists' details, including demographics and health. Adjust frequency (in-game time) carefully.\nWARNING: This embeds detailed colonist info with each request. This uses a lot of tokens as it sends detailed colonist info with every request to ChatGPT.  Additionally, high amount of colonists can strain CPU resources."
 				);
 				yOffset += rowHeight + gapBetweenRows;
 				// Rooms Insight settings
@@ -106,11 +106,31 @@ namespace RimGPT
 					ref settings.reportRoomStatusFrequency,
 					ref settings.reportRoomStatus,
 					ref settings.reportRoomStatusImmediate,
-					"Activates comprehensive room reporting to the AI, covering cleanliness, wealth, etc., at the defined frequency of in-game time."
+					"Activates comprehensive room reporting to the AI, covering cleanliness, wealth, etc., at the defined frequency of in-game time\nWARNING: This sends rooms data with each request. This may use a lot of tokens, scaling with how many \"named\" rooms you currently have. Additionally, a lot of rooms may strain CPU."
 				);
+				DrawCloseButton(inRect);
 				listing.End();
 			}
+			private void DrawCloseButton(Rect inRect)
+			{
+					// Set up the button's dimensions.
+					const float buttonHeight = 40f;
+					const float buttonWidth = 150f; // Or adjust to your preferred width
 
+					// Calculate the position to center the button horizontally.
+					float buttonX = (inRect.width - buttonWidth) / 2f;
+					// Position the button at the bottom with a margin.
+					float buttonY = inRect.yMax - buttonHeight - 10f;
+
+					var closeButtonRect = new Rect(buttonX, buttonY, buttonWidth, buttonHeight);
+
+					// Draw the button and check for clicks.
+					if (Widgets.ButtonText(closeButtonRect, "Close", true, false, true))
+					{
+							// If the button is clicked, close the window.
+							Close();
+					}
+			}
 			private void DrawSettingRow(Rect overallRect, string label, ref int frequencySetting, ref bool enabled, ref bool immediate, string tooltip)
 			{
 				var padding = 8f; // Padding between controls
@@ -157,7 +177,7 @@ namespace RimGPT
 				var immediateRect = new Rect(enabledRect.xMax + padding, overallRect.y + 16f, immediateWidth, overallRect.height);
 				var immediateListing = new Listing_Standard();
 				immediateListing.Begin(immediateRect);
-				immediateListing.CheckboxLabeled("Immediate:", ref immediate, tooltip: "If checked, the AI will gain " + label + " insight immediately when starting or loading a game.");
+				immediateListing.CheckboxLabeled("Immediate:", ref immediate, tooltip: "If checked, the AI will gain " + label + " immediately when starting or loading a game.");
 				immediateListing.End();
 			}
 

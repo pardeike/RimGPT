@@ -15,6 +15,8 @@ namespace RimGPT
 		public static Persona currentSpeakingPersona = null;
 		private static OrderedHashSet<Phrase> allPhrases = new OrderedHashSet<Phrase>();
 		public static Persona lastSpeakingPersona = null;
+		private static readonly object resetLock = new object();
+		public static bool isResetting = false;
 
 		static Personas()
 		{
@@ -44,6 +46,7 @@ namespace RimGPT
 		{
 			lock (allPhrases)
 			{
+				if (isResetting) return;
 
 				// Chroniclers get all phrases regardless
 				foreach (var chronicler in RimGPTMod.Settings.personas.Where(p => p.isChronicler))
@@ -76,10 +79,10 @@ namespace RimGPT
 					nextPersona = candidates.OrderBy(p => p.nextPhraseTime).First();
 				}
 
-					foreach (var phrase in allPhrases)
-					{
-						if (!nextPersona.phrases.Contains(phrase)) nextPersona.AddPhrase(phrase);
-					}
+				foreach (var phrase in allPhrases)
+				{
+					if (!nextPersona.phrases.Contains(phrase)) nextPersona.AddPhrase(phrase);
+				}
 
 				// add the high priority ones to all personas last, so its most recent
 				// we want to ensure they're aware that the hunter has his weapon ffs
@@ -96,18 +99,18 @@ namespace RimGPT
 
 				// Clear
 				allPhrases.Clear();
-				
+
 				// To help keep the conversation going, 
 				// Add last spoken phrase from the previous speaker if it's not null
 				if (lastSpeaker != null)
 				{
 					var lastSpokenPhrase = new Phrase
 					{
-						text = $"{lastSpeaker.name} said, \"{lastSpeaker.lastSpokenText}\"",
+						text = $"{lastSpeaker.name} said: {lastSpeaker.lastSpokenText}]",
 						persona = lastSpeaker,
 						priority = 3
 					};
-					if (!nextPersona.phrases.Contains(lastSpokenPhrase)) nextPersona.AddPhrase(lastSpokenPhrase);
+					if (!nextPersona.phrases.Contains(lastSpokenPhrase) && !string.IsNullOrEmpty(lastSpeaker.lastSpokenText)) nextPersona.AddPhrase(lastSpokenPhrase);
 
 				}
 			}
@@ -147,15 +150,21 @@ namespace RimGPT
 
 		public static void Reset(params string[] reason)
 		{
-			lock (speechQueue)
+			lock (resetLock)
 			{
+				isResetting = true;
+				RecordKeeper.Reset();
 				speechQueue.Clear();
+				allPhrases.Clear();
+
 				foreach (var persona in RimGPTMod.Settings.personas)
 					persona.Reset(reason);
-				
-				RecordKeeper.Reset();
-				allPhrases.Clear();
+
+
+
+				isResetting = false;
 			}
+
 		}
 
 		public static void CreateSpeechJob(Persona persona, Phrase[] phrases, Action<string> errorCallback, Action doneCallback)
