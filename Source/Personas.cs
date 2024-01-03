@@ -108,7 +108,7 @@ namespace RimGPT
 					{
 						text = $"{lastSpeaker.name} said: {lastSpeaker.lastSpokenText}]",
 						persona = lastSpeaker,
-						priority = 3
+						priority = 1
 					};
 					if (!nextPersona.phrases.Contains(lastSpokenPhrase) && !string.IsNullOrEmpty(lastSpeaker.lastSpokenText)) nextPersona.AddPhrase(lastSpokenPhrase);
 

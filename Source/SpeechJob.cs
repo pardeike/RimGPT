@@ -44,7 +44,7 @@ namespace RimGPT
 				persona.lastSpokenText = spokenText;
 				Personas.StartNextPersona(persona);
 			}
-			if (!string.IsNullOrEmpty(spokenText)) Personas.Add($"{persona.name} said: {spokenText}", 3);
+			if (!string.IsNullOrEmpty(spokenText)) Personas.Add($"{persona.name} said: {spokenText}", 1);
 
 			var showText = RimGPTMod.Settings.showAsText || RimGPTMod.Settings.azureSpeechRegion == "" || RimGPTMod.Settings.azureSpeechKey == "";
 			if (showText)

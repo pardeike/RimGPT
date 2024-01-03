@@ -21,7 +21,7 @@ namespace RimGPT
 		public class Input
 		{
 			public string CurrentWindow { get; set; }
-			public string[] PreviousHistoricalKeyEvents { get; set; }
+			public List<string> PreviousHistoricalKeyEvents { get; set; }
 			public string LastSpokenText { get; set; }
 			public List<string> ActivityFeed { get; set; }
 			public string[] ColonyRoster { get; set; }
@@ -43,7 +43,7 @@ namespace RimGPT
 #pragma warning restore CS0649
 
 		public OpenAIApi OpenAI => new(RimGPTMod.Settings.chatGPTKey);
-		public string[] history = Array.Empty<string>();
+		private List<string> history = new List<string>();
 
 		public const string defaultPersonality = "You are a commentator watching the player play the popular game, Rimworld.";
 
@@ -144,7 +144,6 @@ namespace RimGPT
 			var gameInput = new Input
 			{
 				ActivityFeed = observations.Select(o => o.text).ToList(),
-				PreviousHistoricalKeyEvents = history,
 				LastSpokenText = persona.lastSpokenText,
 				ColonyRoster = RecordKeeper.ColonistDataSummary,
 				ColonySetting = RecordKeeper.ColonySetting,
@@ -191,27 +190,36 @@ namespace RimGPT
 					gameInput.RoomsSummary = "";
 					gameInput.EnergySummary = "";
 					gameInput.PreviousHistoricalKeyEvents = [];
-					history = [];
+					ReplaceHistory("The Player restarted the game");
 				}
 
-				// really just making sure we're not holding any history when the player is at the start screen.
-				// happens when quitting to main menu
-				if (gameInput.CurrentWindow == "The player is at the start screen")
-					history = [];
 			}
 
+			var systemPrompt = SystemPrompt(persona);
+			if (FrequencyPenalty > 1)
+			{
+				systemPrompt += "\nNOTE: You're being too repetitive, you need to review the data you have and come up with something new.";
+				systemPrompt += $"\nAVOID talking about anything related to this: {persona.lastSpokenText}";
+				history.AddItem("I've been too repetitive lately, I need to examine the data and stray lastSpokenText");			
+			}
+			if (history.Count() > 5)
+			{
+				var newhistory = (await CondenseHistory(persona)).Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
+				ReplaceHistory(newhistory);
+			}
+
+			gameInput.PreviousHistoricalKeyEvents = history;
 			var input = JsonConvert.SerializeObject(gameInput, settings);
 
 			Logger.Message($"{(retry != 0 ? $"(retry:{retry} {retryReason})" : "")} prompt (FP:{FrequencyPenalty}) ({gameInput.ActivityFeed.Count()} activities) (persona:{persona.name}): {input}");
 
-			var systemPrompt = SystemPrompt(persona);
 			var request = new CreateChatCompletionRequest()
 			{
 				Model = GetCurrentChatGPTModel(),
 				ResponseFormat = GetCurrentChatGPTModel().Contains("1106") ? new ResponseFormat { Type = "json_object" } : null,
 				FrequencyPenalty = FrequencyPenalty,
-				PresencePenalty = 1.0f,
-				Temperature = 0.7f,
+				PresencePenalty = FrequencyPenalty,
+				Temperature = 0.5f,
 				Messages =
 				[
 					new ChatMessage() { Role = "system", Content = systemPrompt },
@@ -266,11 +274,11 @@ namespace RimGPT
 				}
 				try
 				{
-					// start screen shouldnt have any history, this handles the case where AI adds improper historical data
-					// when player restarts, despite clearing previoushistoricalevents. 					
-					if (!string.IsNullOrEmpty(gameInput.CurrentWindow) && gameInput.CurrentWindow != "The player is at the start screen")
-						history = output.NewHistoricalKeyEvents ?? [];
-
+					if (gameInput.CurrentWindow != "The player is at the start screen")
+					{				
+						var newhistory = output.NewHistoricalKeyEvents.ToList() ?? [];
+						ReplaceHistory(newhistory);						
+					}
 					var responseText = output.ResponseText?.Cleanup() ?? string.Empty;
 
 					if (string.IsNullOrEmpty(responseText))
@@ -298,8 +306,36 @@ namespace RimGPT
 
 			return null;
 		}
+		public async Task<string> CondenseHistory(Persona persona)
+		{
+			// force secondary (better model)
+			modelSwitchCounter = RimGPTMod.Settings.ModelSwitchRatio;
+			var request = new CreateChatCompletionRequest()
+			{
+				Model = GetCurrentChatGPTModel(),
+				Messages =
+				[
+					new ChatMessage() { Role = "system", Content = $"You are an adversarial system, cleaning up history lists with a goal to remove repetitiveness and keep narration fresh for the following persona: {persona.personality}" },
+					new ChatMessage() { Role = "user", Content =  "Summarize the following events into a succinct sentence, focusing on outliers to reduce latching on to the most pronounced theme: " + String.Join("\n ", history)}
+				]
+			};
+
+
+			var completionResponse = await OpenAI.CreateChatCompletion(request, error => Logger.Error(error));
+			var response = (completionResponse.Choices[0].Message.Content ?? "");
+			Logger.Message("Condensed History: " + response.ToString());
+			return response.ToString(); // The condensed history summary
+		}
+		public void ReplaceHistory(string reason)
+		{
+			history = [reason];
+		}
 
 		public void ReplaceHistory(string[] reason)
+		{
+			history = [.. reason];
+		}
+		public void ReplaceHistory(List<string> reason)
 		{
 			history = reason;
 		}
