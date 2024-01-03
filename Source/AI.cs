@@ -34,6 +34,7 @@ namespace RimGPT
 		}
 
 		private float FrequencyPenalty { get; set; } = 0.5f;
+		private int maxRetries = 3;
 		struct Output
 		{
 			public string ResponseText { get; set; }
@@ -94,7 +95,8 @@ namespace RimGPT
 						$"Combine PreviousHistoricalKeyEvents, and each event from the 'ActivityFeed' and synthesize it into a new, concise form for 'NewHistoricalKeyEvents', make sure that the new synthesis matches your persona.\n",
 						// Guides the AI in understanding the sequence of events, emphasizing the need for coherent and logical responses or interactions.
 						"Items sequence in 'LastSpokenText', 'PreviousHistoricalKeyEvents', and 'ActivityFeed' reflects the event timeline; use it to form coherent responses or interactions.\n",
-						$"Remember: your output MUST be valid JSON and 'NewHistoricalKeyEvents' MUST ONLY contain simple text entries, each encapsulated in quotes as string literals. For example, \"NewHistoricalKeyEvents\": [\"Event description 1\", \"Event description 2\"]. No nested objects, arrays, or non-string data types are allowed within 'NewHistoricalKeyEvents'.\n",
+						$"Remember: your output MUST be valid JSON and 'NewHistoricalKeyEvents' MUST ONLY contain simple text entries, each encapsulated in quotes as string literals.\n",
+						$"For example, {exampleOutput}. No nested objects, arrays, or non-string data types are allowed within 'NewHistoricalKeyEvents'.\n",
 				}.Join(delimiter: "");
 		}
 
@@ -136,7 +138,7 @@ namespace RimGPT
 		}
 
 
-		public async Task<string> Evaluate(Persona persona, IEnumerable<Phrase> observations, bool isRetrying = false)
+		public async Task<string> Evaluate(Persona persona, IEnumerable<Phrase> observations, int retry = 0, string retryReason = "")
 		{
 
 			var gameInput = new Input
@@ -172,16 +174,16 @@ namespace RimGPT
 				// this is to ensure that if all else fails, we don't include any colony data and we clear history (as reset intended)
 				if (gameInput.ColonySetting != "Unknown as of now..." && gameInput.CurrentWindow == "The player is at the start screen")
 				{
-					
+
 					// I'm not sure why, but Personas are not being reset propery, they tend to have activityfeed of old stuff
 					// and recordKeeper contains colony data still.  I"m guessing the reset unloads a bunch of stuff before
 					// the actual reset could finish (or something...?) 
 					// this ensures the reset happens
 					Personas.Reset();
-					
+
 					// cheap imperfect heuristic to not include activities from the previous game.
 					// the start screen is not that valueable for context anyway.  its the start screen.
-					if (gameInput.ActivityFeed.Count > 0) gameInput.ActivityFeed = ["The player restarted the game"];					
+					if (gameInput.ActivityFeed.Count > 0) gameInput.ActivityFeed = ["The player restarted the game"];
 					gameInput.ColonyRoster = [];
 					gameInput.ColonySetting = "The player restarted the game";
 					gameInput.ResearchSummary = "";
@@ -200,7 +202,7 @@ namespace RimGPT
 
 			var input = JsonConvert.SerializeObject(gameInput, settings);
 
-			Logger.Message($"prompt (FP:{FrequencyPenalty}) ({gameInput.ActivityFeed.Count()} activities) (persona:{persona.name}): {input}");
+			Logger.Message($"{(retry != 0 ? $"(retry:{retry} {retryReason})" : "")} prompt (FP:{FrequencyPenalty}) ({gameInput.ActivityFeed.Count()} activities) (persona:{persona.name}): {input}");
 
 			var systemPrompt = SystemPrompt(persona);
 			var request = new CreateChatCompletionRequest()
@@ -238,21 +240,35 @@ namespace RimGPT
 				response = response.Replace("ResponseText:", "");
 				if (Tools.DEBUG)
 					Logger.Warning($"OUTPUT: {response}");
+
+				Output output;
+				if (string.IsNullOrEmpty(response))
+					throw new InvalidOperationException("Response is empty or null.");
 				try
 				{
-					Output output;
-
-					if (string.IsNullOrEmpty(response))
-						throw new InvalidOperationException("Response is empty or null.");
-
 					if (response.Length > 0 && response[0] != '{')
 						output = new Output { ResponseText = response, NewHistoricalKeyEvents = [] };
 					else
 						output = JsonConvert.DeserializeObject<Output>(response);
-
+				}
+				catch (JsonException jsonEx)
+				{
+					if (retry < maxRetries)
+					{
+						Logger.Error($"(retrying) ChatGPT malformed output: {jsonEx.Message}. Response was: {response}");
+						return await Evaluate(persona, observations, ++retry, "malformed output");
+					}
+					else
+					{
+						Logger.Error($"(aborted) ChatGPT malformed output: {jsonEx.Message}. Response was: {response}");
+						return null;
+					}
+				}
+				try
+				{
 					// start screen shouldnt have any history, this handles the case where AI adds improper historical data
 					// when player restarts, despite clearing previoushistoricalevents. 					
-					if (gameInput.CurrentWindow != "The player is at the start screen")
+					if (!string.IsNullOrEmpty(gameInput.CurrentWindow) && gameInput.CurrentWindow != "The player is at the start screen")
 						history = output.NewHistoricalKeyEvents ?? [];
 
 					var responseText = output.ResponseText?.Cleanup() ?? string.Empty;
@@ -262,32 +278,19 @@ namespace RimGPT
 
 					// Ideally we would want the last two things and call this sooner, but MEH.  
 					FrequencyPenalty = CalculateFrequencyPenaltyBasedOnLevenshteinDistance(persona.lastSpokenText, responseText);
-					if (FrequencyPenalty >= 1.5 && !isRetrying) return await Evaluate(persona, observations, true);
+					if (FrequencyPenalty == 2 && retry < maxRetries) return await Evaluate(persona, observations, ++retry, "repetitive");
 
 					// we're not repeating ourselves again.
-					if (FrequencyPenalty >= 1.5) return "";
+					if (FrequencyPenalty == 2)
+					{
+						Logger.Message($"Skipped output due to repetitiveness. Response was {response}");
+					}
 
 					return responseText;
 				}
-				catch (JsonException jsonEx)
-				{
-					Logger.Error($"ChatGPT malformed output: {jsonEx.Message}. Response was: {response}");
-				}
-				catch (NullReferenceException nullRefEx)
-				{
-						Logger.Error($"Null Reference Exception: {nullRefEx.Message}");
-				}
-				catch (InvalidOperationException invalidOpEx)
-				{
-						Logger.Error($"Invalid Operation Exception: {invalidOpEx.Message}");
-				}
-				catch (ArgumentException argEx) 
-				{
-						Logger.Error($"Argument Exception: {argEx.Message}");
-				}				
 				catch (Exception exception)
 				{
-					Logger.Error($"Error when processing output: [{exception.Message}]");
+					Logger.Error($"Error when processing output: [{exception.Message}] {exception.StackTrace} {exception.Source}");
 				}
 			}
 			else if (Tools.DEBUG)
