@@ -100,7 +100,8 @@ namespace RimGPT
 		{
 			int limit = getReasonableSkipLimit(phraseDelayMin, phraseDelayMax);
 
-			if (Personas.isResetting){
+			if (Personas.isResetting)
+			{
 				ExtendWaitBeforeNextJob("Resetting gamestate");
 			}
 			// Check if there is already a completed job in the queue that hasn't started playback
@@ -117,7 +118,7 @@ namespace RimGPT
 			{
 				batch = phrases.Take(phraseBatchSize).ToArray();
 				// avoid spam if there's no new phrases and this persona has already spoken recently.
-				if (timesSpoken != 0 && batch.Length == 0 && timesSkipped < limit)
+				if (timesSpoken != 0 && batch.Length <= 1 && timesSkipped < limit)
 				{
 					ExtendWaitBeforeNextJob($"nothing new ({timesSkipped}/{limit})");
 					return;
@@ -211,7 +212,7 @@ namespace RimGPT
 			if (now < nextPhraseTime || Personas.IsAudioQueueFull) return;
 
 			var game = Current.Game;
-			
+
 			if (game != null && game.tickManager != null && game.tickManager.ticksGameInt > 100 && game.tickManager.Paused) return;
 
 			ScheduleNextJob();
