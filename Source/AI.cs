@@ -6,6 +6,7 @@ using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Configuration;
 using System.Threading.Tasks;
 using UnityEngine;
 using Verse;
@@ -46,6 +47,20 @@ namespace RimGPT
 		private List<string> history = new List<string>();
 
 		public const string defaultPersonality = "You are a commentator watching the player play the popular game, Rimworld.";
+		public const string defaultPersonalitySecondary = "You are a commentator watching the player play the popular game, Rimworld.";
+
+		public string GetPersonality(Persona persona)
+		{
+			var model = GetCurrentChatGPTModel();
+			if (model == RimGPTMod.Settings.ChatGPTModelSecondary)
+			{
+				return $"Your role/personality is: {persona.personalitySecondary}";
+			}
+			else
+			{
+				return persona.personality;
+			}
+		}
 
 		public string SystemPrompt(Persona currentPersona)
 		{
@@ -81,6 +96,7 @@ namespace RimGPT
 																				: "Unless otherwise specified, interact reflecting your unique personality, embracing an improvisational approach based on your background, the current situation, and others' actions",
 						$"Unless otherwise specified, ", otherObservers.Any() ? $"your fellow observers are {otherObservers}. " : "",
 						$"Unless otherwise specified, ",(otherObservers.Any() ? $"you are all watching " : "You are watching") + $"'{player}' play Rimworld.\n",
+						GetPersonality(currentPersona),
 						$"Your role/personality: {currentPersona.personality}\n",
 						$"Your input comes from the current game and will be json like this: {exampleInput}\n",
 						$"Your output must only be in json like this: {exampleOutput}\n",
@@ -104,9 +120,7 @@ namespace RimGPT
 		{
 			if (!RimGPTMod.Settings.UseSecondaryModel) return RimGPTMod.Settings.ChatGPTModelPrimary;
 
-			modelSwitchCounter++;
-
-			if (modelSwitchCounter == RimGPTMod.Settings.ModelSwitchRatio)
+			if (modelSwitchCounter >= RimGPTMod.Settings.ModelSwitchRatio)
 			{
 				modelSwitchCounter = 0;
 
@@ -140,6 +154,7 @@ namespace RimGPT
 
 		public async Task<string> Evaluate(Persona persona, IEnumerable<Phrase> observations, int retry = 0, string retryReason = "")
 		{
+			modelSwitchCounter++;
 
 			var gameInput = new Input
 			{
@@ -200,7 +215,7 @@ namespace RimGPT
 			{
 				systemPrompt += "\nNOTE: You're being too repetitive, you need to review the data you have and come up with something new.";
 				systemPrompt += $"\nAVOID talking about anything related to this: {persona.lastSpokenText}";
-				history.AddItem("I've been too repetitive lately, I need to examine the data and stray lastSpokenText");			
+				history.AddItem("I've been too repetitive lately, I need to examine the data and stray lastSpokenText");
 			}
 			if (history.Count() > 5)
 			{
@@ -275,9 +290,9 @@ namespace RimGPT
 				try
 				{
 					if (gameInput.CurrentWindow != "The player is at the start screen")
-					{				
+					{
 						var newhistory = output.NewHistoricalKeyEvents.ToList() ?? [];
-						ReplaceHistory(newhistory);						
+						ReplaceHistory(newhistory);
 					}
 					var responseText = output.ResponseText?.Cleanup() ?? string.Empty;
 
@@ -325,6 +340,29 @@ namespace RimGPT
 			var response = (completionResponse.Choices[0].Message.Content ?? "");
 			Logger.Message("Condensed History: " + response.ToString());
 			return response.ToString(); // The condensed history summary
+		}
+
+		public async Task<(string, string)> OptimizePersonality(string requestModel, string targetModel, string personality)
+		{
+			string requestError = null;
+			var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
+			{
+				Model = requestModel,
+				Messages =
+				[
+					new ChatMessage() { Role = "system", Content = $"You are an expert in creating persona profiles for LLMs like ChatGPT, your response should not contain any instructions for implementors, be in raw text format (no markdown),it will be used by a model that observes a player playing Rimworld and have access to various data points. data points will be already mentioned in the prompt, as the user is using that persona with another model." },
+					new ChatMessage() { Role = "user", Content =  $"Optimize the following persona for {targetModel}:\n{personality}"}
+				]
+			}, e => requestError = e);
+
+			if (completionResponse.Choices?.Count > 0)
+			{
+				var response = (completionResponse.Choices[0].Message.Content ?? "");
+				RimGPTMod.Settings.charactersSentOpenAI += response.Length;
+				return (response, null);
+			}
+
+			return (null, requestError);
 		}
 		public void ReplaceHistory(string reason)
 		{
@@ -375,5 +413,17 @@ namespace RimGPT
 				callback(output.Item1 ?? output.Item2);
 			});
 		}
+
+		public static void QuickOptimizePersonality(string requestModel, string targetModel, string personality, Action<string> callback)
+		{
+			Tools.SafeAsync(async () =>
+			{
+				var dummyAI = new AI();
+				var output = await dummyAI.OptimizePersonality(requestModel, targetModel, personality);
+				callback(output.Item1 ?? output.Item2);
+			});
+		}
+
+
 	}
 }

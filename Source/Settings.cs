@@ -27,6 +27,7 @@ namespace RimGPT
 				phraseMaxWordCount = 48,
 				historyMaxWordCount = 800,
 				personality = "You invented Rimworld. You will inform the player about what they should do next. You never talk to or about Brrainz. You soley address the player directly.",
+				personalitySecondary = "You invented Rimworld. You will inform the player about what they should do next. You never talk to or about Brrainz. You soley address the player directly.",
 				personalityLanguage = "English"
 			},
 			new Persona()
@@ -45,6 +46,7 @@ namespace RimGPT
 				phraseMaxWordCount = 24,
 				historyMaxWordCount = 200,
 				personality = "You are a mod developer. You mostly respond to Tynan but sometimes talk to the player. You are sceptical about everything Tynan says. You support everything the player does in the game.",
+				personalitySecondary = "You are a mod developer. You mostly respond to Tynan but sometimes talk to the player. You are sceptical about everything Tynan says. You support everything the player does in the game.",
 				personalityLanguage = "English"
 			}
 		];
@@ -77,6 +79,7 @@ namespace RimGPT
 		public int phraseMaxWordCount = 0;
 		public int historyMaxWordCount = 0;
 		public string personality;
+		public string personalitySecondary;
 		public string personalityLanguage;
 
 		// reporting settings
@@ -172,6 +175,7 @@ namespace RimGPT
 			Scribe_Values.Look(ref phraseMaxWordCount, "phraseMaxWordCount", 40);
 			Scribe_Values.Look(ref historyMaxWordCount, "historyMaxWordCount", 200);
 			Scribe_Values.Look(ref personality, "personality", AI.defaultPersonality);
+			Scribe_Values.Look(ref personalitySecondary, "personalitySecondary", AI.defaultPersonalitySecondary);
 			Scribe_Values.Look(ref personalityLanguage, "personalityLanguage", "-");
 			// -------------------------------------------------------------------------
 
@@ -197,6 +201,7 @@ namespace RimGPT
 						phraseMaxWordCount = phraseMaxWordCount,
 						historyMaxWordCount = historyMaxWordCount,
 						personality = personality,
+						personalitySecondary = personalitySecondary,
 						personalityLanguage = personalityLanguage
 					});
 				}
