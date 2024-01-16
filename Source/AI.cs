@@ -42,7 +42,8 @@ namespace RimGPT
 		}
 #pragma warning restore CS0649
 
-		public OpenAIApi OpenAI => new(RimGPTMod.Settings.chatGPTKey);
+		// OpenAIApi is now a static object, the ApiConfig details are added by ReloadGPTModels.
+		//public OpenAIApi OpenAI => new(RimGPTMod.Settings.chatGPTKey);
 		private List<string> history = new List<string>();
 
 		public const string defaultPersonality = "You are a commentator watching the player play the popular game, Rimworld.";
@@ -100,6 +101,12 @@ namespace RimGPT
 				}.Join(delimiter: "");
 		}
 
+		// TODO: Setup use of the secondary model.
+		private string GetCurrentProvider()
+		{
+			return RimGPTMod.Settings.ApiProviderPrimary;
+		}
+
 		private string GetCurrentChatGPTModel()
 		{
 			if (!RimGPTMod.Settings.UseSecondaryModel) return RimGPTMod.Settings.ChatGPTModelPrimary;
@@ -119,6 +126,12 @@ namespace RimGPT
 		}
 		private float CalculateFrequencyPenaltyBasedOnLevenshteinDistance(string source, string target)
 		{
+			// Kept running into a situation where the source was null, not sure if that's due to a provider or what.
+			if (source == null || target == null)
+			{
+				Logger.Error($"Calculate FP Error: Null source or target. Source: {source}, Target: {target}");
+				return default;
+			}
 			int levenshteinDistance = LanguageHelper.CalculateLevenshteinDistance(source, target);
 
 			// You can adjust these constants based on the desired sensitivity.
@@ -230,7 +243,7 @@ namespace RimGPT
 			if (Tools.DEBUG)
 				Log.Warning($"INPUT: {JsonConvert.SerializeObject(request, settings)}");
 
-			var completionResponse = await OpenAI.CreateChatCompletion(request, error => Logger.Error(error));
+			var completionResponse = await OpenAIApi.CreateChatCompletion(request, error => Logger.Error(error));
 			RimGPTMod.Settings.charactersSentOpenAI += systemPrompt.Length + input.Length;
 
 			if (completionResponse.Choices?.Count > 0)
@@ -321,7 +334,7 @@ namespace RimGPT
 			};
 
 
-			var completionResponse = await OpenAI.CreateChatCompletion(request, error => Logger.Error(error));
+			var completionResponse = await OpenAIApi.CreateChatCompletion(request, error => Logger.Error(error));
 			var response = (completionResponse.Choices[0].Message.Content ?? "");
 			Logger.Message("Condensed History: " + response.ToString());
 			return response.ToString(); // The condensed history summary
@@ -343,7 +356,7 @@ namespace RimGPT
 		public async Task<(string, string)> SimplePrompt(string input)
 		{
 			string requestError = null;
-			var completionResponse = await OpenAI.CreateChatCompletion(new CreateChatCompletionRequest()
+			var completionResponse = await OpenAIApi.CreateChatCompletion(new CreateChatCompletionRequest()
 			{
 				Model = GetCurrentChatGPTModel(),
 				Messages =

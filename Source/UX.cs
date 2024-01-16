@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OpenAI;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -136,27 +137,55 @@ namespace RimGPT
 			return $"{percentageValue:0.##;-0.##;0}%";
 		}
 
-		public static void GPTVersionMenu(Action<string> action)
+		// Menu to select the Api Provider
+		public static void ApiProviderMenu(Action<string> action)
 		{
-			var options = new List<FloatMenuOption> { new("ChatGPT Version", () => action(default)) };
-			foreach (var version in Tools.chatGPTModels)
+			var options = new List<FloatMenuOption> { new("API Provider", () => action(default)) };
+			foreach (var config in OpenAIApi.apiConfigs)
 			{
-				var label = version;
-				if (version.Contains("1106"))
-					label = $"{version} [PREFERRED]";
+				var providerName = config.Provider.ToString();
+				var label = providerName;
 				options.Add(new FloatMenuOption(label, () =>
 				{
-					if (version != default)
+					if (providerName != default)
 					{
-						if (version.Contains("gpt-4"))
-						{
-							var window = Dialog_MessageBox.CreateConfirmation("GPT-4 can create more costs and is slower to answer, do you really want to proceed?", () => action(version), true, "Attention", WindowLayer.Super);
-							Find.WindowStack.Add(window);
-						}
-						else
-							action(version);
+						action(providerName);
+						// Update GPTVersionMenu upon selection
 					}
 				}));
+			}
+			Find.WindowStack.Add(new FloatMenu(options));
+
+		}
+
+		public static void GPTVersionMenu(Action<string> action, string apiProviderPrimary)
+		{
+			var options = new List<FloatMenuOption> { new("ChatGPT Version", () => action(default)) };
+			if (string.IsNullOrEmpty(apiProviderPrimary) == false)
+			{
+				// apiConfigs is a list of Api Configurations and contains the list of Models as OpenAIModels
+				var models = OpenAIApi.apiConfigs.Find(c => c.Provider.ToString() == apiProviderPrimary)?.Models;
+
+				foreach (var model in models ?? Enumerable.Empty<OpenAIModel>())
+				{
+					var version = model.Id;
+					var label = version;
+					if (model.Id.Contains("1106"))
+						label = $"{version} [PREFERRED]";
+					options.Add(new FloatMenuOption(label, () =>
+					{
+						if (version != default)
+						{
+							if (version.Contains("gpt-4"))
+							{
+								var window = Dialog_MessageBox.CreateConfirmation("GPT-4 can create more costs and is slower to answer, do you really want to proceed?", () => action(version), true, "Attention", WindowLayer.Super);
+								Find.WindowStack.Add(window);
+							}
+							else
+								action(version);
+						}
+					}));
+				}
 			}
 			Find.WindowStack.Add(new FloatMenu(options));
 		}

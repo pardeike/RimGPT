@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using OpenAI;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -9,6 +11,7 @@ namespace RimGPT
 {
 	public partial class RimGPTSettings : ModSettings
 	{
+#pragma warning disable S1104 // Fields should not have public accessibility
 		public List<Persona> personas =
 		[
 			new Persona()
@@ -49,13 +52,21 @@ namespace RimGPT
 			}
 		];
 
+		public string ApiProviderPrimary = ApiProvider.OpenAI.ToString(); // Default Provider is OpenAI
 		public string ChatGPTModelPrimary = Tools.chatGPTModels[0];
+		public string ApiProviderSecondary = ApiProvider.OpenAI.ToString(); // Default Provider is OpenAI
 		public string ChatGPTModelSecondary = Tools.chatGPTModels[1];
 		public int ModelSwitchRatio = 10;
 		public bool UseSecondaryModel = false;
 		public bool enabled = true;
 		public string chatGPTKey = "";
 
+		// Other API Settings
+		public string openRouterKey = "";
+		public int? ollamaPort = 11434;
+		public int? localAIPort = 8080;
+
+		// Azure Settings
 		public string azureSpeechKey = "";
 		public string azureSpeechRegion = "";
 		public float speechVolume = 4f;
@@ -111,6 +122,7 @@ namespace RimGPT
 		public int reportRoomStatusFrequency = 60000;
 		public bool reportRoomStatusImmediate = false;
 		// ------------------------------------
+#pragma warning restore S1104 // Fields should not have public accessibility
 
 		public override void ExposeData()
 		{
@@ -118,10 +130,15 @@ namespace RimGPT
 			Scribe_Collections.Look(ref personas, "personas", LookMode.Deep);
 			Scribe_Values.Look(ref enabled, "enabled", true);
 			Scribe_Values.Look(ref chatGPTKey, "chatGPTKey");
+			Scribe_Values.Look(ref openRouterKey, "openRouterKey");
 			Scribe_Values.Look(ref UseSecondaryModel, "UseSecondaryModel", defaultValue: false);
 			Scribe_Values.Look(ref ModelSwitchRatio, "ModelSwitchRatio", defaultValue: 10);
+			Scribe_Values.Look(ref ApiProviderPrimary, "ApiProviderPrimary", nameof(ApiProvider.OpenAI));
 			Scribe_Values.Look(ref ChatGPTModelPrimary, "ChatGPTModelPrimary", Tools.chatGPTModels.First());
+			Scribe_Values.Look(ref ApiProviderSecondary, "ApiProviderSecondary", nameof(ApiProvider.OpenAI));
 			Scribe_Values.Look(ref ChatGPTModelSecondary, "ChatGPTModelSecondary", Tools.chatGPTModels.First());
+			Scribe_Values.Look(ref ollamaPort, "ollamaPort", defaultValue: 11434);
+			Scribe_Values.Look(ref localAIPort, "localAIPort", defaultValue: 8080);
 
 			Scribe_Values.Look(ref azureSpeechKey, "azureSpeechKey");
 			Scribe_Values.Look(ref azureSpeechRegion, "azureSpeechRegion");
@@ -179,7 +196,7 @@ namespace RimGPT
 			{
 				if (azureVoice != null && personas.NullOrEmpty())
 				{
-					ChatGPTModelPrimary = Tools.chatGPTModels.First();
+					ChatGPTModelPrimary = Tools.chatGPTModels[0];
 					personas ??= [];
 					personas.Add(new Persona()
 					{
@@ -203,6 +220,7 @@ namespace RimGPT
 			}
 		}
 
+		// TODO: Change the IsConfigured conditions. Need to also check for openRouterKey & existence of Ollama or LocalAI.
 		public bool IsConfigured => chatGPTKey?.Length > 0 && ((azureSpeechKey?.Length > 0 && azureSpeechRegion?.Length > 0) || showAsText);
 
 		public Vector2 scrollPosition = Vector2.zero;
@@ -248,23 +266,36 @@ namespace RimGPT
 
 			if (chatGPTKey != "")
 			{
+				// List of Api Providers
+				list.Label("API Provider");
+				rect = list.GetRect(UX.ButtonHeight);
+				TooltipHandler.TipRegion(rect, "Set the API provider that you would like to use.");
+				if (Widgets.ButtonText(rect, ApiProviderPrimary))
+					UX.ApiProviderMenu(l =>
+					{
+						ApiProviderPrimary = l;
+						OpenAIApi.currentConfig = OpenAIApi.apiConfigs.GetConfig(l); // TEMP
+						Logger.Message($"currentConfig: {JsonConvert.SerializeObject(OpenAIApi.currentConfig, Configuration.JsonSerializerSettings)}");
+					});
+
 				list.Label("Primary ChatGPT Model");
 				rect = list.GetRect(UX.ButtonHeight);
 				TooltipHandler.TipRegion(rect, "Set the primary AI model used by default for generating insights. For example, choosing 'GPT-3.5' could be your standard model.");
 				if (Widgets.ButtonText(rect, ChatGPTModelPrimary))
-					UX.GPTVersionMenu(l => ChatGPTModelPrimary = l);
+					UX.GPTVersionMenu(l => ChatGPTModelPrimary = l, ApiProviderPrimary); // Passing the chosen provider when a provider is selected
 
 				list.Gap(10f);
 				list.CheckboxLabeled("Alternate between two models", ref UseSecondaryModel);
 				if (UseSecondaryModel == true)
 				{
+					// TODO: Add functionality for secondary Provider.
 					list.Gap(10f);
 					list.Label("Secondary ChatGPT Model");
 					list.Gap(10f);
 					rect = list.GetRect(UX.ButtonHeight);
 					TooltipHandler.TipRegion(rect, "Set an alternative AI model to switch to based on the Model Switch Ratio. For instance, if 'GPT-4' is chosen as the secondary option, there can be shifts between 'GPT-3.5' and 'GPT-4'.");
 					if (Widgets.ButtonText(rect, ChatGPTModelSecondary))
-						UX.GPTVersionMenu(l => ChatGPTModelSecondary = l);
+						UX.GPTVersionMenu(l => ChatGPTModelSecondary = l, ApiProviderPrimary);
 					list.Gap(10f);
 					list.Slider(ref ModelSwitchRatio, 1, 20, f => $"Ratio: {f}:1", 1, "Adjust the frequency at which the system switches between the primary and secondary AI models. The 'Model Switch Ratio' value determines after how many calls to the primary model the system will switch to the secondary model for one time. A lower ratio means more frequent switching to the secondary model.\n\nExample: With a ratio of '1', there is no distinction between primary and secondary—each call alternates between the two. With a ratio of '10', the system uses the primary model nine times, and then the secondary model once before repeating the cycle.");
 				}
@@ -295,7 +326,8 @@ namespace RimGPT
 				charactersSentOpenAI = 0;
 				charactersSentAzure = 0;
 			}
-			list.NewColumn();
+
+			list.NewColumn(); //------------------------------------------------------------------------------------------------------------------
 			list.ColumnWidth = middleColumnWidth;
 
 			list.Gap(16f);
@@ -392,7 +424,7 @@ namespace RimGPT
 				list.ColumnWidth += cw;
 				list.Gap(16f);
 
-    				var buttonWidth = (rect.width - 40) / 3; // Spacing between buttons is 20, hence 40 for two spaces.
+				var buttonWidth = (rect.width - 40) / 3; // Spacing between buttons is 20, hence 40 for two spaces.
 
 				list.Languages(LanguageDatabase.AllLoadedLanguages, selected.azureVoiceLanguage, l => l.DisplayName, l =>
 				{

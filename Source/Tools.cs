@@ -2,6 +2,7 @@
 using RimWorld;
 using Steamworks;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -15,7 +16,7 @@ namespace RimGPT
 	{
 		public static bool DEBUG = false;
 		public static readonly Regex tagRemover = new("<color.+?>(.+?)</(?:color)?>", RegexOptions.Singleline);
-		public static string[] chatGPTModels = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview"];
+		public static List<string> chatGPTModels = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview"]; // TODO: Remove, is only used to ensure that the settings initialize currently. 
 
 		public readonly struct Strings
 		{
@@ -43,22 +44,57 @@ namespace RimGPT
 
 		public static async void ReloadGPTModels()
 		{
-			var api = new OpenAIApi(RimGPTMod.Settings.chatGPTKey);
-			var response = await api.ListModels();
-			var error = response.Error;
-			if (error != null)
-				return;
+			// Adding all configuration information from the user settings.
+			OpenAIApi.apiConfigs.UpdateConfig(ApiProvider.OpenAI, apiKey: RimGPTMod.Settings.chatGPTKey);
+			OpenAIApi.apiConfigs.UpdateConfig(ApiProvider.OpenRouter, apiKey: RimGPTMod.Settings.openRouterKey);
+			OpenAIApi.apiConfigs.UpdateConfig(ApiProvider.Ollama, port: RimGPTMod.Settings.ollamaPort);
+			OpenAIApi.apiConfigs.UpdateConfig(ApiProvider.LocalAI, port: RimGPTMod.Settings.localAIPort);
 
-			var result = response.Data
-				.Select(m => m?.Id)
-				.Where(id => id?.StartsWith("gpt") ?? false)
-				.OrderBy(id => id)
-				.ToArray();
-			if (result.Length == 0)
-				return;
+			foreach (var apiConfig in OpenAIApi.apiConfigs)
+			{
+				var provider = apiConfig.Provider;
+				// Checks if the provider is listed as needing an API key & the API key is empty. Probably not needed long term.
+				if (provider.NeedsApiKey() && string.IsNullOrEmpty(apiConfig.Key))
+					Logger.Error($"Api Key for {provider} is blank.");
 
-			chatGPTModels = result;
-			Logger.Message($"Loaded {chatGPTModels.Length} GPT models");
+				// OpenAIApi was modified to accept a list of ApiConfig objects.
+				OpenAIApi.currentConfig = apiConfig;
+				ListModelsResponse response;
+				try
+				{
+					response = await OpenAIApi.ListModels();
+					//Logger.Message(JsonConvert.SerializeObject(response, Configuration.JsonSerializerSettings)); // TEMP
+				}
+				catch (Exception ex)
+				{
+					Logger.Error($"Error getting List of Models: {ex.Message}");
+					continue;
+				}
+
+				var error = response.Error;
+				if (error != null)
+					continue;
+
+				// Sets the list of OpenAIModels to this ApiConfig.
+				apiConfig.Models = response.Data
+					.Where(m => provider != ApiProvider.OpenAI || (m?.Id.StartsWith("gpt") ?? false))
+					.OrderBy(m => m?.Id)
+					.ToList();
+
+				// TODO: Remove, not needed with ApiConfig use.
+				var modelListStrings = response.Data
+					.Select(m => m?.Id)
+					.Where(id => provider != ApiProvider.OpenAI || (id?.StartsWith("gpt") ?? false))
+					.OrderBy(id => id)
+					.ToArray();
+
+				if (modelListStrings.Length == 0)
+					continue;
+
+				chatGPTModels.AddRange(modelListStrings);
+			}
+
+			Logger.Message($"Loaded {chatGPTModels.Count} GPT models");
 		}
 
 		public static bool NonEmpty(this string str) => string.IsNullOrEmpty(str) == false;
