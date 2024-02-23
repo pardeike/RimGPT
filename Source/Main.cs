@@ -1,5 +1,6 @@
 ﻿using Brrainz;
 using HarmonyLib;
+using OpenAI;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -79,6 +80,7 @@ namespace RimGPT
 				Personas.UpdateVoiceInformation();
 				Tools.ReloadGPTModels();
 				if (Settings.IsConfigured)
+					OpenAIApi.SwitchConfig(Settings.ApiProviderPrimary);
 					Personas.Add("Player has launched Rimworld and is on the start screen", 0);
 			});
 

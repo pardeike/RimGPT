@@ -150,9 +150,10 @@ namespace RimGPT
 					if (providerName != default)
 					{
 						action(providerName);
-						// Update GPTVersionMenu upon selection
-					}
-				}));
+                        // Update GPTVersionMenu upon selection
+                        //RimGPT.RimGPTSettings.ChatGPTModelPrimary
+                    }
+                }));
 			}
 			Find.WindowStack.Add(new FloatMenu(options));
 

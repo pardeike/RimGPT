@@ -101,12 +101,6 @@ namespace RimGPT
 				}.Join(delimiter: "");
 		}
 
-		// TODO: Setup use of the secondary model.
-		private string GetCurrentProvider()
-		{
-			return RimGPTMod.Settings.ApiProviderPrimary;
-		}
-
 		private string GetCurrentChatGPTModel()
 		{
 			if (!RimGPTMod.Settings.UseSecondaryModel) return RimGPTMod.Settings.ChatGPTModelPrimary;
@@ -117,11 +111,15 @@ namespace RimGPT
 			{
 				modelSwitchCounter = 0;
 
+                OpenAIApi.SwitchConfig(RimGPTMod.Settings.ApiProviderSecondary);
+				Logger.Warning("Switching to secondary model"); // TEMP
 				return RimGPTMod.Settings.ChatGPTModelSecondary;
 			}
 			else
 			{
-				return RimGPTMod.Settings.ChatGPTModelPrimary;
+                OpenAIApi.SwitchConfig(RimGPTMod.Settings.ApiProviderPrimary);
+                Logger.Warning("Switching to primary model"); // TEMP
+                return RimGPTMod.Settings.ChatGPTModelPrimary;
 			}
 		}
 		private float CalculateFrequencyPenaltyBasedOnLevenshteinDistance(string source, string target)
@@ -353,6 +351,7 @@ namespace RimGPT
 			history = reason;
 		}
 
+		// TODO: Need to set Provider based on the settings
 		public async Task<(string, string)> SimplePrompt(string input)
 		{
 			string requestError = null;
