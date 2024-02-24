@@ -111,15 +111,15 @@ namespace RimGPT
 			{
 				modelSwitchCounter = 0;
 
-                OpenAIApi.SwitchConfig(RimGPTMod.Settings.ApiProviderSecondary);
-				Logger.Warning("Switching to secondary model"); // TEMP
+				OpenAIApi.SwitchConfig(RimGPTMod.Settings.ApiProviderSecondary);
+				if (Tools.DEBUG) Logger.Message("Switching to secondary model"); // TEMP
 				return RimGPTMod.Settings.ChatGPTModelSecondary;
 			}
 			else
 			{
-                OpenAIApi.SwitchConfig(RimGPTMod.Settings.ApiProviderPrimary);
-                Logger.Warning("Switching to primary model"); // TEMP
-                return RimGPTMod.Settings.ChatGPTModelPrimary;
+				OpenAIApi.SwitchConfig(RimGPTMod.Settings.ApiProviderPrimary);
+				if (Tools.DEBUG) Logger.Message("Switching to primary model"); // TEMP
+				return RimGPTMod.Settings.ChatGPTModelPrimary;
 			}
 		}
 		private float CalculateFrequencyPenaltyBasedOnLevenshteinDistance(string source, string target)
@@ -211,7 +211,7 @@ namespace RimGPT
 			{
 				systemPrompt += "\nNOTE: You're being too repetitive, you need to review the data you have and come up with something new.";
 				systemPrompt += $"\nAVOID talking about anything related to this: {persona.lastSpokenText}";
-				history.AddItem("I've been too repetitive lately, I need to examine the data and stray lastSpokenText");			
+				history.AddItem("I've been too repetitive lately, I need to examine the data and stray lastSpokenText");
 			}
 			if (history.Count() > 5)
 			{
@@ -286,9 +286,9 @@ namespace RimGPT
 				try
 				{
 					if (gameInput.CurrentWindow != "The player is at the start screen")
-					{				
+					{
 						var newhistory = output.NewHistoricalKeyEvents.ToList() ?? [];
-						ReplaceHistory(newhistory);						
+						ReplaceHistory(newhistory);
 					}
 					var responseText = output.ResponseText?.Cleanup() ?? string.Empty;
 

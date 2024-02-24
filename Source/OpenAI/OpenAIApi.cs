@@ -22,7 +22,7 @@ namespace OpenAI
 		public static void SwitchConfig(string provider)
 		{
 			currentConfig = apiConfigs.GetConfig(provider);
-        }
+		}
 
 		/// <summary>
 		/// Initializes the OpenAIApi with specified API key, organization, and base URL.
@@ -45,12 +45,12 @@ namespace OpenAI
 
 		public static JsonSerializerSettings settings = Configuration.JsonSerializerSettings;
 
-        /// <summary>Processes the given UnityWebRequest and returns the response.</summary>
-        /// <typeparam name="T">The type of the response.</typeparam>
-        /// <param name="request">The UnityWebRequest to process.</param>
-        /// <param name="errorCallback">Action to call in case of an error.</param>
-        /// <returns>A Task containing the response of type T.</returns>
-        private static async Task<T> ProcessRequest<T>(UnityWebRequest request, Action<string> errorCallback = null)
+		/// <summary>Processes the given UnityWebRequest and returns the response.</summary>
+		/// <typeparam name="T">The type of the response.</typeparam>
+		/// <param name="request">The UnityWebRequest to process.</param>
+		/// <param name="errorCallback">Action to call in case of an error.</param>
+		/// <returns>A Task containing the response of type T.</returns>
+		private static async Task<T> ProcessRequest<T>(UnityWebRequest request, Action<string> errorCallback = null)
 		{
 			try
 			{
@@ -66,7 +66,7 @@ namespace OpenAI
 			}
 
 			string response = request.downloadHandler.text.Trim();
-			//Logger.Message($"response: {response}"); // TEMP
+			//if (Tools.DEBUG) Logger.Message($"response: {response}"); // TEMP
 			if (response != null)
 			{
 				if (response.StartsWith("{") == false)
@@ -192,9 +192,9 @@ namespace OpenAI
 				Logger.Error($"Request object cannot be null. Type: {nameof(request)}");
 
 			string json = JsonConvert.SerializeObject(request, settings);
-            Logger.Warning($"Reqeust Payload: {json}"); // TEMP
-			Logger.Warning($"Current Config: {JsonConvert.SerializeObject(currentConfig, settings)}"); // TEMP
-            return Encoding.UTF8.GetBytes(json);
+			//if (Tools.DEBUG) Logger.Message($"Reqeust Payload: {json}"); // TEMP
+			//if (Tools.DEBUG) Logger.Message($"Current Config: {JsonConvert.SerializeObject(currentConfig, settings)}"); // TEMP
+			return Encoding.UTF8.GetBytes(json);
 		}
 
 		/// <summary>Lists the currently available models and provides basic information about each.</summary>
@@ -243,7 +243,7 @@ namespace OpenAI
 		/// <returns>See <see cref="CreateChatCompletionResponse"/></returns>
 		public static async Task<CreateChatCompletionResponse> CreateChatCompletion(CreateChatCompletionRequest request, Action<string> errorCallback)
 		{
-			//Logger.Message($"request: {JsonConvert.SerializeObject(request, settings)}"); // TEMP
+			// if (Tools.DEBUG) Logger.Message($"request: {JsonConvert.SerializeObject(request, settings)}"); // TEMP
 			byte[] payload = CreatePayload(request);
 			var response = await DispatchRequest<CreateChatCompletionResponse>
 				(currentConfig.Endpoints.CreateChatCompletion, UnityWebRequest.kHttpVerbPOST, payload, errorCallback);

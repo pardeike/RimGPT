@@ -141,7 +141,7 @@ namespace RimGPT
 		public static void ApiProviderMenu(Action<string> action)
 		{
 			var options = new List<FloatMenuOption> { new("API Provider", () => action(default)) };
-			foreach (var config in OpenAIApi.apiConfigs)
+			foreach (var config in OpenAIApi.apiConfigs.Where(a => a.Models.Count > 0))
 			{
 				var providerName = config.Provider.ToString();
 				var label = providerName;
@@ -150,10 +150,10 @@ namespace RimGPT
 					if (providerName != default)
 					{
 						action(providerName);
-                        // Update GPTVersionMenu upon selection
-                        //RimGPT.RimGPTSettings.ChatGPTModelPrimary
-                    }
-                }));
+						// Update GPTVersionMenu upon selection
+						//RimGPT.RimGPTSettings.ChatGPTModelPrimary
+					}
+				}));
 			}
 			Find.WindowStack.Add(new FloatMenu(options));
 
