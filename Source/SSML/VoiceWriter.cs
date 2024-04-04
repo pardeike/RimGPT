@@ -3,20 +3,12 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-	public class VoiceWriter : ISsmlWriter
+	public class VoiceWriter(ISsmlWriter innerWriter, string name, string style, float styledegree) : ISsmlWriter
 	{
-		private readonly ISsmlWriter _innerWriter;
-		private readonly string _name;
-		private readonly string _style;
-		private readonly float _styledegree;
-
-		public VoiceWriter(ISsmlWriter innerWriter, string name, string style, float styledegree)
-		{
-			_innerWriter = innerWriter;
-			_name = name;
-			_style = style;
-			_styledegree = styledegree;
-		}
+		private readonly ISsmlWriter _innerWriter = innerWriter;
+		private readonly string _name = name;
+		private readonly string _style = style;
+		private readonly float _styledegree = styledegree;
 
 		public async Task WriteAsync(XmlWriter writer)
 		{

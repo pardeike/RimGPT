@@ -3,18 +3,11 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-	public class SayAsWriter : ISsmlWriter
+	public class SayAsWriter(string interpretAs, string format, string value) : ISsmlWriter
 	{
-		private readonly string _interpretAs;
-		private readonly string _format;
-		private readonly string _value;
-
-		public SayAsWriter(string interpretAs, string format, string value)
-		{
-			_interpretAs = interpretAs;
-			_format = format;
-			_value = value;
-		}
+		private readonly string _interpretAs = interpretAs;
+		private readonly string _format = format;
+		private readonly string _value = value;
 
 		public SayAsWriter(string interpretAs, string value)
 			 : this(interpretAs, null, value)

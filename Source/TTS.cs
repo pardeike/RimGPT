@@ -99,7 +99,7 @@ namespace RimGPT
 	{
 		public static string APIURL => $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices";
 
-		public static Voice[] voices = new Voice[0];
+		public static Voice[] voices = [];
 
 		public static AudioSource audioSource = null;
 
@@ -253,7 +253,7 @@ namespace RimGPT
 			{
 				var text = "This is a test message";
 				string error = null;
-				if (RimGPTMod.Settings.chatGPTKey != "")
+				if (RimGPTMod.Settings.IsConfigured)
 				{
 					var prompt = "Say something random.";
 					if (persona.personalityLanguage != "-")

@@ -1,12 +1,7 @@
 ﻿namespace Kevsoft.Ssml
 {
-	public class SsmlConfiguration
+	public class SsmlConfiguration(bool excludeSpeakVersion)
 	{
-		public bool ExcludeSpeakVersion { get; }
-
-		public SsmlConfiguration(bool excludeSpeakVersion)
-		{
-			ExcludeSpeakVersion = excludeSpeakVersion;
-		}
+		public bool ExcludeSpeakVersion { get; } = excludeSpeakVersion;
 	}
 }

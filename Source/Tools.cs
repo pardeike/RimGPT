@@ -1,4 +1,5 @@
-﻿using OpenAI;
+﻿using Newtonsoft.Json;
+using OpenAI;
 using RimWorld;
 using Steamworks;
 using System;
@@ -15,7 +16,7 @@ namespace RimGPT
 	{
 		public static bool DEBUG = false;
 		public static readonly Regex tagRemover = new("<color.+?>(.+?)</(?:color)?>", RegexOptions.Singleline);
-		public static string[] chatGPTModels = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview"];
+		//public static List<string> chatGPTModels = ["gpt-3.5-turbo-0125", "gpt-4-0125-preview"];
 
 		public readonly struct Strings
 		{
@@ -41,24 +42,74 @@ namespace RimGPT
 			return name;
 		}
 
+		public static void UpdateApiConfigs()
+		{
+			// Checks if any userApiConfigs are set, if not, return.
+			if (RimGPTMod.Settings.userApiConfigs == null || RimGPTMod.Settings.userApiConfigs.Any(a => a.Provider.Length > 0) == false)
+				return;
+
+			// If the apiConfigs are null, get the default configs.
+			OpenAIApi.apiConfigs ??= ApiTools.GetApiConfigs();
+
+			// If there's no active config, it defaults to the currentConfig.
+			var activeConfig = OpenAIApi.currentConfig;
+
+			foreach (var userConfig in RimGPTMod.Settings.userApiConfigs.Where(a => a.Provider.Length > 0))
+			{
+				// Update apiConfigs with each userConfig that has a provider chosen.
+				var apiConfig = OpenAIApi.apiConfigs.FirstOrDefault(a => a.Provider.ToString() == userConfig.Provider);
+				apiConfig.Update(userConfig);
+
+				// Set the activeConfig to the userConfig if it's active.
+				activeConfig = userConfig.Active ? apiConfig : activeConfig;
+			}
+			if (activeConfig != null)
+				OpenAIApi.currentConfig = activeConfig; // Sets the OpenAIApi currentConfig to the activeConfig.
+		}
+
 		public static async void ReloadGPTModels()
 		{
-			var api = new OpenAIApi(RimGPTMod.Settings.chatGPTKey);
-			var response = await api.ListModels();
-			var error = response.Error;
-			if (error != null)
-				return;
+			UpdateApiConfigs();
 
-			var result = response.Data
-				.Select(m => m?.Id)
-				.Where(id => id?.StartsWith("gpt") ?? false)
-				.OrderBy(id => id)
-				.ToArray();
-			if (result.Length == 0)
-				return;
+			var modelCount = 0;
 
-			chatGPTModels = result;
-			Logger.Message($"Loaded {chatGPTModels.Length} GPT models");
+			// Stores the currentConfig to reset it after the loop.
+			var currentConfig = OpenAIApi.currentConfig;
+
+			foreach (var apiConfig in OpenAIApi.apiConfigs.Where(a => a.Configured))
+			{
+				OpenAIApi.currentConfig = apiConfig;
+				ListModelsResponse response;
+				try
+				{
+					if (DEBUG)
+						Logger.Message($"Getting List of Models for {apiConfig.Provider} with {JsonConvert.SerializeObject(apiConfig)}");
+					response = await OpenAIApi.ListModels();
+				}
+				catch (Exception ex)
+				{
+					Logger.Error($"Error getting List of Models: {ex.Message}");
+					continue;
+				}
+				if (DEBUG)
+					Logger.Message($"{apiConfig.Provider} - baseURL: {apiConfig.BaseUrl} Models: {JsonConvert.SerializeObject(response, Configuration.JsonSerializerSettings)}"); // TEMP
+
+				var error = response.Error;
+				if (error != null || response.Data == null)
+					continue;
+
+				// Sets the list of OpenAIModels to this ApiConfig.
+				apiConfig.Models = [.. response.Data
+					.Where(m => apiConfig.Provider != ApiProvider.OpenAI || (m?.Id.StartsWith("gpt") ?? false))
+					.OrderBy(m => m?.Id)];
+
+				if (apiConfig.Models == null)
+					continue;
+
+				modelCount += apiConfig.Models.Count;
+			}
+			OpenAIApi.currentConfig = currentConfig;
+			Logger.Message($"Loaded {modelCount} GPT models");
 		}
 
 		public static bool NonEmpty(this string str) => string.IsNullOrEmpty(str) == false;
@@ -71,6 +122,16 @@ namespace RimGPT
 				des.def.description.NonEmpty() ? des.def.description :
 				des.def.defName;
 		}
+
+		public static string FormatNumber(long num) => num switch
+		{
+			>= 1000000000 => (num / 1000000000D).ToString("0.#") + "B",
+			>= 1000000 => (num / 1000000D).ToString("0.#") + "M",
+			>= 100000 => (num / 1000D).ToString("0") + "K",
+			>= 1000 => (num / 1000D).ToString("0.#") + "K",
+			_ => num.ToString()
+		};
+
 
 		public static void SafeAsync(Func<Task> function)
 		{

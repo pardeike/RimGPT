@@ -3,7 +3,6 @@ using System;
 using System.Linq;
 using System.Xml.Linq;
 using Verse;
-using Verse.Noise;
 
 namespace RimGPT
 {
@@ -98,7 +97,7 @@ namespace RimGPT
 		}
 		public void ScheduleNextJob()
 		{
-			int limit = getReasonableSkipLimit(phraseDelayMin, phraseDelayMax);
+			int limit = GetReasonableSkipLimit(phraseDelayMin, phraseDelayMax);
 
 			if (Personas.isResetting)
 			{
@@ -161,7 +160,7 @@ namespace RimGPT
 		/// <param name="a">The minimum delay before a phrase can be repeated, in seconds.</param>
 		/// <param name="b">The maximum delay before a phrase can be repeated, in seconds.</param>
 		/// <returns>An integer representing the calculated skip limit.</returns>
-		public int getReasonableSkipLimit(float a, float b)
+		public int GetReasonableSkipLimit(float a, float b)
 		{
 
 			double meanDelayInSeconds = (a + b) / 2.0;
@@ -209,11 +208,13 @@ namespace RimGPT
 				return;
 
 			var now = DateTime.Now;
-			if (now < nextPhraseTime || Personas.IsAudioQueueFull) return;
+			if (now < nextPhraseTime || Personas.IsAudioQueueFull)
+				return;
 
 			var game = Current.Game;
 
-			if (game != null && game.tickManager != null && game.tickManager.ticksGameInt > 100 && game.tickManager.Paused) return;
+			if (game != null && game.tickManager != null && game.tickManager.ticksGameInt > 100 && game.tickManager.Paused)
+				return;
 
 			ScheduleNextJob();
 		}

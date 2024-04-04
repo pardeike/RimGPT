@@ -3,16 +3,11 @@ using System.Threading;
 
 namespace RimGPT
 {
-	public class Debouncer
+	public class Debouncer(int debounceInterval)
 	{
 		private Timer _debounceTimer;
 		private readonly object _lockObject = new();
-		private readonly int _debounceInterval;
-
-		public Debouncer(int debounceInterval)
-		{
-			_debounceInterval = debounceInterval;
-		}
+		private readonly int _debounceInterval = debounceInterval;
 
 		public void Debounce(Action action)
 		{

@@ -3,13 +3,9 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-	public class PlainTextWriter : ISsmlWriter
+	public class PlainTextWriter(string value) : ISsmlWriter
 	{
-		private readonly string _value;
-		public PlainTextWriter(string value)
-		{
-			_value = value;
-		}
+		private readonly string _value = value;
 
 		public async Task WriteAsync(XmlWriter writer)
 		{

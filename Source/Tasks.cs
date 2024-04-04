@@ -12,22 +12,20 @@ namespace RimGPT
 	public static class UpdateResources
 	{
 		public static int lastTotal = -1;
-		public static readonly HashSet<ThingCategoryDef> thingCategories =
-		[
-			ThingCategoryDefOf.Foods,
-			ThingCategoryDefOf.FoodMeals,
-			ThingCategoryDefOf.Medicine,
-			ThingCategoryDefOf.StoneBlocks,
-			ThingCategoryDefOf.Manufactured,
-			ThingCategoryDefOf.ResourcesRaw
-		];
+		public static readonly HashSet<ThingCategoryDef> interestingThingCategories;
+
+		static UpdateResources()
+		{
+			interestingThingCategories = new[] { "Foods", "FoodMeals", "Drugs", "Medicine", "Weapons", "StoneBlocks", "Manufactured", "ResourcesRaw" }
+				.Select(name => DefDatabase<ThingCategoryDef>.GetNamed(name, false)).ToHashSet();
+		}
 
 		public static bool Reportable(KeyValuePair<ThingDef, int> pair)
 		{
 			if (pair.Value == 0)
 				return false;
 			var hashSet = pair.Key.thingCategories?.ToHashSet() ?? [];
-			return hashSet.Intersect(thingCategories).Any();
+			return hashSet.Intersect(interestingThingCategories).Any();
 		}
 
 		public static void Task(Map map)
@@ -135,7 +133,8 @@ namespace RimGPT
 		public static void Task(Map map)
 		{
 			// Early exit if energy status reporting is disabled
-			if (!RimGPTMod.Settings.reportEnergyStatus) return;
+			if (!RimGPTMod.Settings.reportEnergyStatus)
+				return;
 
 			// Initialize lists for producers and consumers
 			var producers = new List<EnergyProducer>();
@@ -168,10 +167,14 @@ namespace RimGPT
 			// Determine the overall power status
 			var powerDelta = totalPowerGenerated - totalPowerNeeded;
 			string powerStatus;
-			if (powerDelta < 0) powerStatus = "Failure";
-			else if (powerDelta < 200) powerStatus = "Unstable (Brownouts possible)";
-			else if (powerDelta > 700) powerStatus = "Surplus";
-			else powerStatus = "Stable";
+			if (powerDelta < 0)
+				powerStatus = "Failure";
+			else if (powerDelta < 200)
+				powerStatus = "Unstable (Brownouts possible)";
+			else if (powerDelta > 700)
+				powerStatus = "Surplus";
+			else
+				powerStatus = "Stable";
 
 
 			EnergyData energyData = new EnergyData

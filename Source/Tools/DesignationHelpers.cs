@@ -9,9 +9,9 @@ namespace RimGPT
 
     private const int MaxEntries = 1000; // Maximum allowed entries before flushing.
   
-    private static HashSet<IntVec3> trackedCanceledCells = new HashSet<IntVec3>();
+    private static readonly HashSet<IntVec3> trackedCanceledCells = [];
     
-    private static HashSet<int> trackedCanceledThingIDs = new HashSet<int>();
+    private static readonly HashSet<int> trackedCanceledThingIDs = [];
 
     public static void TrackCancelCell(IntVec3 cell)
     {

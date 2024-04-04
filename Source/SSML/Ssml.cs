@@ -6,19 +6,12 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-	public class Ssml : ISsml
+	public class Ssml(string lang = "en-US", string version = "1.0") : ISsml
 	{
 		private readonly List<ISsmlWriter> _says = [];
-		private readonly string _lang;
-		private readonly string _version;
-		private SsmlConfiguration _configuration;
-
-		public Ssml(string lang = "en-US", string version = "1.0")
-		{
-			_lang = lang;
-			_version = version;
-			_configuration = new SsmlConfiguration(false);
-		}
+		private readonly string _lang = lang;
+		private readonly string _version = version;
+		private SsmlConfiguration _configuration = new(false);
 
 		public IFluentSay Say(string value)
 		{

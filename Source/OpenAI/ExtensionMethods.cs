@@ -49,19 +49,22 @@ namespace OpenAI
 
 		/// <summary>Set headers of the HTTP request with user credentials.</summary>
 		/// <param name="request">this UnityWebRequest</param>
-		/// <param name="configuration">Configuration file that contains user credentials.</param>
+		/// <param name="apiConfig">that contains user credentials.</param>
 		/// <param name="type">The value of the Accept header for an HTTP request.</param>
-		public static void SetHeaders(this UnityWebRequest request, Configuration configuration, string type = null)
+		public static void SetHeaders(this UnityWebRequest request, ApiConfig apiConfig, string type = null)
 		{
-			if (configuration.Auth.Organization != null)
+			if (apiConfig.Organization != null)
 			{
-				request.SetRequestHeader("OpenAI-Organization", configuration.Auth.Organization);
+				request.SetRequestHeader("OpenAI-Organization", apiConfig.Organization);
 			}
 			if (type != null)
 			{
 				request.SetRequestHeader("Content-Type", type);
 			}
-			request.SetRequestHeader("Authorization", "Bearer " + configuration.Auth.ApiKey);
+			if (apiConfig.UsesKey)
+			{
+				request.SetRequestHeader("Authorization", "Bearer " + apiConfig.Key);
+			}
 		}
 	}
 }

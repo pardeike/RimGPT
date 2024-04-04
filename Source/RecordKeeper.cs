@@ -10,13 +10,13 @@ namespace RimGPT
 {
 	public static class RecordKeeper
 	{
-		private static ConcurrentBag<ColonistData> colonistRecords = new ConcurrentBag<ColonistData>();
-		private static ResearchData researchData = new ResearchData();
+		private static ConcurrentBag<ColonistData> colonistRecords = [];
+		private static ResearchData researchData = new();
 		private static string colonySetting = "Unknown as of now...";
 		private static string resourceData = "";
 		public static EnergyData EnergyStatus { get; set; }
-		private static ConcurrentBag<string> roomsData = new ConcurrentBag<string>();
-		private static readonly object resetLock = new object();
+		private static ConcurrentBag<string> roomsData = [];
+		private static readonly object resetLock = new();
 		public static IEnumerable<ColonistData> ColonistRecords
 		{
 			get => colonistRecords;
@@ -83,7 +83,7 @@ namespace RimGPT
 		public static string RoomsDataSummary => Personas.isResetting ? "" : string.Join(", ", RoomsData);
 		public static string ResearchDataSummary => !Personas.isResetting && researchData != null ? researchData.ToString() : "";
 
-		public static string[] ColonistDataSummary => Personas.isResetting ? Array.Empty<string>() : ColonistRecords.Select(colonist =>
+		public static string[] ColonistDataSummary => Personas.isResetting ? [] : ColonistRecords.Select(colonist =>
 		{
 			var dataBuilder = new StringBuilder();
 			AddBasicInformation(dataBuilder, colonist);
@@ -160,12 +160,12 @@ namespace RimGPT
 		{
 			lock (resetLock)
 			{
-				colonistRecords = new ConcurrentBag<ColonistData>();
+				colonistRecords = [];
 				researchData = new ResearchData();
 				ColonySetting = "Unknown as of now...";
 				resourceData = "";
 				EnergyStatus = new EnergyData();
-				roomsData = new ConcurrentBag<string>();
+				roomsData = [];
 			}
 		}
 

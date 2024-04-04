@@ -46,7 +46,7 @@ public static class SaveAudioClip
 		samples.RemoveRange(i, samples.Count - i);
 
 		var clip = AudioClip.Create("TempClip", samples.Count, channels, hz, stream);
-		_ = clip.SetData(samples.ToArray(), 0);
+		_ = clip.SetData([.. samples], 0);
 		return clip;
 	}
 

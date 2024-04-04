@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OpenAI;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -49,18 +50,14 @@ namespace RimGPT
 			}
 		];
 
-		public string ChatGPTModelPrimary = Tools.chatGPTModels[0];
-		public string ChatGPTModelSecondary = Tools.chatGPTModels[1];
-		public int ModelSwitchRatio = 10;
-		public bool UseSecondaryModel = false;
+		public List<UserApiConfig> userApiConfigs = [];
 		public bool enabled = true;
-		public string chatGPTKey = "";
 
+		// Azure Settings
 		public string azureSpeechKey = "";
 		public string azureSpeechRegion = "";
 		public float speechVolume = 4f;
 		public bool showAsText = true;
-		public long charactersSentOpenAI = 0;
 		public long charactersSentAzure = 0;
 
 		// for backwards compatibility --------
@@ -78,6 +75,22 @@ namespace RimGPT
 		public int historyMaxWordCount = 0;
 		public string personality;
 		public string personalityLanguage;
+
+		// OpenAI backwards compatibility
+		public string chatGPTKey = "";
+		public string ChatGPTModelPrimary = "";
+		public string ChatGPTModelSecondary = "";
+		public int ModelSwitchRatio = 10;
+		public bool UseSecondaryModel = false;
+		public long charactersSentOpenAI = 0;
+		// ------------------------------------
+
+		// Unused
+		//public string ApiProviderPrimary = "";
+		//public string ApiProviderSecondary = "";
+		//public string openRouterKey = "";
+		//public int? ollamaPort = 11434;
+		//public int? localAIPort = 8080;
 
 		// reporting settings
 
@@ -117,16 +130,15 @@ namespace RimGPT
 			base.ExposeData();
 			Scribe_Collections.Look(ref personas, "personas", LookMode.Deep);
 			Scribe_Values.Look(ref enabled, "enabled", true);
-			Scribe_Values.Look(ref chatGPTKey, "chatGPTKey");
-			Scribe_Values.Look(ref UseSecondaryModel, "UseSecondaryModel", defaultValue: false);
-			Scribe_Values.Look(ref ModelSwitchRatio, "ModelSwitchRatio", defaultValue: 10);
-			Scribe_Values.Look(ref ChatGPTModelPrimary, "ChatGPTModelPrimary", Tools.chatGPTModels.First());
-			Scribe_Values.Look(ref ChatGPTModelSecondary, "ChatGPTModelSecondary", Tools.chatGPTModels.First());
+
+			// API Settings
+			Scribe_Collections.Look(ref userApiConfigs, "userApiConfigs", LookMode.Deep);
 
 			Scribe_Values.Look(ref azureSpeechKey, "azureSpeechKey");
 			Scribe_Values.Look(ref azureSpeechRegion, "azureSpeechRegion");
 			Scribe_Values.Look(ref speechVolume, "speechVolume", 4f);
 			Scribe_Values.Look(ref showAsText, "showAsText", true);
+			Scribe_Values.Look(ref charactersSentAzure, "charactersSentAzure", 0);
 
 			// Thoughts & Mood Insight settings
 			Scribe_Values.Look(ref reportColonistThoughts, "reportColonistThoughts", defaultValue: true);
@@ -173,13 +185,27 @@ namespace RimGPT
 			Scribe_Values.Look(ref historyMaxWordCount, "historyMaxWordCount", 200);
 			Scribe_Values.Look(ref personality, "personality", AI.defaultPersonality);
 			Scribe_Values.Look(ref personalityLanguage, "personalityLanguage", "-");
+
+			// OpenAI old settings
+			Scribe_Values.Look(ref chatGPTKey, "chatGPTKey");
+			Scribe_Values.Look(ref ChatGPTModelPrimary, "ChatGPTModelPrimary", "");
+			Scribe_Values.Look(ref UseSecondaryModel, "UseSecondaryModel", defaultValue: false);
+			Scribe_Values.Look(ref ChatGPTModelSecondary, "ChatGPTModelSecondary", "");
+			Scribe_Values.Look(ref ModelSwitchRatio, "ModelSwitchRatio", defaultValue: 10);
 			// -------------------------------------------------------------------------
+
+			// Unused 
+			//Scribe_Values.Look(ref openRouterKey, "openRouterKey");
+			//Scribe_Values.Look(ref ApiProviderPrimary, "ApiProviderPrimary", nameof(ApiProvider.OpenAI));
+			//Scribe_Values.Look(ref ApiProviderSecondary, "ApiProviderSecondary", nameof(ApiProvider.OpenAI));
+			//Scribe_Values.Look(ref ollamaPort, "ollamaPort", defaultValue: 11434);
+			//Scribe_Values.Look(ref localAIPort, "localAIPort", defaultValue: 8080);
 
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)
 			{
 				if (azureVoice != null && personas.NullOrEmpty())
 				{
-					ChatGPTModelPrimary = Tools.chatGPTModels.First();
+					//ChatGPTModelPrimary = Tools.chatGPTModels[0];
 					personas ??= [];
 					personas.Add(new Persona()
 					{
@@ -200,10 +226,29 @@ namespace RimGPT
 						personalityLanguage = personalityLanguage
 					});
 				}
+
+				// Transfer existing ChatGPT settings to the new UserApiConfigs
+				if (chatGPTKey != null && userApiConfigs.NullOrEmpty())
+				{
+					userApiConfigs ??= [];
+					userApiConfigs.Add(new UserApiConfig()
+					{
+						Type = "External",
+						Name = "OpenAI",
+						Provider = "OpenAI",
+						BaseUrl = "https://api.openai.com/v1",
+						Key = chatGPTKey,
+						ModelId = ChatGPTModelPrimary,
+						UseSecondaryModel = UseSecondaryModel,
+						SecondaryModelId = ChatGPTModelSecondary,
+						ModelSwitchRatio = ModelSwitchRatio,
+						Active = false
+					});
+				}
 			}
 		}
 
-		public bool IsConfigured => chatGPTKey?.Length > 0 && ((azureSpeechKey?.Length > 0 && azureSpeechRegion?.Length > 0) || showAsText);
+		public bool IsConfigured => userApiConfigs.Any(a => a.Active) && ((azureSpeechKey?.Length > 0 && azureSpeechRegion?.Length > 0) || showAsText);
 
 		public Vector2 scrollPosition = Vector2.zero;
 		public static Persona selected = null;
@@ -211,6 +256,11 @@ namespace RimGPT
 		public static readonly Color listBackground = new(32 / 255f, 36 / 255f, 40 / 255f);
 		public static readonly Color highlightedBackground = new(74 / 255f, 74 / 255f, 74 / 255f, 0.5f);
 		public static readonly Color background = new(74 / 255f, 74 / 255f, 74 / 255f);
+
+		// Active state colors
+		public static readonly Color listBackgroundActive = new(16 / 255f, 72 / 255f, 35 / 255f);
+		public static readonly Color highlightedBackgroundActive = new(37 / 255f, 144 / 255f, 53 / 255f, 0.5f);
+		public static readonly Color backgroundActive = new(37 / 255f, 144 / 255f, 53 / 255f);
 
 		public void DoWindowContents(Rect inRect)
 		{
@@ -228,57 +278,141 @@ namespace RimGPT
 			var list = new Listing_Standard { ColumnWidth = normalColumnWidth };
 			list.Begin(inRect);
 
+			list.Gap(16f);
+			if (Widgets.ButtonText(list.GetRect(UX.ButtonHeight), "AI Configuration"))
+				Find.WindowStack.Add(new SettingsLLM(this));
+
 			// for three columns with 20px spacing
 			var width = normalColumnWidth;
 
-			list.Label("FFFF00", "OpenAI - ChatGPT", $"{charactersSentOpenAI} chars total");
-			var prevKey = chatGPTKey;
-			list.TextField(ref chatGPTKey, "API Key (paste only)", true, () => chatGPTKey = "");
-			if (chatGPTKey != "" && chatGPTKey != prevKey)
+			var activeConfig = userApiConfigs?.FirstOrDefault(a => a.Active);
+			var activeModelId = activeConfig?.ModelId.Length == 0 ? "None"
+				: activeConfig.ModelId.Split('/').Last() ?? activeConfig.ModelId;
+			var activeSecondaryId = activeConfig?.SecondaryModelId.Length == 0 ? "None"
+				: activeConfig.SecondaryModelId.Split('/').Last() ?? activeConfig.SecondaryModelId;
+
+			list.Label("00FF22", "Active Provider:", activeConfig?.Provider ?? "None",
+				activeConfig == null
+					? "To active a provider, click on the AI Configuration button above."
+					: "This is the active provider you have selected in the AI Configuration.", 0);
+
+			list.Label("FFFFFF", "Active Model:", activeModelId,
+				activeConfig == null
+					? "To active a provider, click on the AI Configuration button above."
+					: "This is the the active model you have selected in the AI Configuration.", 0);
+
+			list.Label("FFFFFF", "Secondary Model:", activeSecondaryId,
+				activeConfig == null
+					? "To active a provider, click on the AI Configuration button above."
+					: activeSecondaryId.Length == 0
+						? "To select a secondary model, you must check the 'Alternate between two models' checkbox in the AI Configuration and type or select a model id."
+						: "This is the active secondary model you have selected in the AI Configuration.", 0);
+
+			list.Gap(10f);
+
+			foreach (var config in userApiConfigs.Where(a => a.Provider.Length > 0).OrderByDescending(b => b.Active))
 			{
-				Tools.ReloadGPTModels();
-				AI.TestKey(
-					 response => LongEventHandler.ExecuteWhenFinished(() =>
-					 {
-						 var dialog = new Dialog_MessageBox(response);
-						 Find.WindowStack.Add(dialog);
-					 })
-				);
+				list.Label(config.Active ? "00FF22" : "FFFF00",
+					$"{config.Provider}",
+					$"Chars Sent: {Tools.FormatNumber(config.CharactersSent)} | Received: {Tools.FormatNumber(config.CharactersReceived)}", $"Total characters sent and received while using {config.Provider}.", 0);
 			}
+			list.Gap(10f);
 
-			if (chatGPTKey != "")
-			{
-				list.Label("Primary ChatGPT Model");
-				rect = list.GetRect(UX.ButtonHeight);
-				TooltipHandler.TipRegion(rect, "Set the primary AI model used by default for generating insights. For example, choosing 'GPT-3.5' could be your standard model.");
-				if (Widgets.ButtonText(rect, ChatGPTModelPrimary))
-					UX.GPTVersionMenu(l => ChatGPTModelPrimary = l);
+			//list.Label("FFFF00", "OpenAI - ChatGPT", $"{charactersSentOpenAI} chars total");
 
-				list.Gap(10f);
-				list.CheckboxLabeled("Alternate between two models", ref UseSecondaryModel);
-				if (UseSecondaryModel == true)
-				{
-					list.Gap(10f);
-					list.Label("Secondary ChatGPT Model");
-					list.Gap(10f);
-					rect = list.GetRect(UX.ButtonHeight);
-					TooltipHandler.TipRegion(rect, "Set an alternative AI model to switch to based on the Model Switch Ratio. For instance, if 'GPT-4' is chosen as the secondary option, there can be shifts between 'GPT-3.5' and 'GPT-4'.");
-					if (Widgets.ButtonText(rect, ChatGPTModelSecondary))
-						UX.GPTVersionMenu(l => ChatGPTModelSecondary = l);
-					list.Gap(10f);
-					list.Slider(ref ModelSwitchRatio, 1, 20, f => $"Ratio: {f}:1", 1, "Adjust the frequency at which the system switches between the primary and secondary AI models. The 'Model Switch Ratio' value determines after how many calls to the primary model the system will switch to the secondary model for one time. A lower ratio means more frequent switching to the secondary model.\n\nExample: With a ratio of '1', there is no distinction between primary and secondary—each call alternates between the two. With a ratio of '10', the system uses the primary model nine times, and then the secondary model once before repeating the cycle.");
-				}
-			}
+			// Removed all of the Provider and Model settings
+			//var prevKey = chatGPTKey;
+			//list.TextField(ref chatGPTKey, "API Key (paste only)", true, () => chatGPTKey = "");
+			//if (chatGPTKey != "" && chatGPTKey != prevKey)
+			//{
+			//    Tools.ReloadGPTModels();
+			//    AI.TestKey(
+			//         response => LongEventHandler.ExecuteWhenFinished(() =>
+			//         {
+			//             var dialog = new Dialog_MessageBox(response);
+			//             Find.WindowStack.Add(dialog);
+			//         })
+			//    );
+			//}
 
-			list.Gap(16f);
+			//var prevOpenRouterKey = openRouterKey;
+			//list.TextField(ref openRouterKey, "OpenRouter API Key (paste only)", true, () => openRouterKey = "");
+			//if (openRouterKey != "" && openRouterKey != prevOpenRouterKey)
+			//{
+			//    Tools.ReloadGPTModels();
+			//    // TODO: Need to test the OpenRouter API Key specifically
+			//    AI.TestKey(
+			//         response => LongEventHandler.ExecuteWhenFinished(() =>
+			//         {
+			//             var dialog = new Dialog_MessageBox(response);
+			//             Find.WindowStack.Add(dialog);
+			//         })
+			//    );
+			//}
 
-			list.Label("FFFF00", "Azure - Speech Services", $"{charactersSentAzure} chars sent");
+			//if (IsConfigured)
+			//{
+			//    // List of Api Providers
+			//    list.Label("API Provider");
+			//    rect = list.GetRect(UX.ButtonHeight);
+			//    TooltipHandler.TipRegion(rect, "Set the API provider that you would like to use.");
+			//    if (Widgets.ButtonText(rect, ApiProviderPrimary))
+			//        UX.ApiProviderMenu(l =>
+			//        {
+			//            ApiProviderPrimary = l;
+			//            var currentConfig = OpenAIApi.apiConfigs.GetConfig(l);
+			//            OpenAIApi.currentConfig = currentConfig;
+			//            ChatGPTModelPrimary = currentConfig.Models?.First().Id ?? "";
+			//            //if (Tools.DEBUG) Logger.Message($"currentConfig: {JsonConvert.SerializeObject(OpenAIApi.currentConfig, Configuration.JsonSerializerSettings)}"); // TEMP
+			//        });
+
+			//    list.Label("Primary ChatGPT Model");
+			//    rect = list.GetRect(UX.ButtonHeight);
+			//    TooltipHandler.TipRegion(rect, "Set the primary AI model used by default for generating insights. For example, choosing 'GPT-3.5' could be your standard model.");
+			//    if (Widgets.ButtonText(rect, ChatGPTModelPrimary))
+			//        UX.GPTVersionMenu(l => ChatGPTModelPrimary = l, ApiProviderPrimary); // Passing the chosen provider when a provider is selected
+
+			//    list.Gap(10f);
+			//    list.CheckboxLabeled("Alternate between two models", ref UseSecondaryModel);
+			//    if (UseSecondaryModel == true)
+			//    {
+			//        // TODO: Add functionality for secondary Provider.
+			//        list.Gap(10f);
+
+			//        // List of Api Providers
+			//        list.Label("Secondary API Provider");
+			//        rect = list.GetRect(UX.ButtonHeight);
+			//        TooltipHandler.TipRegion(rect, "Set an alternative API provider to switch to based on the Model Switch Ratio.");
+			//        if (Widgets.ButtonText(rect, ApiProviderSecondary))
+			//            UX.ApiProviderMenu(l =>
+			//            {
+			//                ApiProviderSecondary = l;
+			//                OpenAIApi.currentConfig = OpenAIApi.apiConfigs.GetConfig(l);
+			//            });
+
+			//        //list.Gap(10f);
+			//        list.Label("Secondary ChatGPT Model");
+			//        //list.Gap(10f);
+			//        rect = list.GetRect(UX.ButtonHeight);
+			//        TooltipHandler.TipRegion(rect, "Set an alternative AI model to switch to based on the Model Switch Ratio. For instance, if 'GPT-4' is chosen as the secondary option, there can be shifts between 'GPT-3.5' and 'GPT-4'.");
+			//        if (Widgets.ButtonText(rect, ChatGPTModelSecondary))
+			//            UX.GPTVersionMenu(l => ChatGPTModelSecondary = l, ApiProviderSecondary);
+			//        list.Gap(10f);
+			//        list.Slider(ref ModelSwitchRatio, 1, 20, f => $"Ratio: {f}:1", 1, "Adjust the frequency at which the system switches between the primary and secondary AI models. The 'Model Switch Ratio' value determines after how many calls to the primary model the system will switch to the secondary model for one time. A lower ratio means more frequent switching to the secondary model.\n\nExample: With a ratio of '1', there is no distinction between primary and secondary—each call alternates between the two. With a ratio of '10', the system uses the primary model nine times, and then the secondary model once before repeating the cycle.");
+			//    }
+			//}
+
+
+
+			//list.Gap(16f);
+
+			list.Label("FFFF00", "Azure - Speech Services", $"Chars Sent: {Tools.FormatNumber(charactersSentAzure)}", "Total characters sent while using Azure Speech Services.");
 			var prevRegion = azureSpeechRegion;
 			list.TextField(ref azureSpeechRegion, "Region");
 			if (azureSpeechRegion != prevRegion)
 				Personas.UpdateVoiceInformation();
 			list.Gap(6f);
-			prevKey = azureSpeechKey;
+			var prevKey = azureSpeechKey;
 			list.TextField(ref azureSpeechKey, "API Key (paste only)", true, () => azureSpeechKey = "");
 			if (azureSpeechKey != "" && azureSpeechKey != prevKey && azureSpeechRegion.NullOrEmpty() == false)
 				TTS.TestKey(new Persona(), () => Personas.UpdateVoiceInformation());
@@ -295,7 +429,9 @@ namespace RimGPT
 				charactersSentOpenAI = 0;
 				charactersSentAzure = 0;
 			}
+
 			list.NewColumn();
+			//----------------------------- Middle Column ----------------------------------------//
 			list.ColumnWidth = middleColumnWidth;
 
 			list.Gap(16f);
@@ -376,7 +512,8 @@ namespace RimGPT
 				}
 			}
 
-			list.NewColumn(); //------------------------------------------------------------------------------------------------------------------
+			list.NewColumn();
+			//----------------------------- Right Column ----------------------------------------//
 			list.ColumnWidth = normalColumnWidth;
 
 			if (selected != null)
@@ -392,7 +529,7 @@ namespace RimGPT
 				list.ColumnWidth += cw;
 				list.Gap(16f);
 
-    				var buttonWidth = (rect.width - 40) / 3; // Spacing between buttons is 20, hence 40 for two spaces.
+				var buttonWidth = (rect.width - 40) / 3; // Spacing between buttons is 20, hence 40 for two spaces.
 
 				list.Languages(LanguageDatabase.AllLoadedLanguages, selected.azureVoiceLanguage, l => l.DisplayName, l =>
 				{

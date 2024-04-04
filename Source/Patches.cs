@@ -1,4 +1,4 @@
-﻿﻿using HarmonyLib;
+﻿using HarmonyLib;
 using RimWorld;
 using RimWorld.Planet;
 using System;
@@ -207,22 +207,36 @@ namespace RimGPT
 
 	// send colonist details while choosing starting pawns
 	//
-	[HarmonyPatch(typeof(Page_ConfigureStartingPawns), nameof(Page_ConfigureStartingPawns.DrawPortraitArea))]
+	[HarmonyPatch] // 1.4
 	public static class Page_ConfigureStartingPawns_DrawPortraitArea_Patch
+	{
+		public static bool Prepare() => TargetMethod() != null;
+		public static MethodBase TargetMethod() => AccessTools.Method("RimWorld.Page_ConfigureStartingPawns:DrawPortraitArea");
+		public static void Postfix(Pawn __curPawn) => StartingPawnUpdater.Update(__curPawn);
+	}
+	//
+	[HarmonyPatch] // 1.5
+	public static class StartingPawnUtility_DrawPortraitArea_Patch
+	{
+		public static bool Prepare() => TargetMethod() != null;
+		public static MethodBase TargetMethod() => AccessTools.Method("RimWorld.StartingPawnUtility:DrawPortraitArea");
+		public static void Postfix(int pawnIndex)
+		{
+			var pawn = StartingPawnUtility.StartingAndOptionalPawns[pawnIndex];
+			StartingPawnUpdater.Update(pawn);
+		}
+	}
+	//
+	public static class StartingPawnUpdater
 	{
 		static Pawn pawn = null;
 		static readonly Debouncer debouncer = new(1000);
 
-		static string StartingColonists()
+		public static void Update(Pawn currentPawn)
 		{
-			return Find.GameInitData.startingAndOptionalPawns.Take(Find.GameInitData.startingPawnCount).Join(p => p.LabelShortCap);
-		}
-
-		public static void Postfix(Pawn ___curPawn)
-		{
-			if (___curPawn == pawn)
+			if (currentPawn == pawn)
 				return;
-			pawn = ___curPawn;
+			pawn = currentPawn;
 
 			debouncer.Debounce(() =>
 			{
@@ -242,10 +256,12 @@ namespace RimGPT
 					skills = $", {skills}";
 
 				var stats = $"{pawn.gender}, {pawn.ageTracker.AgeBiologicalYears}, {backstory.TitleCapFor(pawn.gender)}{traits}{disabled}{skills}";
-				Personas.Add($"Player considers {___curPawn.LabelShortCap} ({stats}) for this new game", 1);
+				Personas.Add($"Player considers {currentPawn.LabelShortCap} ({stats}) for this new game", 1);
 			});
 
-			Differ.IfChangedPersonasAdd("starting-pawns", StartingColonists(), "Current starting colonists: {VALUE}", 2);
+			var startingColonists = Find.GameInitData.startingAndOptionalPawns.Take(Find.GameInitData.startingPawnCount).Join(p => p.LabelShortCap);
+			;
+			Differ.IfChangedPersonasAdd("starting-pawns", startingColonists, "Current starting colonists: {VALUE}", 2);
 		}
 	}
 
@@ -292,10 +308,17 @@ namespace RimGPT
 
 	// send started jobs
 	//
-	[HarmonyPatch(typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.StartJob))]
-	[HarmonyPatch(new Type[] { typeof(Job), typeof(JobCondition), typeof(ThinkNode), typeof(bool), typeof(bool), typeof(ThinkTreeDef), typeof(JobTag?), typeof(bool), typeof(bool), typeof(bool?), typeof(bool), typeof(bool) })]
+	[HarmonyPatch]
 	public static class Pawn_JobTracker_StartJob_Patch
 	{
+		static MethodBase TargetMethod()
+		{
+			var (type, name) = (typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.StartJob));
+			var args1 = new Type[] { typeof(Job), typeof(JobCondition), typeof(ThinkNode), typeof(bool), typeof(bool), typeof(ThinkTreeDef), typeof(JobTag?), typeof(bool), typeof(bool), typeof(bool?), typeof(bool), typeof(bool) };
+			var args2 = args1.AddItem(typeof(bool)).ToArray();
+			return AccessTools.Method(type, name, args1) ?? AccessTools.Method(type, name, args2);
+		}
+
 		static void Handle(Pawn_JobTracker tracker, JobDriver curDriver)
 		{
 			tracker.curDriver = curDriver;
@@ -388,10 +411,17 @@ namespace RimGPT
 
 	// send game letters
 	//
-	[HarmonyPatch(typeof(LetterStack), nameof(LetterStack.ReceiveLetter))]
-	[HarmonyPatch(new Type[] { typeof(Letter), typeof(string) })]
+	[HarmonyPatch]
 	public static class LetterStack_ReceiveLetter_Patch
 	{
+		static MethodBase TargetMethod()
+		{
+			var (type, name) = (typeof(LetterStack), nameof(LetterStack.ReceiveLetter));
+			var args1 = new Type[] { typeof(Letter), typeof(string) };
+			var args2 = args1.AddItem(typeof(int)).AddItem(typeof(bool)).ToArray();
+			return AccessTools.Method(type, name, args1) ?? AccessTools.Method(type, name, args2);
+		}
+
 		public static void Postfix(Letter let)
 		{
 			if (let.CanShowInLetterStack == false)
@@ -537,9 +567,12 @@ namespace RimGPT
 		//
 		public static string GetPawnType(Pawn pawn)
 		{
-			if (pawn.IsColonist) return "colonist";
-			if (pawn.IsPrisoner) return "prisoner";
-			if (pawn.IsSlave) return "slave";
+			if (pawn.IsColonist)
+				return "colonist";
+			if (pawn.IsPrisoner)
+				return "prisoner";
+			if (pawn.IsSlave)
+				return "slave";
 			return "visitor";
 		}
 	}
@@ -677,7 +710,7 @@ namespace RimGPT
 	[HarmonyPatch(typeof(GenConstruct), nameof(GenConstruct.PlaceBlueprintForBuild))]
 	public static class GenConstruct_PlaceBlueprintForBuild_Patch
 	{
-		public static void Postfix(BuildableDef sourceDef, IntVec3 center, Map map, Rot4 rotation, Faction faction, ThingStyleDef styleDef, ref ThingDef stuff)
+		public static void Postfix(BuildableDef sourceDef, IntVec3 center, Map map)
 		{
 			Blueprint blueprint = map.thingGrid.ThingAt<Blueprint>(center);
 
@@ -734,11 +767,12 @@ namespace RimGPT
 		public static void Postfix(Job job, Pawn_JobTracker __instance)
 		{
 			Pawn pawn = __instance.pawn;
-			if (pawn == null || job?.def == null) return; // Safety check for null references
+			if (pawn == null || job?.def == null)
+				return; // Safety check for null references
 
 			string targetLabels = GetTargetLabels(job);
 
-			List<string> queueList = new List<string>();
+			List<string> queueList = [];
 			if (job.targetQueueA != null && job.targetQueueA.Count > 0)
 				queueList.Add("A");
 			if (job.targetQueueB != null && job.targetQueueB.Count > 0)
@@ -764,7 +798,7 @@ namespace RimGPT
 
 		private static string GetTargetLabels(Job job)
 		{
-			List<string> labels = new List<string>();
+			List<string> labels = [];
 
 			try
 			{
@@ -826,7 +860,8 @@ namespace RimGPT
 
 					// Ensuring pawn reference is not null before accessing its properties.
 					Pawn pawn = __instance.pawn;
-					if (pawn == null) return;
+					if (pawn == null)
+						return;
 
 					string pawnName = pawn.LabelShort.CapitalizeFirst();
 

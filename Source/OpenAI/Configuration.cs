@@ -2,50 +2,52 @@
 using Newtonsoft.Json.Serialization;
 using RimGPT;
 using System;
+using System.Globalization;
 using System.IO;
 
 namespace OpenAI
 {
-	public class Configuration
+	/// <summary> Handles loading API key from %User%/.openai/auth.json & JSON Config. </summary>
+	public static class Configuration
 	{
-		public Auth Auth { get; }
-
+		/// <summary>
 		/// Used for serializing and deserializing PascalCase request object fields into snake_case format for JSON. Ignores null fields when creating JSON strings.
-		private readonly JsonSerializerSettings jsonSerializerSettings = new()
+		/// </summary>
+		public static JsonSerializerSettings JsonSerializerSettings => new()
 		{
-			NullValueHandling = NullValueHandling.Ignore, 
-			MissingMemberHandling = MissingMemberHandling.Ignore, 
-			ContractResolver = new DefaultContractResolver()
+			NullValueHandling = NullValueHandling.Ignore,
+			MissingMemberHandling = MissingMemberHandling.Ignore,
+			Culture = CultureInfo.InvariantCulture,
+			ContractResolver = new DefaultContractResolver
 			{
 				NamingStrategy = new CustomNamingStrategy()
 			}
 		};
 
-		public Configuration(string apiKey = null, string organization = null)
+		/// <summary> Gets an Key from a file located in "{userPath}/.openai/auth.json"  </summary>
+		public static string GetApiKeyFromFile()
 		{
-			if (apiKey == null)
-			{
-				var userPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-				var authPath = $"{userPath}/.openai/auth.json";
+			var userPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+			var authPath = $"{userPath}/.openai/auth.json";
 
-				if (File.Exists(authPath))
+			if (File.Exists(authPath))
+			{
+				try
 				{
 					var json = File.ReadAllText(authPath);
-					Auth = JsonConvert.DeserializeObject<Auth>(json, jsonSerializerSettings);
+					return JsonConvert.DeserializeObject<string>(json, JsonSerializerSettings);
 				}
-				else
+				catch (Exception ex)
 				{
-					Logger.Error("API Key is null and auth.json does not exist. Please check https://github.com/srcnalt/OpenAI-Unity#saving-your-credentials");
+					Logger.Error($"Failed to load API Key from file. {ex}");
 				}
 			}
 			else
 			{
-				Auth = new Auth()
-				{
-					ApiKey = apiKey,
-					Organization = organization
-				};
+				string message = $"The 'auth.json' file does not exist in the current directory: {userPath}. Please create a JSON file in this format:\n{{\n    \"api_key\": \"sk-...W6yi\"\n}}";
+				Logger.Error(message);
 			}
+			return default;
 		}
 	}
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
+using static RimGPT.Dialog_Help;
 
 namespace RimGPT
 {
@@ -10,6 +11,7 @@ namespace RimGPT
 	{
 		public const float ButtonHeight = 24f;
 
+		#region Listing_Standard extensions
 		/*public static void SmallLabel(this Listing_Standard list, string text, string tooltip = null)
 		{
 			var rect = list.GetRect(20f);
@@ -24,7 +26,7 @@ namespace RimGPT
 				TooltipHandler.TipRegion(rect, tooltip);
 		}*/
 
-		public static void Label(this Listing_Standard list, string hexColor, string textLeft, string textRight = "", string tooltip = null)
+		public static void Label(this Listing_Standard list, string hexColor, string textLeft, string textRight = "", string tooltip = null, float gap = 6f)
 		{
 			var size = Text.CalcSize(textLeft);
 			var rect = list.GetRect(size.y);
@@ -37,10 +39,10 @@ namespace RimGPT
 			Text.Anchor = TextAnchor.MiddleRight;
 			Widgets.Label(rect.RightPartPixels(size.x), textRight);
 			Text.Anchor = anchor;
-			list.Gap(6f);
+			if (gap > 0) list.Gap(gap);
 		}
 
-		public static void TextField(this Listing_Standard list, ref string text, string label = null, bool isPassword = false, Action resetCallback = null)
+		public static void TextField(this Listing_Standard list, ref string text, string label = null, bool isPassword = false, Action resetCallback = null, HelpType helpType = default, DialogSize dialogSize = DialogSize.Large)
 		{
 			var rect = list.GetRect(20f);
 			if (label != null)
@@ -54,7 +56,7 @@ namespace RimGPT
 				Text.Font = font;
 
 				if (Widgets.ButtonText(rect.RightPartPixels(24), "?"))
-					Dialog_Help.Show();
+					Dialog_Help.Show(helpType, dialogSize);
 			}
 			if (isPassword && text != "")
 			{
@@ -65,12 +67,12 @@ namespace RimGPT
 				text = list.TextEntry(text);
 		}
 
-		public static void Slider(this Listing_Standard list, ref int value, int min, int max, Func<int, string> label, int logarithmic = 1, string tooltip = null)
+		public static void Slider(this Listing_Standard list, ref int value, int min, int max, Func<int, string> label, int logarithmic = 1, string tooltip = null, GameFont? gameFont = null)
 		{
 			var input = logarithmic != 1 ? Mathf.Log(value, logarithmic) : value;
 			var min2 = logarithmic != 1 ? Mathf.Log(min, logarithmic) : min;
 			var max2 = logarithmic != 1 ? Mathf.Log(max, logarithmic) : max;
-			HorizontalSlider(list.GetRect(22f), ref input, min2, max2, label == null ? null : label(Mathf.FloorToInt((logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input) + 0.001f)), 1f, tooltip);
+			HorizontalSlider(list.GetRect(22f), ref input, min2, max2, label == null ? null : label(Mathf.FloorToInt((logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input) + 0.001f)), 1f, tooltip, gameFont);
 			value = Mathf.FloorToInt((logarithmic != 1 ? Mathf.Pow(logarithmic, input) : input) + 0.001f);
 			list.Gap(2f);
 		}
@@ -86,15 +88,17 @@ namespace RimGPT
 				value = Mathf.RoundToInt(value / roundTo) * roundTo;
 			list.Gap(2f);
 		}
+		#endregion Listing_Standard extensions
 
-		public static void HorizontalSlider(Rect rect, ref float value, float leftValue, float rightValue, string label, float roundTo = -1f, string tooltip = null)
+		#region Other UX elements & primitive extensions
+		public static void HorizontalSlider(Rect rect, ref float value, float leftValue, float rightValue, string label, float roundTo = -1f, string tooltip = null, GameFont? gameFont = null)
 		{
 			var first = rect.width / 2.5f;
 			var second = rect.width - first;
 
 			var anchor = Text.Anchor;
 			var font = Text.Font;
-			Text.Font = GameFont.Tiny;
+			Text.Font = gameFont ?? GameFont.Tiny;
 			Text.Anchor = TextAnchor.UpperLeft;
 			var rect2 = rect.LeftPartPixels(first);
 			rect2.y -= 2f;
@@ -135,32 +139,65 @@ namespace RimGPT
 				return $"{percentageValue:+0.##;-0.##;0}%";
 			return $"{percentageValue:0.##;-0.##;0}%";
 		}
+		#endregion Other UX elements & primitive extensions
 
-		public static void GPTVersionMenu(Action<string> action)
-		{
-			var options = new List<FloatMenuOption> { new("ChatGPT Version", () => action(default)) };
-			foreach (var version in Tools.chatGPTModels)
-			{
-				var label = version;
-				if (version.Contains("1106"))
-					label = $"{version} [PREFERRED]";
-				options.Add(new FloatMenuOption(label, () =>
-				{
-					if (version != default)
-					{
-						if (version.Contains("gpt-4"))
-						{
-							var window = Dialog_MessageBox.CreateConfirmation("GPT-4 can create more costs and is slower to answer, do you really want to proceed?", () => action(version), true, "Attention", WindowLayer.Super);
-							Find.WindowStack.Add(window);
-						}
-						else
-							action(version);
-					}
-				}));
-			}
-			Find.WindowStack.Add(new FloatMenu(options));
-		}
+		#region Original Provider & Model Menus
+		// Menu to select the Api Provider
+		//      public static void ApiProviderMenu(Action<string> action)
+		//{
+		//	var options = new List<FloatMenuOption> { new("API Provider", () => action(default)) };
+		//	foreach (var config in OpenAIApi.apiConfigs.Where(a => a.Models.Count > 0))
+		//	{
+		//		var providerName = config.Provider.ToString();
+		//		var label = providerName;
+		//		options.Add(new FloatMenuOption(label, () =>
+		//		{
+		//			if (providerName != default)
+		//			{
+		//				action(providerName);
+		//				// Update GPTVersionMenu upon selection
+		//				//RimGPT.RimGPTSettings.ChatGPTModelPrimary
+		//			}
+		//		}));
+		//	}
+		//	Find.WindowStack.Add(new FloatMenu(options));
 
+		//}
+
+		//public static void GPTVersionMenu(Action<string> action, string apiProviderPrimary)
+		//{
+		//	var options = new List<FloatMenuOption> { new("ChatGPT Version", () => action(default)) };
+		//	if (string.IsNullOrEmpty(apiProviderPrimary) == false)
+		//	{
+		//		// apiConfigs is a list of Api Configurations and contains the list of Models as OpenAIModels
+		//		var models = OpenAIApi.apiConfigs.Find(c => c.Provider.ToString() == apiProviderPrimary)?.Models;
+
+		//		foreach (var model in models ?? Enumerable.Empty<OpenAIModel>())
+		//		{
+		//			var version = model.Id;
+		//			var label = version;
+		//			if (model.Id.Contains("1106"))
+		//				label = $"{version} [PREFERRED]";
+		//			options.Add(new FloatMenuOption(label, () =>
+		//			{
+		//				if (version != default)
+		//				{
+		//					if (version.Contains("gpt-4"))
+		//					{
+		//						var window = Dialog_MessageBox.CreateConfirmation("GPT-4 can create more costs and is slower to answer, do you really want to proceed?", () => action(version), true, "Attention", WindowLayer.Super);
+		//						Find.WindowStack.Add(window);
+		//					}
+		//					else
+		//						action(version);
+		//				}
+		//			}));
+		//		}
+		//	}
+		//	Find.WindowStack.Add(new FloatMenu(options));
+		//}
+		#endregion Original Provider & Model Menus
+
+		#region Voice & TTS
 		public static void LanguageChoiceMenu<T>(IEnumerable<T> languages, Func<T, string> itemFunc, Action<T> action)
 		{
 			var options = new List<FloatMenuOption> { new("Game Language", () => action(default)) };
@@ -257,5 +294,6 @@ namespace RimGPT
 				Find.WindowStack.Add(new FloatMenu(options));
 			}
 		}
+		#endregion Voice & TTS
 	}
 }

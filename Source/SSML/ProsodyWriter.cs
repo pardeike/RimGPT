@@ -3,18 +3,11 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-	public class ProsodyWriter : ISsmlWriter
+	public class ProsodyWriter(ISsmlWriter innerWriter, float rate, float pitch) : ISsmlWriter
 	{
-		private readonly ISsmlWriter _innerWriter;
-		private readonly float _rate;
-		private readonly float _pitch;
-
-		public ProsodyWriter(ISsmlWriter innerWriter, float rate, float pitch)
-		{
-			_innerWriter = innerWriter;
-			_rate = rate;
-			_pitch = pitch;
-		}
+		private readonly ISsmlWriter _innerWriter = innerWriter;
+		private readonly float _rate = rate;
+		private readonly float _pitch = pitch;
 
 		private static async Task AddAttribute(XmlWriter writer, string name, float value)
 		{

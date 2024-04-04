@@ -4,17 +4,11 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-	public class FluentSayNumber : IFluentSayNumber, ISsmlWriter
+	public class FluentSayNumber(Ssml ssml, int value) : IFluentSayNumber, ISsmlWriter
 	{
-		private readonly Ssml _ssml;
-		private readonly int _value;
+		private readonly Ssml _ssml = ssml;
+		private readonly int _value = value;
 		private SayAsWriter _writer;
-
-		public FluentSayNumber(Ssml ssml, int value)
-		{
-			this._ssml = ssml;
-			this._value = value;
-		}
 
 		public ISsml AsCardinalNumber()
 		{
