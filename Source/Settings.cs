@@ -286,9 +286,9 @@ namespace RimGPT
 			var width = normalColumnWidth;
 
 			var activeConfig = userApiConfigs?.FirstOrDefault(a => a.Active);
-			var activeModelId = activeConfig?.ModelId.Length == 0 ? "None"
+			var activeModelId = (activeConfig?.ModelId.Length ?? 0) == 0 ? "None"
 				: activeConfig.ModelId.Split('/').Last() ?? activeConfig.ModelId;
-			var activeSecondaryId = activeConfig?.SecondaryModelId.Length == 0 ? "None"
+			var activeSecondaryId = (activeConfig?.SecondaryModelId.Length ?? 0) == 0 ? "None"
 				: activeConfig.SecondaryModelId.Split('/').Last() ?? activeConfig.SecondaryModelId;
 
 			list.Label("00FF22", "Active Provider:", activeConfig?.Provider ?? "None",
