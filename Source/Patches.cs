@@ -212,7 +212,7 @@ namespace RimGPT
 	{
 		public static bool Prepare() => TargetMethod() != null;
 		public static MethodBase TargetMethod() => AccessTools.Method("RimWorld.Page_ConfigureStartingPawns:DrawPortraitArea");
-		public static void Postfix(Pawn __curPawn) => StartingPawnUpdater.Update(__curPawn);
+		public static void Postfix(Pawn ___curPawn) => StartingPawnUpdater.Update(___curPawn);
 	}
 	//
 	[HarmonyPatch] // 1.5
