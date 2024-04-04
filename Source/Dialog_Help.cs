@@ -120,7 +120,7 @@ This mod uses Microsoft Azure's Cognitive Services to enable TTS (Text-to-Speech
 			y += 42f;
 
 			var textRect = new Rect(inRect.x, y, inRect.width, inRect.height - y);
-			_ = Widgets.TextAreaScrollable(textRect, helpTexts[helpType], ref scrollPosition);
+			_ = MultiAPI.TextAreaScrollable(textRect, helpTexts[helpType], ref scrollPosition, false);
 		}
 
 		public enum HelpType
