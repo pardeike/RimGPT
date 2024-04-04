@@ -11,4 +11,4 @@ Powered by
 
 **Note: There are currently no plans to adapt this to anything other than the APIs of OpenAI and Azure Speech Services.**
 
-(c) 2023 Andreas Pardeike, Matt McFarland
+(c) 2023 Andreas Pardeike, Matt McFarland and Steven Dickinson
