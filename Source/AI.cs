@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 using UnityEngine;
 using Verse;
 
@@ -103,23 +104,30 @@ namespace RimGPT
 
 		private string GetCurrentChatGPTModel()
 		{
-			if (!RimGPTMod.Settings.UseSecondaryModel) return RimGPTMod.Settings.ChatGPTModelPrimary;
+			Tools.UpdateApiConfigs();
+			if (RimGPTMod.Settings.userApiConfigs == null || RimGPTMod.Settings.userApiConfigs.Any(a => a.Active) == false) return "";
+
+			var activeUserConfig = RimGPTMod.Settings.userApiConfigs.FirstOrDefault(a => a.Active);
+			OpenAIApi.SwitchConfig(activeUserConfig.Provider);
+
+
+			if (activeUserConfig.ModelId?.Length == 0) return "";
+
+			if (!activeUserConfig.UseSecondaryModel || activeUserConfig.SecondaryModelId?.Length == 0) return activeUserConfig.ModelId;
 
 			modelSwitchCounter++;
 
-			if (modelSwitchCounter == RimGPTMod.Settings.ModelSwitchRatio)
+			if (modelSwitchCounter == activeUserConfig.ModelSwitchRatio)
 			{
 				modelSwitchCounter = 0;
 
-				OpenAIApi.SwitchConfig(RimGPTMod.Settings.ApiProviderSecondary);
 				if (Tools.DEBUG) Logger.Message("Switching to secondary model"); // TEMP
-				return RimGPTMod.Settings.ChatGPTModelSecondary;
+				return activeUserConfig.SecondaryModelId;
 			}
 			else
 			{
-				OpenAIApi.SwitchConfig(RimGPTMod.Settings.ApiProviderPrimary);
 				if (Tools.DEBUG) Logger.Message("Switching to primary model"); // TEMP
-				return RimGPTMod.Settings.ChatGPTModelPrimary;
+				return activeUserConfig.ModelId;
 			}
 		}
 		private float CalculateFrequencyPenaltyBasedOnLevenshteinDistance(string source, string target)
@@ -151,6 +159,7 @@ namespace RimGPT
 
 		public async Task<string> Evaluate(Persona persona, IEnumerable<Phrase> observations, int retry = 0, string retryReason = "")
 		{
+			var activeConfig = RimGPTMod.Settings.userApiConfigs.FirstOrDefault(a => a.Active);
 
 			var gameInput = new Input
 			{
@@ -224,10 +233,12 @@ namespace RimGPT
 
 			Logger.Message($"{(retry != 0 ? $"(retry:{retry} {retryReason})" : "")} prompt (FP:{FrequencyPenalty}) ({gameInput.ActivityFeed.Count()} activities) (persona:{persona.name}): {input}");
 
+			List<string> jsonReady = ["1106", "0125"];
+
 			var request = new CreateChatCompletionRequest()
 			{
 				Model = GetCurrentChatGPTModel(),
-				ResponseFormat = GetCurrentChatGPTModel().Contains("1106") ? new ResponseFormat { Type = "json_object" } : null,
+				ResponseFormat = jsonReady.Any(id => GetCurrentChatGPTModel().Contains(id)) ? new ResponseFormat { Type = "json_object" } : null,
 				FrequencyPenalty = FrequencyPenalty,
 				PresencePenalty = FrequencyPenalty,
 				Temperature = 0.5f,
@@ -242,12 +253,12 @@ namespace RimGPT
 				Log.Warning($"INPUT: {JsonConvert.SerializeObject(request, settings)}");
 
 			var completionResponse = await OpenAIApi.CreateChatCompletion(request, error => Logger.Error(error));
-			RimGPTMod.Settings.charactersSentOpenAI += systemPrompt.Length + input.Length;
+			activeConfig.CharactersSent += systemPrompt.Length + input.Length;
 
 			if (completionResponse.Choices?.Count > 0)
 			{
 				var response = (completionResponse.Choices[0].Message.Content ?? "");
-				RimGPTMod.Settings.charactersSentOpenAI += response.Length;
+				activeConfig.CharactersReceived += response.Length;
 				response = response.Trim();
 				var firstIdx = response.IndexOf("{");
 				if (firstIdx >= 0)
@@ -320,7 +331,7 @@ namespace RimGPT
 		public async Task<string> CondenseHistory(Persona persona)
 		{
 			// force secondary (better model)
-			modelSwitchCounter = RimGPTMod.Settings.ModelSwitchRatio;
+			modelSwitchCounter = RimGPTMod.Settings.userApiConfigs.FirstOrDefault(a => a.Active).ModelSwitchRatio;
 			var request = new CreateChatCompletionRequest()
 			{
 				Model = GetCurrentChatGPTModel(),
@@ -351,39 +362,53 @@ namespace RimGPT
 			history = reason;
 		}
 
-		// TODO: Need to set Provider based on the settings
-		public async Task<(string, string)> SimplePrompt(string input)
+		public async Task<(string, string)> SimplePrompt(string input, UserApiConfig userApiConfig = null, string modelId = "")
 		{
+			var currentConfig = OpenAIApi.currentConfig;
+			var currentUserConfig = RimGPTMod.Settings.userApiConfigs.FirstOrDefault(a => a.Provider == currentConfig.Provider.ToString());
+			if (userApiConfig != null)
+			{
+				OpenAIApi.SwitchConfig(userApiConfig.Provider); // Switch if test comes through.
+				currentUserConfig = userApiConfig;
+				modelId ??= userApiConfig.ModelId;
+			}
+			else
+			{
+				modelId = GetCurrentChatGPTModel();
+			}
+
 			string requestError = null;
 			var completionResponse = await OpenAIApi.CreateChatCompletion(new CreateChatCompletionRequest()
 			{
-				Model = GetCurrentChatGPTModel(),
+				Model = modelId,
 				Messages =
 				[
 					new ChatMessage() { Role = "system", Content = "You are a creative poet answering in 12 words or less." },
 					new ChatMessage() { Role = "user", Content = input }
 				]
 			}, e => requestError = e);
-			RimGPTMod.Settings.charactersSentOpenAI += input.Length;
+			currentUserConfig.CharactersSent += input.Length;
+
+			if (userApiConfig != null) OpenAIApi.currentConfig = currentConfig;
 
 			if (completionResponse.Choices?.Count > 0)
 			{
 				var response = (completionResponse.Choices[0].Message.Content ?? "");
-				RimGPTMod.Settings.charactersSentOpenAI += response.Length;
+				currentUserConfig.CharactersReceived += response.Length;
 				return (response, null);
 			}
 
 			return (null, requestError);
 		}
 
-		public static void TestKey(Action<string> callback)
+		public static void TestKey(Action<string> callback, UserApiConfig userApiConfig, string modelId = "")
 		{
 			Tools.SafeAsync(async () =>
 			{
 				var prompt = "The player has just configured your OpenAI API key in the mod " +
 					 "RimGPT for Rimworld. Greet them with a short response!";
 				var dummyAI = new AI();
-				var output = await dummyAI.SimplePrompt(prompt);
+				var output = await dummyAI.SimplePrompt(prompt, userApiConfig, modelId);
 				callback(output.Item1 ?? output.Item2);
 			});
 		}

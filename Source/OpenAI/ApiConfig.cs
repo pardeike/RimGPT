@@ -8,10 +8,20 @@ namespace OpenAI
 	/// <summary> Enumerates available API providers. </summary>
 	public enum ApiProvider
 	{
+		Default,
+
+		// Remote APIs
 		OpenAI,
 		OpenRouter,
+
+		// Cohere, will add later
+		TogetherAI,
+		OtherExternal,
+
+		// Local APIs
 		Ollama,
-		LocalAI
+		LocalAI,
+		LocalOpenAILike
 	}
 
 	/// <summary> Configuration settings for API connections. </summary>
@@ -24,6 +34,7 @@ namespace OpenAI
 		public int? Port { get; set; }
 		public bool IsLocal { get; set; }
 		public bool UsesKey { get => Provider.NeedsApiKey(); }
+		public bool Configured { get; set; }
 		public List<OpenAIModel> Models { get; set; }
 		public ApiEndpoints Endpoints { get; set; }
 
@@ -32,7 +43,7 @@ namespace OpenAI
 		/// <param name="apiKey"> API key for authentication, if required by the provider. </param>
 		/// <param name="organization"> Organization associated with the API key. </param>
 		/// <param name="port"> The port number for local API providers, if null uses defaults. </param>
-		public ApiConfig(ApiProvider apiProvider, string apiKey = null, string organization = null, int? port = null)
+		public ApiConfig(ApiProvider apiProvider, string apiKey = "", string organization = "", int? port = null)
 		{
 			Provider = apiProvider;
 			Key = apiKey;
@@ -54,8 +65,13 @@ namespace OpenAI
 				{
 					ApiProvider.OpenAI => OpenAI,
 					ApiProvider.OpenRouter => OpenRouter,
+					//ApiProvider.Cohere => Cohere,
+					ApiProvider.TogetherAI => TogetherAI,
+					ApiProvider.OtherExternal => OpenAI,
+
 					ApiProvider.Ollama => Ollama,
 					ApiProvider.LocalAI => LocalAI,
+					ApiProvider.LocalOpenAILike => Ollama,
 					_ => OpenAI
 				};
 			}
@@ -68,8 +84,13 @@ namespace OpenAI
 				{
 					ApiProvider.OpenAI => OpenAI,
 					ApiProvider.OpenRouter => OpenRouter,
+					//ApiProvider.Cohere => Cohere,
+					ApiProvider.TogetherAI => TogetherAI,
+					ApiProvider.OtherExternal => OpenAI,
+
 					ApiProvider.Ollama => Ollama,
 					ApiProvider.LocalAI => LocalAI,
+					ApiProvider.LocalOpenAILike => Ollama,
 					_ => OpenAI
 				};
 			}
@@ -79,6 +100,12 @@ namespace OpenAI
 
 			/// <summary> OpenRouter Base URL: <see href="https://openrouter.ai/api/v1"/></summary>
 			public string OpenRouter => "https://openrouter.ai/api/v1";
+
+			/// <summary> Cohere Base URL: <see href="https://api.cohere.ai/v1"/></summary>
+			public string Cohere => "https://api.cohere.ai/v1";
+
+			/// <summary> TogetherAI Base URL: <see href="https://api.together.xyz/v1"/></summary>
+			public string TogetherAI => "https://api.together.xyz/v1";
 
 			/// <summary> Ollama Default Base URL: <see href="http://localhost:11434/api"/></summary>
 			public string Ollama => Port.HasValue ?
@@ -109,8 +136,10 @@ namespace OpenAI
 		public static List<ApiConfig> GetApiConfigs()
 		{
 			List<ApiConfig> apiConfigs = [];
-			foreach (var provider in GetApiProviders())
+			foreach (ApiProvider provider in GetApiProviders())
 			{
+				if (provider == ApiProvider.Default) continue;
+
 				apiConfigs.Add(new(provider));
 			}
 			return apiConfigs;
@@ -124,12 +153,14 @@ namespace OpenAI
 		/// <param name="apiKey"> Only necessary for online APIs. </param>
 		/// <param name="organization">The organization associated with the API key, never necessary.</param>
 		/// <param name="port"> Only necessary for Local APIs, will use default if null. </param>
-		public static void Update(this ApiConfig apiConfig, string apiKey = null, string organization = null, int? port = null)
+		public static void Update(this ApiConfig apiConfig, string apiKey = null, string organization = null, string baseUrl = "", int? port = null)
 		{
-			var portChanged = apiConfig.Port != port;
+			bool portChanged = apiConfig.Port != port;
+			bool baseUrlChanged = baseUrl.Length > 0 && apiConfig.BaseUrl != baseUrl;
 			apiConfig.Key = apiKey;
 			apiConfig.Organization = organization;
 			apiConfig.Port = port;
+			apiConfig.BaseUrl = baseUrlChanged ? baseUrl : apiConfig.BaseUrl;
 
 			if (portChanged || string.IsNullOrEmpty(apiConfig.BaseUrl))
 			{
@@ -138,15 +169,31 @@ namespace OpenAI
 			}
 		}
 
+		public static void Update(this ApiConfig apiConfig, UserApiConfig userApiConfig)
+		{
+			if (userApiConfig == null || userApiConfig.Provider.Length == 0) return;
+
+			bool baseUrlChanged = userApiConfig.BaseUrl.Length > 0 && apiConfig.BaseUrl != userApiConfig.BaseUrl;
+			string baseUrl = baseUrlChanged ? userApiConfig.BaseUrl : apiConfig.BaseUrl;
+			bool configured = !(apiConfig.Provider.NeedsApiKey() && userApiConfig.Key.Length == 0) && baseUrl.Length > 0;
+
+			apiConfig.Key = userApiConfig.Key;
+			apiConfig.Organization = userApiConfig.Organization;
+			apiConfig.BaseUrl = baseUrl;
+			apiConfig.Port = userApiConfig.Port ?? apiConfig.Port;
+			apiConfig.Endpoints = new ApiEndpoints(apiConfig);
+			apiConfig.Configured = configured;
+		}
+
 		/// <summary> Updates a single ApiConfig in list. </summary>
 		/// <param name="apiConfigs"></param>
 		/// <param name="apiProvider"> The Api Provider to update. </param>
 		/// <param name="apiKey"> Only necessary for online APIs. </param>
 		/// <param name="organization">The organization associated with the API key, never necessary.</param>
 		/// <param name="port"> Only necessary for Local APIs, will use default if null. </param>
-		public static void UpdateConfig(this List<ApiConfig> apiConfigs, ApiProvider apiProvider, string apiKey = null, string organization = null, int? port = null)
+		public static void UpdateConfig(this List<ApiConfig> apiConfigs, ApiProvider apiProvider, string apiKey = null, string organization = null, string baseUrl = "", int? port = null)
 		{
-			apiConfigs.Find(c => c.Provider == apiProvider).Update(apiKey, organization, port);
+			apiConfigs.Find(c => c.Provider == apiProvider).Update(apiKey, organization, baseUrl, port);
 		}
 
 		/// <summary> Gets an ApiConfig from a list by using the Provider enum. </summary>
@@ -175,6 +222,7 @@ namespace OpenAI
 			{
 				ApiProvider.Ollama => false,
 				ApiProvider.LocalAI => false,
+				ApiProvider.LocalOpenAILike => false,
 				_ => true
 			};
 		}
@@ -186,6 +234,7 @@ namespace OpenAI
 			{
 				ApiProvider.Ollama => true,
 				ApiProvider.LocalAI => true,
+				ApiProvider.LocalOpenAILike => true,
 				_ => false
 			};
 		}
@@ -197,6 +246,7 @@ namespace OpenAI
 			{
 				ApiProvider.Ollama => true,
 				ApiProvider.LocalAI => true,
+				ApiProvider.LocalOpenAILike => true,
 				_ => false
 			};
 		}
@@ -207,7 +257,7 @@ namespace OpenAI
 	{
 		private string Combine(string endpoint)
 		{
-			var baseUrl = apiConfig.BaseUrl;
+			string baseUrl = apiConfig.BaseUrl;
 			return $"{baseUrl}{endpoint}";
 		}
 
@@ -229,6 +279,7 @@ namespace OpenAI
 		public string CreateChatCompletion => apiConfig.Provider switch
 		{
 			ApiProvider.Ollama => Combine("/chat"),
+			//ApiProvider.Cohere => Combine("/chat"),
 			_ => Combine("/chat/completions")
 		};
 

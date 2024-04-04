@@ -253,7 +253,7 @@ namespace RimGPT
 			{
 				var text = "This is a test message";
 				string error = null;
-				if (RimGPTMod.Settings.chatGPTKey != "")
+				if (RimGPTMod.Settings.IsConfigured)
 				{
 					var prompt = "Say something random.";
 					if (persona.personalityLanguage != "-")

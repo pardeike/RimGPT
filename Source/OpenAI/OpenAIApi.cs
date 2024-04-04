@@ -13,35 +13,15 @@ namespace OpenAI
 {
 	public static class OpenAIApi
 	{
-		//private static readonly bool loadApiFromFile = false;
 		public static List<ApiConfig> apiConfigs = ApiTools.GetApiConfigs();
 
-		/// <summary> The current API configuration being used. ApiConfig contains ApiKeys, Endpoints, BaseURLs, Ports and a list of Models for each API Provider.</summary>
-		public static ApiConfig currentConfig = apiConfigs.GetConfig(RimGPTMod.Settings.ApiProviderPrimary);
+		/// <summary> The current API configuration being used. ApiConfig contains ApiKeys, Endpoints, BaseURLs and a list of Models for each API Provider.</summary>
+		public static ApiConfig currentConfig = apiConfigs.FirstOrDefault();
 
 		public static void SwitchConfig(string provider)
 		{
 			currentConfig = apiConfigs.GetConfig(provider);
 		}
-
-		/// <summary>
-		/// Initializes the OpenAIApi with specified API key, organization, and base URL.
-		/// A new Configuration is created if the API key is not provided or empty.
-		/// </summary>
-		//public OpenAIApi(string apiKey, string organization = null, Provider apiProvider = Provider.OpenAI, int? port = null)
-		//{
-		//	if (apiProvider.NeedsApiKey() && string.IsNullOrEmpty(apiKey))
-		//	{
-		//		if (loadApiFromFile)
-		//			apiKey = Configuration.GetApiKeyFromFile();
-
-		//		if (loadApiFromFile == false || apiKey == null)
-		//			Logger.Error($"Api Key for {apiProvider} could not be loaded.");
-		//	}
-
-		//	apiConfig = new ApiConfig(apiProvider, apiKey, organization, port);
-		//	currentConfig.Endpoints = new Endpoints(apiConfig);
-		//}
 
 		public static JsonSerializerSettings settings = Configuration.JsonSerializerSettings;
 
@@ -94,8 +74,6 @@ namespace OpenAI
 			}
 		}
 
-		#region Dispatch Requests
-
 		/// <summary>Dispatches an HTTP request to the specified path with the specified method and optional payload.</summary>
 		/// <param name="path">The path to send the request to.</param>
 		/// <param name="method">The HTTP method to use for the request.</param>
@@ -124,6 +102,8 @@ namespace OpenAI
 				return await ProcessRequest<T>(request, errorCallback);
 			}
 		}
+
+		#region Unused In RimGPT
 
 		/// <summary>Dispatches an HTTP request to the specified path with the specified method and optional payload.</summary>
 		/// <param name="path">The path to send the request to.</param>
@@ -180,7 +160,7 @@ namespace OpenAI
 			}
 		}
 
-		#endregion Dispatch Requests
+		#endregion Unused In RimGPT
 
 		/// <summary>Create byte array payload from the given request object that contains the parameters. </summary>
 		/// <param name="request">The request object that contains the parameters of the payload.</param>
@@ -192,8 +172,6 @@ namespace OpenAI
 				Logger.Error($"Request object cannot be null. Type: {nameof(request)}");
 
 			string json = JsonConvert.SerializeObject(request, settings);
-			//if (Tools.DEBUG) Logger.Message($"Reqeust Payload: {json}"); // TEMP
-			//if (Tools.DEBUG) Logger.Message($"Current Config: {JsonConvert.SerializeObject(currentConfig, settings)}"); // TEMP
 			return Encoding.UTF8.GetBytes(json);
 		}
 
@@ -203,6 +181,8 @@ namespace OpenAI
 			return await DispatchRequest<ListModelsResponse>
 				(currentConfig.Endpoints.ListModels, UnityWebRequest.kHttpVerbGET);
 		}
+
+		#region Unused In RimGPT
 
 		/// <summary>Retrieves a model instance, providing basic information about the model such as the owner and permissioning.</summary>
 		/// <param name="id">The ID of the model to use for this request</param>
@@ -238,17 +218,20 @@ namespace OpenAI
 				(currentConfig.Endpoints.CreateCompletion, UnityWebRequest.kHttpVerbPOST, onResponse, onComplete, token, payload);
 		}
 
+		#endregion Unused In RimGPT
+
 		/// <summary>Creates a chat completion request as in ChatGPT.</summary>
 		/// <param name="request">See <see cref="CreateChatCompletionRequest"/></param>
 		/// <returns>See <see cref="CreateChatCompletionResponse"/></returns>
 		public static async Task<CreateChatCompletionResponse> CreateChatCompletion(CreateChatCompletionRequest request, Action<string> errorCallback)
 		{
-			// if (Tools.DEBUG) Logger.Message($"request: {JsonConvert.SerializeObject(request, settings)}"); // TEMP
 			byte[] payload = CreatePayload(request);
 			var response = await DispatchRequest<CreateChatCompletionResponse>
 				(currentConfig.Endpoints.CreateChatCompletion, UnityWebRequest.kHttpVerbPOST, payload, errorCallback);
 			return response;
 		}
+
+		#region Unused In RimGPT
 
 		/// <summary> Creates a chat completion request as in ChatGPT. </summary>
 		/// <param name="request">See <see cref="CreateChatCompletionRequest"/></param>
@@ -497,5 +480,7 @@ namespace OpenAI
 			return await DispatchRequest<CreateModerationResponse>
 				(currentConfig.Endpoints.CreateModeration, UnityWebRequest.kHttpVerbPOST, payload);
 		}
+
+		#endregion Unused In RimGPT
 	}
 }

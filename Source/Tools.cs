@@ -15,10 +15,9 @@ namespace RimGPT
 {
 	public static class Tools
 	{
-		public static bool DEBUG = false;
+		public static bool DEBUG = true;
 		public static readonly Regex tagRemover = new("<color.+?>(.+?)</(?:color)?>", RegexOptions.Singleline);
-		public static List<string> chatGPTModels = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview"]; // TODO: Remove, is only used to ensure that the settings initialize currently. 
-		public static bool LocalAIEnabled = false;
+		//public static List<string> chatGPTModels = ["gpt-3.5-turbo-0125", "gpt-4-0125-preview"];
 
 		public readonly struct Strings
 		{
@@ -44,36 +43,45 @@ namespace RimGPT
 			return name;
 		}
 
-		public static void UpdateConfigs()
+		public static void UpdateApiConfigs()
 		{
-			OpenAIApi.apiConfigs = ApiTools.GetApiConfigs();
-			// Adding all configuration information from the user settings.
-			OpenAIApi.apiConfigs.UpdateConfig(ApiProvider.OpenAI, apiKey: RimGPTMod.Settings.chatGPTKey);
-			OpenAIApi.apiConfigs.UpdateConfig(ApiProvider.OpenRouter, apiKey: RimGPTMod.Settings.openRouterKey);
-			OpenAIApi.apiConfigs.UpdateConfig(ApiProvider.Ollama, port: RimGPTMod.Settings.ollamaPort);
-			OpenAIApi.apiConfigs.UpdateConfig(ApiProvider.LocalAI, port: RimGPTMod.Settings.localAIPort);
+			// Checks if any userApiConfigs are set, if not, return.
+			if (RimGPTMod.Settings.userApiConfigs == null || RimGPTMod.Settings.userApiConfigs.Any(a => a.Provider.Length > 0) == false) return;
+
+			// If the apiConfigs are null, get the default configs.
+			OpenAIApi.apiConfigs ??= ApiTools.GetApiConfigs();
+
+			// If there's no active config, it defaults to the currentConfig.
+			var activeConfig = OpenAIApi.currentConfig;
+
+			foreach (var userConfig in RimGPTMod.Settings.userApiConfigs.Where(a => a.Provider.Length > 0))
+			{
+				// Update apiConfigs with each userConfig that has a provider chosen.
+				var apiConfig = OpenAIApi.apiConfigs.FirstOrDefault(a => a.Provider.ToString() == userConfig.Provider);
+				apiConfig.Update(userConfig);
+
+				// Set the activeConfig to the userConfig if it's active.
+				activeConfig = userConfig.Active ? apiConfig : activeConfig;
+			}
+			if (activeConfig != null) OpenAIApi.currentConfig = activeConfig; // Sets the OpenAIApi currentConfig to the activeConfig.
 		}
 
 		public static async void ReloadGPTModels()
 		{
-			UpdateConfigs();
-			//if (Tools.DEBUG) Logger.Message(JsonConvert.SerializeObject(OpenAIApi.apiConfigs, Configuration.JsonSerializerSettings)); // TEMP
-			var modelCount = 0;
-			foreach (var apiConfig in OpenAIApi.apiConfigs)
-			{
-				var provider = apiConfig.Provider;
-				// Checks if the provider is listed as needing an API key & the API key is empty. Probably not needed long term.
-				if (provider.NeedsApiKey() && string.IsNullOrEmpty(apiConfig.Key))
-				{
-					Logger.Error($"Api Key for {provider} is blank.");
-					continue;
-				}
+			UpdateApiConfigs();
 
-				// OpenAIApi was modified to accept a list of ApiConfig objects.
+			var modelCount = 0;
+
+			// Stores the currentConfig to reset it after the loop.
+			var currentConfig = OpenAIApi.currentConfig;
+
+			foreach (var apiConfig in OpenAIApi.apiConfigs.Where(a => a.Configured))
+			{
 				OpenAIApi.currentConfig = apiConfig;
 				ListModelsResponse response;
 				try
 				{
+					if (DEBUG) Logger.Message($"Getting List of Models for {apiConfig.Provider} with {JsonConvert.SerializeObject(apiConfig)}");
 					response = await OpenAIApi.ListModels();
 				}
 				catch (Exception ex)
@@ -84,32 +92,19 @@ namespace RimGPT
 				if (DEBUG) Logger.Message($"{apiConfig.Provider} - baseURL: {apiConfig.BaseUrl} Models: {JsonConvert.SerializeObject(response, Configuration.JsonSerializerSettings)}"); // TEMP
 
 				var error = response.Error;
-				if (error != null || response.Data == null)
-					continue;
+				if (error != null || response.Data == null) continue;
 
 				// Sets the list of OpenAIModels to this ApiConfig.
 				apiConfig.Models = response.Data
-					.Where(m => provider != ApiProvider.OpenAI || (m?.Id.StartsWith("gpt") ?? false))
+					.Where(m => apiConfig.Provider != ApiProvider.OpenAI || (m?.Id.StartsWith("gpt") ?? false))
 					.OrderBy(m => m?.Id)
 					.ToList();
 
-				if (apiConfig.IsLocal && apiConfig.Models.Count > 0)
-					LocalAIEnabled = true;
+				if (apiConfig.Models == null) continue;
 
-				// TODO: Remove, not needed with ApiConfig use.
-				var modelListStrings = response.Data
-					.Select(m => m?.Id)
-					.Where(id => provider != ApiProvider.OpenAI || (id?.StartsWith("gpt") ?? false))
-					.OrderBy(id => id)
-					.ToArray();
-
-				modelCount += modelListStrings.Length;
-
-				if (modelListStrings.Length == 0)
-					continue;
-
-				chatGPTModels.AddRange(modelListStrings);
+				modelCount += apiConfig.Models.Count;
 			}
+			OpenAIApi.currentConfig = currentConfig;
 			Logger.Message($"Loaded {modelCount} GPT models");
 		}
 
@@ -123,6 +118,16 @@ namespace RimGPT
 				des.def.description.NonEmpty() ? des.def.description :
 				des.def.defName;
 		}
+
+		public static string FormatNumber(long num) => num switch
+		{
+			>= 1000000000 => (num / 1000000000D).ToString("0.#") + "B",
+			>= 1000000 => (num / 1000000D).ToString("0.#") + "M",
+			>= 100000 => (num / 1000D).ToString("0") + "K",
+			>= 1000 => (num / 1000D).ToString("0.#") + "K",
+			_ => num.ToString()
+		};
+
 
 		public static void SafeAsync(Func<Task> function)
 		{

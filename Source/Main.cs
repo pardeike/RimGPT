@@ -80,8 +80,10 @@ namespace RimGPT
 				Personas.UpdateVoiceInformation();
 				Tools.ReloadGPTModels();
 				if (Settings.IsConfigured)
-					OpenAIApi.SwitchConfig(Settings.ApiProviderPrimary);
+				{
+					Tools.UpdateApiConfigs();
 					Personas.Add("Player has launched Rimworld and is on the start screen", 0);
+				}
 			});
 
 			Application.wantsToQuit += () =>
