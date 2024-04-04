@@ -3,17 +3,10 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-	public class FluentFluentSay : FluentSsml, IFluentSay, ISsmlWriter
+	public class FluentFluentSay(string value, ISsml ssml) : FluentSsml(ssml), IFluentSay, ISsmlWriter
 	{
-		private readonly string _value;
-		private ISsmlWriter _ssmlWriter;
-
-		public FluentFluentSay(string value, ISsml ssml)
-			 : base(ssml)
-		{
-			_value = value;
-			_ssmlWriter = new PlainTextWriter(value);
-		}
+		private readonly string _value = value;
+		private ISsmlWriter _ssmlWriter = new PlainTextWriter(value);
 
 		public async Task WriteAsync(XmlWriter xml)
 		{

@@ -5,15 +5,10 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-	public class BreakWriter : FluentSsml, IBreak, ISsmlWriter
+	public class BreakWriter(ISsml ssml) : FluentSsml(ssml), IBreak, ISsmlWriter
 	{
 		private TimeSpan? _duration;
 		private BreakStrength _strength;
-
-		public BreakWriter(ISsml ssml)
-			 : base(ssml)
-		{
-		}
 
 		public async Task WriteAsync(XmlWriter writer)
 		{

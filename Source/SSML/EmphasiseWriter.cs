@@ -4,16 +4,10 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-	public class EmphasiseWriter : ISsmlWriter
+	public class EmphasiseWriter(ISsmlWriter innerWriter, EmphasiseLevel emphasiseLevel) : ISsmlWriter
 	{
-		private readonly ISsmlWriter _innerWriter;
-		private readonly EmphasiseLevel _emphasiseLevel;
-
-		public EmphasiseWriter(ISsmlWriter innerWriter, EmphasiseLevel emphasiseLevel)
-		{
-			_innerWriter = innerWriter;
-			_emphasiseLevel = emphasiseLevel;
-		}
+		private readonly ISsmlWriter _innerWriter = innerWriter;
+		private readonly EmphasiseLevel _emphasiseLevel = emphasiseLevel;
 
 		private static readonly IReadOnlyDictionary<EmphasiseLevel, string> EmphasiseAttributeValueMap =
 			 new Dictionary<EmphasiseLevel, string>()

@@ -3,7 +3,6 @@ using OpenAI;
 using RimWorld;
 using Steamworks;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -46,7 +45,8 @@ namespace RimGPT
 		public static void UpdateApiConfigs()
 		{
 			// Checks if any userApiConfigs are set, if not, return.
-			if (RimGPTMod.Settings.userApiConfigs == null || RimGPTMod.Settings.userApiConfigs.Any(a => a.Provider.Length > 0) == false) return;
+			if (RimGPTMod.Settings.userApiConfigs == null || RimGPTMod.Settings.userApiConfigs.Any(a => a.Provider.Length > 0) == false)
+				return;
 
 			// If the apiConfigs are null, get the default configs.
 			OpenAIApi.apiConfigs ??= ApiTools.GetApiConfigs();
@@ -63,7 +63,8 @@ namespace RimGPT
 				// Set the activeConfig to the userConfig if it's active.
 				activeConfig = userConfig.Active ? apiConfig : activeConfig;
 			}
-			if (activeConfig != null) OpenAIApi.currentConfig = activeConfig; // Sets the OpenAIApi currentConfig to the activeConfig.
+			if (activeConfig != null)
+				OpenAIApi.currentConfig = activeConfig; // Sets the OpenAIApi currentConfig to the activeConfig.
 		}
 
 		public static async void ReloadGPTModels()
@@ -81,7 +82,8 @@ namespace RimGPT
 				ListModelsResponse response;
 				try
 				{
-					if (DEBUG) Logger.Message($"Getting List of Models for {apiConfig.Provider} with {JsonConvert.SerializeObject(apiConfig)}");
+					if (DEBUG)
+						Logger.Message($"Getting List of Models for {apiConfig.Provider} with {JsonConvert.SerializeObject(apiConfig)}");
 					response = await OpenAIApi.ListModels();
 				}
 				catch (Exception ex)
@@ -89,18 +91,20 @@ namespace RimGPT
 					Logger.Error($"Error getting List of Models: {ex.Message}");
 					continue;
 				}
-				if (DEBUG) Logger.Message($"{apiConfig.Provider} - baseURL: {apiConfig.BaseUrl} Models: {JsonConvert.SerializeObject(response, Configuration.JsonSerializerSettings)}"); // TEMP
+				if (DEBUG)
+					Logger.Message($"{apiConfig.Provider} - baseURL: {apiConfig.BaseUrl} Models: {JsonConvert.SerializeObject(response, Configuration.JsonSerializerSettings)}"); // TEMP
 
 				var error = response.Error;
-				if (error != null || response.Data == null) continue;
+				if (error != null || response.Data == null)
+					continue;
 
 				// Sets the list of OpenAIModels to this ApiConfig.
-				apiConfig.Models = response.Data
+				apiConfig.Models = [.. response.Data
 					.Where(m => apiConfig.Provider != ApiProvider.OpenAI || (m?.Id.StartsWith("gpt") ?? false))
-					.OrderBy(m => m?.Id)
-					.ToList();
+					.OrderBy(m => m?.Id)];
 
-				if (apiConfig.Models == null) continue;
+				if (apiConfig.Models == null)
+					continue;
 
 				modelCount += apiConfig.Models.Count;
 			}

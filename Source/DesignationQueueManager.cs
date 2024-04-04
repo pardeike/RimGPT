@@ -7,8 +7,7 @@ namespace RimGPT
 {
 	public static class DesignationQueueManager
 	{
-		private static Dictionary<(OrderType orderType, string workOrderVerb, string targetObject), int> designationCounts
-	= new Dictionary<(OrderType orderType, string workOrderVerb, string targetObject), int>();
+		private static readonly Dictionary<(OrderType orderType, string workOrderVerb, string targetObject), int> designationCounts = [];
 
 		private static readonly int threshold = 90; // Threshold for sending messages
 		private static readonly int timeLimitTicks = 600; // Time limit in game ticks (600 ticks = 10 seconds)
@@ -30,7 +29,7 @@ namespace RimGPT
 					FlushQueue();
 				}
 			}
-			  catch (Exception ex)
+			catch (Exception ex)
 			{
 				Log.Error($"An error occurred during the updating of DesignationQueueManager {ex}");
 			}
@@ -117,8 +116,8 @@ namespace RimGPT
 	}
 	public static class OrderTypeExtensions
 	{
-		private static readonly Dictionary<OrderType, string> orderTypeStringMapping = new Dictionary<OrderType, string>
-	{
+		private static readonly Dictionary<OrderType, string> orderTypeStringMapping = new()
+		{
 		{ OrderType.Designate, "designated" },
 		{ OrderType.Cancel, "cancelled" }
 	};

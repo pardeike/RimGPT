@@ -84,23 +84,21 @@ namespace OpenAI
 		/// <returns>A Task containing the response from the request as the specified type.</returns>
 		private static async Task<T> DispatchRequest<T>(string path, string method, byte[] payload = null, Action<string> errorCallback = null, List<IMultipartFormSection> form = null) where T : IResponse
 		{
-			using (UnityWebRequest request = new UnityWebRequest(path, method))
+			using UnityWebRequest request = new UnityWebRequest(path, method);
+			request.SetHeaders(currentConfig, ContentType.ApplicationJson);
+			request.downloadHandler = new DownloadHandlerBuffer();
+
+			if (payload != null)
+				request.uploadHandler = new UploadHandlerRaw(payload) { contentType = ContentType.ApplicationJson };
+
+			if (form != null)
 			{
-				request.SetHeaders(currentConfig, ContentType.ApplicationJson);
-				request.downloadHandler = new DownloadHandlerBuffer();
-
-				if (payload != null)
-					request.uploadHandler = new UploadHandlerRaw(payload) { contentType = ContentType.ApplicationJson };
-
-				if (form != null)
-				{
-					byte[] boundary = UnityWebRequest.GenerateBoundary();
-					byte[] formSections = UnityWebRequest.SerializeFormSections(form, boundary);
-					string contentType = $"{ContentType.MultipartFormData}; boundary={Encoding.UTF8.GetString(boundary)}";
-					request.uploadHandler = new UploadHandlerRaw(formSections) { contentType = contentType };
-				}
-				return await ProcessRequest<T>(request, errorCallback);
+				byte[] boundary = UnityWebRequest.GenerateBoundary();
+				byte[] formSections = UnityWebRequest.SerializeFormSections(form, boundary);
+				string contentType = $"{ContentType.MultipartFormData}; boundary={Encoding.UTF8.GetString(boundary)}";
+				request.uploadHandler = new UploadHandlerRaw(formSections) { contentType = contentType };
 			}
+			return await ProcessRequest<T>(request, errorCallback);
 		}
 
 		#region Unused In RimGPT
@@ -115,49 +113,47 @@ namespace OpenAI
 		/// <param name="errorCallback">Action to call in case of an error.</param>
 		private static async Task DispatchRequest<T>(string path, string method, Action<List<T>> onResponse, Action onComplete, CancellationTokenSource token, byte[] payload = null, Action<string> errorCallback = null) where T : IResponse
 		{
-			using (UnityWebRequest request = UnityWebRequest.Put(path, payload))
+			using UnityWebRequest request = UnityWebRequest.Put(path, payload);
+			request.method = method;
+			request.SetHeaders(currentConfig, ContentType.ApplicationJson);
+
+			UnityWebRequestAsyncOperation asyncOperation = request.SendWebRequest();
+
+			do
 			{
-				request.method = method;
-				request.SetHeaders(currentConfig, ContentType.ApplicationJson);
+				List<T> dataList = [];
+				string[] lines = request.downloadHandler.text.Split('\n').Where(line => line != "").ToArray();
 
-				UnityWebRequestAsyncOperation asyncOperation = request.SendWebRequest();
-
-				do
+				foreach (string line in lines)
 				{
-					List<T> dataList = new List<T>();
-					string[] lines = request.downloadHandler.text.Split('\n').Where(line => line != "").ToArray();
+					string value = line.Replace("data: ", "");
 
-					foreach (string line in lines)
+					if (value.Contains("[DONE]"))
 					{
-						string value = line.Replace("data: ", "");
-
-						if (value.Contains("[DONE]"))
-						{
-							onComplete?.Invoke();
-							break;
-						}
-
-						T data = JsonConvert.DeserializeObject<T>(value, settings);
-
-						if (data?.Error != null)
-						{
-							ApiError apiError = data.Error;
-							string error = $"Error Message: {apiError.Message}\nError Type: {apiError.Type}\n";
-							errorCallback.Invoke(error);
-						}
-						else
-						{
-							dataList.Add(data);
-						}
+						onComplete?.Invoke();
+						break;
 					}
-					onResponse?.Invoke(dataList);
 
-					await Task.Yield();
+					T data = JsonConvert.DeserializeObject<T>(value, settings);
+
+					if (data?.Error != null)
+					{
+						ApiError apiError = data.Error;
+						string error = $"Error Message: {apiError.Message}\nError Type: {apiError.Type}\n";
+						errorCallback.Invoke(error);
+					}
+					else
+					{
+						dataList.Add(data);
+					}
 				}
-				while (!asyncOperation.isDone && !token.IsCancellationRequested);
+				onResponse?.Invoke(dataList);
 
-				onComplete?.Invoke();
+				await Task.Yield();
 			}
+			while (!asyncOperation.isDone && !token.IsCancellationRequested);
+
+			onComplete?.Invoke();
 		}
 
 		#endregion Unused In RimGPT
@@ -273,7 +269,7 @@ namespace OpenAI
 		/// <returns>See <see cref="CreateImageResponse"/></returns>
 		public static async Task<CreateImageResponse> CreateImageEdit(CreateImageEditRequest request)
 		{
-			List<IMultipartFormSection> form = new List<IMultipartFormSection>();
+			List<IMultipartFormSection> form = [];
 			form.AddFile(request.Image, "image", "image/png");
 			form.AddFile(request.Mask, "mask", "image/png");
 			form.AddValue(request.Prompt, "prompt");
@@ -290,7 +286,7 @@ namespace OpenAI
 		/// <returns>See <see cref="CreateImageResponse"/></returns>
 		public static async Task<CreateImageResponse> CreateImageVariation(CreateImageVariationRequest request)
 		{
-			List<IMultipartFormSection> form = new List<IMultipartFormSection>();
+			List<IMultipartFormSection> form = [];
 			form.AddFile(request.Image, "image", "image/png");
 			form.AddValue(request.N, "n");
 			form.AddValue(request.Size, "size");
@@ -316,7 +312,7 @@ namespace OpenAI
 		/// <returns>See <see cref="CreateAudioResponse"/></returns>
 		public static async Task<CreateAudioResponse> CreateAudioTranscription(CreateAudioTranscriptionsRequest request)
 		{
-			List<IMultipartFormSection> form = new List<IMultipartFormSection>();
+			List<IMultipartFormSection> form = [];
 			if (string.IsNullOrEmpty(request.File))
 			{
 				form.AddData(request.FileData, "file", $"audio/{Path.GetExtension(request.File)}");
@@ -340,7 +336,7 @@ namespace OpenAI
 		/// <returns>See <see cref="CreateAudioResponse"/></returns>
 		public static async Task<CreateAudioResponse> CreateAudioTranslation(CreateAudioTranslationRequest request)
 		{
-			List<IMultipartFormSection> form = new List<IMultipartFormSection>();
+			List<IMultipartFormSection> form = [];
 			if (string.IsNullOrEmpty(request.File))
 			{
 				form.AddData(request.FileData, "file", $"audio/{Path.GetExtension(request.File)}");
@@ -375,7 +371,7 @@ namespace OpenAI
 		/// <returns>See <see cref="OpenAIFile"/></returns>
 		public static async Task<OpenAIFile> CreateFile(CreateFileRequest request)
 		{
-			List<IMultipartFormSection> form = new List<IMultipartFormSection>();
+			List<IMultipartFormSection> form = [];
 			form.AddFile(request.File, "file", "application/json");
 			form.AddValue(request.Purpose, "purpose");
 

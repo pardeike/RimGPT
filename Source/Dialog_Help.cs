@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using Verse;
 
@@ -7,7 +6,7 @@ namespace RimGPT
 {
 	public class Dialog_Help : Window
 	{
-		private HelpType helpType;
+		private readonly HelpType helpType;
 		private Vector2 dialogSize = new(640f, 520f);
 
 		private static readonly Dictionary<DialogSize, Vector2> dialogSizes = new()

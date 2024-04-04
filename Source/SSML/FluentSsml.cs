@@ -3,15 +3,9 @@ using System.Threading.Tasks;
 
 namespace Kevsoft.Ssml
 {
-	public abstract class FluentSsml : ISsml
+	public abstract class FluentSsml(ISsml inner) : ISsml
 	{
-		private readonly ISsml _inner;
-
-		protected FluentSsml(ISsml inner)
-		{
-			_inner = inner;
-		}
-
+		private readonly ISsml _inner = inner;
 
 		IFluentSay ISsml.Say(string value)
 		{

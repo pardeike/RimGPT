@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using Verse;
 
@@ -13,9 +12,9 @@ namespace RimGPT
 		public static ConcurrentQueue<SpeechJob> speechQueue = new();
 		public static string currentText = "";
 		public static Persona currentSpeakingPersona = null;
-		private static OrderedHashSet<Phrase> allPhrases = new OrderedHashSet<Phrase>();
+		private static readonly OrderedHashSet<Phrase> allPhrases = [];
 		public static Persona lastSpeakingPersona = null;
-		private static readonly object resetLock = new object();
+		private static readonly object resetLock = new();
 		public static bool isResetting = false;
 
 		static Personas()
@@ -46,7 +45,8 @@ namespace RimGPT
 		{
 			lock (allPhrases)
 			{
-				if (isResetting) return;
+				if (isResetting)
+					return;
 
 				// Chroniclers get all phrases regardless
 				foreach (var chronicler in RimGPTMod.Settings.personas.Where(p => p.isChronicler))
@@ -54,7 +54,8 @@ namespace RimGPT
 					// Transfer all available phrases to each chronicler
 					foreach (var phrase in allPhrases)
 					{
-						if (!chronicler.phrases.Contains(phrase)) chronicler.AddPhrase(phrase);
+						if (!chronicler.phrases.Contains(phrase))
+							chronicler.AddPhrase(phrase);
 					}
 				}
 
@@ -81,7 +82,8 @@ namespace RimGPT
 
 				foreach (var phrase in allPhrases)
 				{
-					if (!nextPersona.phrases.Contains(phrase)) nextPersona.AddPhrase(phrase);
+					if (!nextPersona.phrases.Contains(phrase))
+						nextPersona.AddPhrase(phrase);
 				}
 
 				// add the high priority ones to all personas last, so its most recent
@@ -89,11 +91,13 @@ namespace RimGPT
 				var highPriorityPhrases = allPhrases.Where(p => p.priority >= 4).ToList();
 				foreach (var persona in RimGPTMod.Settings.personas)
 				{
-					if (persona.isChronicler) break;
+					if (persona.isChronicler)
+						break;
 
 					foreach (var phrase in highPriorityPhrases)
 					{
-						if (!persona.phrases.Contains(phrase)) nextPersona.AddPhrase(phrase);
+						if (!persona.phrases.Contains(phrase))
+							nextPersona.AddPhrase(phrase);
 					}
 				}
 
@@ -110,7 +114,8 @@ namespace RimGPT
 						persona = lastSpeaker,
 						priority = 1
 					};
-					if (!nextPersona.phrases.Contains(lastSpokenPhrase) && !string.IsNullOrEmpty(lastSpeaker.lastSpokenText)) nextPersona.AddPhrase(lastSpokenPhrase);
+					if (!nextPersona.phrases.Contains(lastSpokenPhrase) && !string.IsNullOrEmpty(lastSpeaker.lastSpokenText))
+						nextPersona.AddPhrase(lastSpokenPhrase);
 
 				}
 			}
@@ -127,7 +132,8 @@ namespace RimGPT
 			Logger.Message(phrase.ToString());
 			lock (allPhrases)
 			{
-				if (allPhrases.Contains(phrase)) return;
+				if (allPhrases.Contains(phrase))
+					return;
 
 				allPhrases.Add(phrase);
 			}
@@ -186,7 +192,7 @@ namespace RimGPT
 
 		public static void UpdateVoiceInformation()
 		{
-			TTS.voices = new Voice[0];
+			TTS.voices = [];
 			if (RimGPTMod.Settings.azureSpeechKey == "" || RimGPTMod.Settings.azureSpeechRegion == "")
 				return;
 

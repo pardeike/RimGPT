@@ -4,17 +4,11 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-	public class FluentSayTime : IFluentSayTime, ISsmlWriter
+	public class FluentSayTime(ISsml ssml, TimeSpan value) : IFluentSayTime, ISsmlWriter
 	{
-		private readonly ISsml _ssml;
-		private readonly TimeSpan _value;
+		private readonly ISsml _ssml = ssml;
+		private readonly TimeSpan _value = value;
 		private TimeFormat _format;
-
-		public FluentSayTime(ISsml ssml, TimeSpan value)
-		{
-			_ssml = ssml;
-			_value = value;
-		}
 
 		public ISsml In(TimeFormat format)
 		{

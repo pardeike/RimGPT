@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
 using UnityEngine;
 using Verse;
 
@@ -35,7 +34,7 @@ namespace RimGPT
 		}
 
 		private float FrequencyPenalty { get; set; } = 0.5f;
-		private int maxRetries = 3;
+		private readonly int maxRetries = 3;
 		struct Output
 		{
 			public string ResponseText { get; set; }
@@ -45,7 +44,7 @@ namespace RimGPT
 
 		// OpenAIApi is now a static object, the ApiConfig details are added by ReloadGPTModels.
 		//public OpenAIApi OpenAI => new(RimGPTMod.Settings.chatGPTKey);
-		private List<string> history = new List<string>();
+		private List<string> history = [];
 
 		public const string defaultPersonality = "You are a commentator watching the player play the popular game, Rimworld.";
 
@@ -105,15 +104,18 @@ namespace RimGPT
 		private string GetCurrentChatGPTModel()
 		{
 			Tools.UpdateApiConfigs();
-			if (RimGPTMod.Settings.userApiConfigs == null || RimGPTMod.Settings.userApiConfigs.Any(a => a.Active) == false) return "";
+			if (RimGPTMod.Settings.userApiConfigs == null || RimGPTMod.Settings.userApiConfigs.Any(a => a.Active) == false)
+				return "";
 
 			var activeUserConfig = RimGPTMod.Settings.userApiConfigs.FirstOrDefault(a => a.Active);
 			OpenAIApi.SwitchConfig(activeUserConfig.Provider);
 
 
-			if (activeUserConfig.ModelId?.Length == 0) return "";
+			if (activeUserConfig.ModelId?.Length == 0)
+				return "";
 
-			if (!activeUserConfig.UseSecondaryModel || activeUserConfig.SecondaryModelId?.Length == 0) return activeUserConfig.ModelId;
+			if (!activeUserConfig.UseSecondaryModel || activeUserConfig.SecondaryModelId?.Length == 0)
+				return activeUserConfig.ModelId;
 
 			modelSwitchCounter++;
 
@@ -121,12 +123,14 @@ namespace RimGPT
 			{
 				modelSwitchCounter = 0;
 
-				if (Tools.DEBUG) Logger.Message("Switching to secondary model"); // TEMP
+				if (Tools.DEBUG)
+					Logger.Message("Switching to secondary model"); // TEMP
 				return activeUserConfig.SecondaryModelId;
 			}
 			else
 			{
-				if (Tools.DEBUG) Logger.Message("Switching to primary model"); // TEMP
+				if (Tools.DEBUG)
+					Logger.Message("Switching to primary model"); // TEMP
 				return activeUserConfig.ModelId;
 			}
 		}
@@ -202,7 +206,8 @@ namespace RimGPT
 
 					// cheap imperfect heuristic to not include activities from the previous game.
 					// the start screen is not that valueable for context anyway.  its the start screen.
-					if (gameInput.ActivityFeed.Count > 0) gameInput.ActivityFeed = ["The player restarted the game"];
+					if (gameInput.ActivityFeed.Count > 0)
+						gameInput.ActivityFeed = ["The player restarted the game"];
 					gameInput.ColonyRoster = [];
 					gameInput.ColonySetting = "The player restarted the game";
 					gameInput.ResearchSummary = "";
@@ -308,7 +313,8 @@ namespace RimGPT
 
 					// Ideally we would want the last two things and call this sooner, but MEH.  
 					FrequencyPenalty = CalculateFrequencyPenaltyBasedOnLevenshteinDistance(persona.lastSpokenText, responseText);
-					if (FrequencyPenalty == 2 && retry < maxRetries) return await Evaluate(persona, observations, ++retry, "repetitive");
+					if (FrequencyPenalty == 2 && retry < maxRetries)
+						return await Evaluate(persona, observations, ++retry, "repetitive");
 
 					// we're not repeating ourselves again.
 					if (FrequencyPenalty == 2)
@@ -389,7 +395,8 @@ namespace RimGPT
 			}, e => requestError = e);
 			currentUserConfig.CharactersSent += input.Length;
 
-			if (userApiConfig != null) OpenAIApi.currentConfig = currentConfig;
+			if (userApiConfig != null)
+				OpenAIApi.currentConfig = currentConfig;
 
 			if (completionResponse.Choices?.Count > 0)
 			{

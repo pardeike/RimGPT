@@ -99,7 +99,7 @@ namespace RimGPT
 	{
 		public static string APIURL => $"https://{RimGPTMod.Settings.azureSpeechRegion}.tts.speech.microsoft.com/cognitiveservices";
 
-		public static Voice[] voices = new Voice[0];
+		public static Voice[] voices = [];
 
 		public static AudioSource audioSource = null;
 

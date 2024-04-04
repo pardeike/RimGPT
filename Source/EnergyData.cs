@@ -8,8 +8,8 @@ namespace RimGPT
 {
 	public class EnergyData
 	{
-		public List<EnergyProducer> Producers { get; set; } = new List<EnergyProducer>();
-		public List<EnergyConsumer> Consumers { get; set; } = new List<EnergyConsumer>();
+		public List<EnergyProducer> Producers { get; set; } = [];
+		public List<EnergyConsumer> Consumers { get; set; } = [];
 		public float TotalPowerGenerated { get; set; }
 		public float TotalPowerNeeded { get; set; }
 		public string PowerStatus { get; set; }

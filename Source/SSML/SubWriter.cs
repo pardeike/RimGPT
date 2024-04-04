@@ -3,16 +3,10 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-	public class SubWriter : ISsmlWriter
+	public class SubWriter(ISsmlWriter innerWriter, string alias) : ISsmlWriter
 	{
-		private readonly ISsmlWriter _innerWriter;
-		private readonly string _alias;
-
-		public SubWriter(ISsmlWriter innerWriter, string alias)
-		{
-			_innerWriter = innerWriter;
-			_alias = alias;
-		}
+		private readonly ISsmlWriter _innerWriter = innerWriter;
+		private readonly string _alias = alias;
 
 		public async Task WriteAsync(XmlWriter writer)
 		{

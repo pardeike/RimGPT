@@ -72,7 +72,7 @@ namespace OpenAI
 
 		public List<OpenAIModel> Models
 		{
-			get => _models;
+			readonly get => _models;
 			set
 			{
 				_models = value;
@@ -262,15 +262,15 @@ namespace OpenAI
 		public string SystemFingerprint { get; set; }
 
 		// Converts Ollama messages to Choices.
-		private ChatMessage _message { get; set; }
+		private ChatMessage message;
 
 		public ChatMessage Message
 		{
-			get => _message;
+			readonly get => message;
 			set
 			{
-				_message = value;
-				Choices = [new() { Message = _message }];
+				message = value;
+				Choices = [new() { Message = message }];
 			}
 		}
 	}
@@ -457,8 +457,8 @@ namespace OpenAI
 		public string Url { get; set; }
 		public string B64Json { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public string revised_prompt { get; set; }
+		[JsonProperty("revised_prompt", NullValueHandling = NullValueHandling.Ignore)]
+		public string RevisedPrompt { get; set; }
 	}
 
 	#endregion Images API Data Types

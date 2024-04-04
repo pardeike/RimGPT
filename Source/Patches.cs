@@ -1,4 +1,4 @@
-﻿﻿using HarmonyLib;
+﻿using HarmonyLib;
 using RimWorld;
 using RimWorld.Planet;
 using System;
@@ -537,9 +537,12 @@ namespace RimGPT
 		//
 		public static string GetPawnType(Pawn pawn)
 		{
-			if (pawn.IsColonist) return "colonist";
-			if (pawn.IsPrisoner) return "prisoner";
-			if (pawn.IsSlave) return "slave";
+			if (pawn.IsColonist)
+				return "colonist";
+			if (pawn.IsPrisoner)
+				return "prisoner";
+			if (pawn.IsSlave)
+				return "slave";
 			return "visitor";
 		}
 	}
@@ -677,7 +680,7 @@ namespace RimGPT
 	[HarmonyPatch(typeof(GenConstruct), nameof(GenConstruct.PlaceBlueprintForBuild))]
 	public static class GenConstruct_PlaceBlueprintForBuild_Patch
 	{
-		public static void Postfix(BuildableDef sourceDef, IntVec3 center, Map map, Rot4 rotation, Faction faction, ThingStyleDef styleDef, ref ThingDef stuff)
+		public static void Postfix(BuildableDef sourceDef, IntVec3 center, Map map)
 		{
 			Blueprint blueprint = map.thingGrid.ThingAt<Blueprint>(center);
 
@@ -734,11 +737,12 @@ namespace RimGPT
 		public static void Postfix(Job job, Pawn_JobTracker __instance)
 		{
 			Pawn pawn = __instance.pawn;
-			if (pawn == null || job?.def == null) return; // Safety check for null references
+			if (pawn == null || job?.def == null)
+				return; // Safety check for null references
 
 			string targetLabels = GetTargetLabels(job);
 
-			List<string> queueList = new List<string>();
+			List<string> queueList = [];
 			if (job.targetQueueA != null && job.targetQueueA.Count > 0)
 				queueList.Add("A");
 			if (job.targetQueueB != null && job.targetQueueB.Count > 0)
@@ -764,7 +768,7 @@ namespace RimGPT
 
 		private static string GetTargetLabels(Job job)
 		{
-			List<string> labels = new List<string>();
+			List<string> labels = [];
 
 			try
 			{
@@ -826,7 +830,8 @@ namespace RimGPT
 
 					// Ensuring pawn reference is not null before accessing its properties.
 					Pawn pawn = __instance.pawn;
-					if (pawn == null) return;
+					if (pawn == null)
+						return;
 
 					string pawnName = pawn.LabelShort.CapitalizeFirst();
 

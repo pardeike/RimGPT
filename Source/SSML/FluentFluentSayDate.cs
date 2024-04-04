@@ -5,16 +5,10 @@ using System.Xml;
 
 namespace Kevsoft.Ssml
 {
-	public class FluentFluentSayDate : FluentSsml, IFluentSayDate, ISsmlWriter
+	public class FluentFluentSayDate(ISsml ssml, DateTime date) : FluentSsml(ssml), IFluentSayDate, ISsmlWriter
 	{
 		private DateFormat _dateFormat;
-		private readonly DateTime _date;
-
-		public FluentFluentSayDate(ISsml ssml, DateTime date)
-			 : base(ssml)
-		{
-			_date = date;
-		}
+		private readonly DateTime _date = date;
 
 		public ISsml As(DateFormat dateFormat)
 		{

@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using OpenAI;
+﻿using OpenAI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +10,6 @@ namespace RimGPT
 {
 	public partial class RimGPTSettings : ModSettings
 	{
-#pragma warning disable S1104 // Fields should not have public accessibility
 		public List<Persona> personas =
 		[
 			new Persona()
@@ -126,8 +124,6 @@ namespace RimGPT
 		public int reportRoomStatusFrequency = 60000;
 		public bool reportRoomStatusImmediate = false;
 		// ------------------------------------
-
-#pragma warning restore S1104 // Fields should not have public accessibility
 
 		public override void ExposeData()
 		{
