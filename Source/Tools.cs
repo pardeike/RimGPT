@@ -15,7 +15,7 @@ namespace RimGPT
 {
 	public static class Tools
 	{
-		public static bool DEBUG = true;
+		public static bool DEBUG = false;
 		public static readonly Regex tagRemover = new("<color.+?>(.+?)</(?:color)?>", RegexOptions.Singleline);
 		//public static List<string> chatGPTModels = ["gpt-3.5-turbo-0125", "gpt-4-0125-preview"];
 
