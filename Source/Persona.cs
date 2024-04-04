@@ -186,7 +186,7 @@ namespace RimGPT
 
 		public void ExtendWaitBeforeNextJob(string reason)
 		{
-			Log.Message($"Skipping {this.name}: {reason}");
+			Logger.Message($"Skipping {this.name}: {reason}");
 			timesSkipped++;
 			var secs = Rand.Range(phraseDelayMin, phraseDelayMax);
 			nextPhraseTime = DateTime.Now.AddSeconds(secs);

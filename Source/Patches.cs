@@ -669,14 +669,14 @@ namespace RimGPT
 		[HarmonyPrefix, HarmonyPatch(nameof(Designator_Cancel.DesignateSingleCell))]
 		public static void PrefixForDesignateSingleCell(IntVec3 c)
 		{
-			//Log.Message($"track cancel cell at  {c}");
+			//Logger.Message($"track cancel cell at  {c}");
 			DesignationHelpers.TrackCancelCell(c);
 		}
 
 		[HarmonyPrefix, HarmonyPatch(nameof(Designator_Cancel.DesignateThing))]
 		public static void PrefixForDesignateThing(Thing t)
 		{
-			//Log.Message($"track cancel thing  {t}");
+			//Logger.Message($"track cancel thing  {t}");
 			DesignationHelpers.TrackCancelThing(t);
 		}
 	}

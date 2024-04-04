@@ -31,7 +31,7 @@ namespace RimGPT
 			}
 			catch (Exception ex)
 			{
-				Log.Error($"An error occurred during the updating of DesignationQueueManager {ex}");
+				Logger.Error($"An error occurred during the updating of DesignationQueueManager {ex}");
 			}
 		}
 		public static void FlushQueue(bool forceFlush = false)
@@ -78,7 +78,7 @@ namespace RimGPT
 			}
 			catch (Exception ex)
 			{
-				Log.Error($"An error occurred while flushing the queue in DesignationQueueManager {ex}");
+				Logger.Error($"An error occurred while flushing the queue in DesignationQueueManager {ex}");
 			}
 		}
 
@@ -104,7 +104,7 @@ namespace RimGPT
 			}
 			catch (Exception ex)
 			{
-				Log.Error($"An error occurred while enqueuing a designation in DesignationQueueManager {ex}");
+				Logger.Error($"An error occurred while enqueuing a designation in DesignationQueueManager {ex}");
 			}
 		}
 	}

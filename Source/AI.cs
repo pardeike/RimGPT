@@ -255,7 +255,7 @@ namespace RimGPT
 			};
 
 			if (Tools.DEBUG)
-				Log.Warning($"INPUT: {JsonConvert.SerializeObject(request, settings)}");
+				Logger.Warning($"INPUT: {JsonConvert.SerializeObject(request, settings)}");
 
 			var completionResponse = await OpenAIApi.CreateChatCompletion(request, error => Logger.Error(error));
 			activeConfig.CharactersSent += systemPrompt.Length + input.Length;
