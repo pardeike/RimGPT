@@ -82,7 +82,7 @@ namespace RimGPT
 																				: "Unless otherwise specified, interact reflecting your unique personality, embracing an improvisational approach based on your background, the current situation, and others' actions",
 						$"Unless otherwise specified, ", otherObservers.Any() ? $"your fellow observers are {otherObservers}. " : "",
 						$"Unless otherwise specified, ",(otherObservers.Any() ? $"you are all watching " : "You are watching") + $"'{player}' play Rimworld.\n",
-						$"Your role/personality: {currentPersona.personality}\n",
+						$"Your role/personality: {currentPersona.personality.Replace("PLAYERNAME", player)}\n",
 						$"Your input comes from the current game and will be json like this: {exampleInput}\n",
 						$"Your output must only be in json like this: {exampleOutput}\n",
 						$"Limit ResponseText to no more than {currentPersona.phraseMaxWordCount} words.\n",
