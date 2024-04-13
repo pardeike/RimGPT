@@ -9,6 +9,6 @@ Powered by
 - [OpenAI](https://openai.com)
 - [Microsoft Azure](https://azure.microsoft.com)
 
-**Note: There are currently no plans to adapt this to anything other than the APIs of OpenAI and Azure Speech Services.**
+**Note: Using any other service, especially local AI is making the experience worse. You've been warned.**
 
 (c) 2023 Andreas Pardeike, Matt McFarland and Steven Dickinson
