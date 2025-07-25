@@ -182,7 +182,7 @@ namespace RimGPT
 			{
 				if (windowStack.focusedWindow is not Page page || page == null)
 				{
-					if (WorldRendererUtility.WorldRenderedNow)
+					if (WorldRendererUtility.WorldRendered)
 						gameInput.CurrentWindow = "The player is selecting the start site";
 					else
 						gameInput.CurrentWindow = "The player is at the start screen";
