@@ -4,7 +4,7 @@
 		<ModName>RimGPT</ModName>
 		<ModFileName>RimGPT</ModFileName>
 		<Repository>https://github.com/pardeike/RimGPT</Repository>
-		<ModVersion>2.1.0.0</ModVersion>
+		<ModVersion>2.2.0.0</ModVersion>
 		<ProjectGuid>{1C3E372A-16D1-47D7-865E-BAB22551B035}</ProjectGuid>
 	</PropertyGroup>
 
