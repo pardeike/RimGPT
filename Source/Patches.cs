@@ -296,11 +296,11 @@ namespace RimGPT
 		public static void Postfix(WITab_Terrain __instance)
 		{
 			var selTile = __instance.SelTile;
-			var selTileID = __instance.SelTileID;
+			var selPlanetTile = __instance.SelPlanetTile;
 			var type = selTile.biome.LabelCap.ToString();
 			var hills = selTile.hilliness.GetLabelCap();
-			var stones = (from rt in Find.World.NaturalRockTypesIn(selTileID) select rt.label).ToCommaList(true, false).CapitalizeFirst();
-			var grow = Zone_Growing.GrowingQuadrumsDescription(selTileID);
+			var stones = (from rt in Find.World.NaturalRockTypesIn(selPlanetTile) select rt.label).ToCommaList(true, false).CapitalizeFirst();
+			var grow = Zone_Growing.GrowingQuadrumsDescription(selPlanetTile);
 			var description = $"{type}, {hills}, {stones}, growing: {grow}";
 			Differ.IfChangedPersonasAdd("starting-tile", description, "Player changed the starting tile to '{VALUE}'", 2);
 		}

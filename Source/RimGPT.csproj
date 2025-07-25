@@ -6,7 +6,7 @@
 		<TargetFramework>net472</TargetFramework>
 		<LangVersion>latest</LangVersion>
 		<PlatformTarget>x64</PlatformTarget>
-		<OutputPath>..\Assemblies\</OutputPath>
+		<OutputPath>..\1.6\Assemblies\</OutputPath>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 		<Version>$(ModVersion)</Version>
@@ -54,8 +54,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="Brrainz.RimWorld.CrossPromotion" Version="1.1.2" />
-		<PackageReference Include="Krafs.Rimworld.Ref" Version="1.5.4063" GeneratePathProperty="true" />
-		<PackageReference Include="Lib.Harmony" Version="2.3.3" ExcludeAssets="runtime" />
+		<PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4528" GeneratePathProperty="true" />
+		<PackageReference Include="Lib.Harmony" Version="2.3.6" ExcludeAssets="runtime" />
 		<PackageReference Include="Microsoft.NETCore.Platforms" Version="7.0.4" />
 		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3">
 			<PrivateAssets>all</PrivateAssets>
