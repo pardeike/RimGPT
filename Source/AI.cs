@@ -43,6 +43,7 @@ namespace RimGPT
 #pragma warning restore CS0649
 
 		private List<string> history = [];
+		private readonly object historyLock = new();
 
 		public const string defaultPersonality = "You are a commentator watching the player play the popular game, Rimworld.";
 
@@ -216,19 +217,28 @@ namespace RimGPT
 			}
 
 			var systemPrompt = SystemPrompt(persona);
-			if (FrequencyPenalty > 1)
+			List<string> historyCopy;
+			lock (historyLock)
 			{
-				systemPrompt += "\nNOTE: You're being too repetitive, you need to review the data you have and come up with something new.";
-				systemPrompt += $"\nAVOID talking about anything related to this: {persona.lastSpokenText}";
-				_ = history.AddItem("I've been too repetitive lately, I need to examine the data and stray lastSpokenText");
+				if (FrequencyPenalty > 1)
+				{
+					systemPrompt += "\nNOTE: You're being too repetitive, you need to review the data you have and come up with something new.";
+					systemPrompt += $"\nAVOID talking about anything related to this: {persona.lastSpokenText}";
+					history.Add("I've been too repetitive lately, I need to examine the data and stray lastSpokenText");
+				}
+				historyCopy = new List<string>(history);
 			}
-			if (history.Count() > 5)
+			if (historyCopy.Count > 5)
 			{
 				var newhistory = (await CondenseHistory(persona)).Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
 				ReplaceHistory(newhistory);
+				lock (historyLock)
+				{
+					historyCopy = new List<string>(history);
+				}
 			}
 
-			gameInput.PreviousHistoricalKeyEvents = history;
+			gameInput.PreviousHistoricalKeyEvents = historyCopy;
 			var input = JsonConvert.SerializeObject(gameInput, settings);
 
 			Logger.Message($"{(retry != 0 ? $"(retry:{retry} {retryReason})" : "")} prompt (FP:{FrequencyPenalty}) ({gameInput.ActivityFeed.Count()} activities) (persona:{persona.name}): {input}");
@@ -348,13 +358,18 @@ namespace RimGPT
 		{
 			// force secondary (better model)
 			modelSwitchCounter = RimGPTMod.Settings.userApiConfigs.FirstOrDefault(a => a.Active).ModelSwitchRatio;
+			string historyJoined;
+			lock (historyLock)
+			{
+				historyJoined = String.Join("\n ", history);
+			}
 			var request = new CreateChatCompletionRequest()
 			{
 				Model = GetCurrentChatGPTModel(),
 				Messages =
 				[
 					new ChatMessage() { Role = "system", Content = $"You are an adversarial system, cleaning up history lists with a goal to remove repetitiveness and keep narration fresh for the following persona: {persona.personality}" },
-					new ChatMessage() { Role = "user", Content =  "Summarize the following events into a succinct sentence, focusing on outliers to reduce latching on to the most pronounced theme: " + String.Join("\n ", history)}
+					new ChatMessage() { Role = "user", Content =  "Summarize the following events into a succinct sentence, focusing on outliers to reduce latching on to the most pronounced theme: " + historyJoined}
 				]
 			};
 
@@ -363,9 +378,27 @@ namespace RimGPT
 			Logger.Message("Condensed History: " + response);
 			return response; // The condensed history summary
 		}
-		public void ReplaceHistory(string reason) => history = [reason];
-		public void ReplaceHistory(string[] reason) => history = [.. reason];
-		public void ReplaceHistory(List<string> reason) => history = reason;
+		public void ReplaceHistory(string reason)
+		{
+			lock (historyLock)
+			{
+				history = [reason];
+			}
+		}
+		public void ReplaceHistory(string[] reason)
+		{
+			lock (historyLock)
+			{
+				history = [.. reason];
+			}
+		}
+		public void ReplaceHistory(List<string> reason)
+		{
+			lock (historyLock)
+			{
+				history = reason;
+			}
+		}
 
 		public async Task<(string, string)> SimplePrompt(string input, UserApiConfig userApiConfig = null, string modelId = "")
 		{

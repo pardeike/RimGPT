@@ -101,30 +101,34 @@ namespace RimGPT
 
 		public static Voice[] voices = [];
 
-		public static AudioSource audioSource = null;
+		private static AudioSource audioSource = null;
+		private static readonly object audioSourceLock = new();
 
 		public static AudioSource GetAudioSource()
 		{
-			if (audioSource == null)
+			lock (audioSourceLock)
 			{
-				var gameObject = new GameObject("HarmonyOneShotSourcesWorldContainer");
-				UnityEngine.Object.DontDestroyOnLoad(gameObject);
-				gameObject.transform.position = Vector3.zero;
-				var gameObject2 = new GameObject("HarmonyOneShotSource");
-				gameObject2.transform.parent = gameObject.transform;
-				gameObject2.transform.localPosition = Vector3.zero;
-				audioSource = AudioSourceMaker.NewAudioSourceOn(gameObject2);
-				audioSource.spatialBlend = 0f;
-				audioSource.rolloffMode = AudioRolloffMode.Linear;
-				audioSource.minDistance = 100000;
-				audioSource.bypassEffects = true;
-				audioSource.bypassListenerEffects = true;
-				audioSource.bypassReverbZones = true;
-				audioSource.ignoreListenerPause = true;
-				audioSource.ignoreListenerVolume = true;
-				audioSource.volume = 1;
+				if (audioSource == null)
+				{
+					var gameObject = new GameObject("HarmonyOneShotSourcesWorldContainer");
+					UnityEngine.Object.DontDestroyOnLoad(gameObject);
+					gameObject.transform.position = Vector3.zero;
+					var gameObject2 = new GameObject("HarmonyOneShotSource");
+					gameObject2.transform.parent = gameObject.transform;
+					gameObject2.transform.localPosition = Vector3.zero;
+					audioSource = AudioSourceMaker.NewAudioSourceOn(gameObject2);
+					audioSource.spatialBlend = 0f;
+					audioSource.rolloffMode = AudioRolloffMode.Linear;
+					audioSource.minDistance = 100000;
+					audioSource.bypassEffects = true;
+					audioSource.bypassListenerEffects = true;
+					audioSource.bypassReverbZones = true;
+					audioSource.ignoreListenerPause = true;
+					audioSource.ignoreListenerVolume = true;
+					audioSource.volume = 1;
+				}
+				return audioSource;
 			}
-			return audioSource;
 		}
 
 		public static async Task<T> DispatchFormPost<T>(string path, WWWForm form, bool addSubscriptionKey, Action<string> errorCallback)

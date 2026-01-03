@@ -111,7 +111,7 @@ namespace RimGPT
 				{
 					var lastSpokenPhrase = new Phrase
 					{
-						text = $"{lastSpeaker.name} said: {lastSpeaker.lastSpokenText}]",
+						text = $"{lastSpeaker.name} said: {lastSpeaker.lastSpokenText}",
 						persona = lastSpeaker,
 						priority = 1
 					};

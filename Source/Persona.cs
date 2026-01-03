@@ -102,6 +102,7 @@ namespace RimGPT
 			if (Personas.isResetting)
 			{
 				ExtendWaitBeforeNextJob("Resetting gamestate");
+				return;
 			}
 			// Check if there is already a completed job in the queue that hasn't started playback
 			if (Personas.IsAnyCompletedJobWaiting())
