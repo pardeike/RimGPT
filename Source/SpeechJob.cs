@@ -13,7 +13,6 @@ namespace RimGPT
 		public Action doneCallback = null;
 		public bool completed = false;
 		public bool isPlaying = false;
-		public bool readyForNextJob = false;
 		public SpeechJob(Persona persona, Phrase[] phrases, Action<string> errorCallback, Action doneCallback)
 		{
 			this.persona = persona;
@@ -27,15 +26,21 @@ namespace RimGPT
 				//FileLog.Log($"{persona?.name ?? "null"} ai reponse: {spokenText}");
 				if (spokenText == null || spokenText == "")
 				{
-					doneCallback();
+					InvokeDoneCallback();
 					completed = true;
 					return;
 				}
 				if (RimGPTMod.Settings.azureSpeechKey != "" && RimGPTMod.Settings.azureSpeechRegion != "")
 					audioClip = await TTS.AudioClipFromAzure(persona, $"{TTS.APIURL}/v1", spokenText, errorCallback);
-				doneCallback();
 				completed = true;
 			});
+		}
+
+		private void InvokeDoneCallback()
+		{
+			var callback = doneCallback;
+			doneCallback = null;
+			callback?.Invoke();
 		}
 
 		public async Task Play(bool immediately)
@@ -45,7 +50,7 @@ namespace RimGPT
 				persona.lastSpokenText = spokenText;
 				Personas.StartNextPersona(persona);
 			}
-			if (!string.IsNullOrEmpty(spokenText)) Personas.Add($"{persona.name} said: {spokenText}", 1);
+			if (!string.IsNullOrEmpty(spokenText) && persona != null) Personas.Add($"{persona.name} said: {spokenText}", 1);
 
 			var showText = RimGPTMod.Settings.showAsText || RimGPTMod.Settings.azureSpeechRegion == "" || RimGPTMod.Settings.azureSpeechKey == "";
 			if (showText)
@@ -85,8 +90,7 @@ namespace RimGPT
 				await Tools.SafeWait(ms);
 			}
 
-			doneCallback?.Invoke();
-			completed = true;
+			InvokeDoneCallback();
 			isPlaying = false;
 			//Logger.Message($"[{persona.name}] finished talking: {spokenText}");
 			Personas.currentText = "";
