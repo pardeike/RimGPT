@@ -322,7 +322,7 @@ namespace RimGPT
 				{
 					if (gameInput.CurrentWindow != "The player is at the start screen")
 					{
-						var newhistory = output.NewHistoricalKeyEvents.ToList() ?? [];
+						var newhistory = output.NewHistoricalKeyEvents?.ToList() ?? [];
 						ReplaceHistory(newhistory);
 					}
 					var responseText = output.ResponseText?.Cleanup() ?? string.Empty;

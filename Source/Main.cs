@@ -41,7 +41,7 @@ namespace RimGPT
 		{
 			var working = true;
 			actions.Enqueue(() => { action(); working = false; });
-			while (working)
+			while (working && RimGPTMod.Running)
 				await Task.Delay(200);
 		}
 
@@ -50,7 +50,7 @@ namespace RimGPT
 			T result = default;
 			var working = true;
 			actions.Enqueue(() => { result = action(); working = false; });
-			while (working)
+			while (working && RimGPTMod.Running)
 				await Task.Delay(200);
 			return result;
 		}

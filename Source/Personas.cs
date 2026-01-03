@@ -67,6 +67,8 @@ namespace RimGPT
 				if (!candidates.Any())
 				{
 					// If there are no future phrase times, simply use the round-robin approach.
+					if (RimGPTMod.Settings.personas.Count == 0)
+						return;
 					var currentIndex = lastSpeaker != null ? RimGPTMod.Settings.personas.IndexOf(lastSpeaker) : 0;
 					if (currentIndex == -1 || currentIndex >= RimGPTMod.Settings.personas.Count - 1)
 						currentIndex = 0;
