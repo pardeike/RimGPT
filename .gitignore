@@ -243,3 +243,5 @@ ModelManifest.xml
 
 # macOS
 .DS_Store
+/.builds/
+__pycache__/

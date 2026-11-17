@@ -1,0 +1,37 @@
+{
+  "source": "Steam Workshop item 2960127000, installed public version 2.2.2.0, captured 2026-10-31",
+  "workshopId": "2960127000",
+  "files": {
+    "Textures/ToggleAI.png": "487f85055bcbd83850e1daa6732d989f5e60a4582c98baa84bba32842effb43f",
+    "Textures/ButtonDup0.png": "12f3fdce3f4fc28348c9d7635592788eeae338cc0ef2aa77cd5b518bfc7f7cd4",
+    "Textures/ButtonDup1.png": "9ab4d8f32a816f0a132f0a358f0025dfdebe1429344d5e14be6fec634a9cb86a",
+    "Textures/ButtonAdd1.png": "943c02ac37315ffbce09466385563679b2a00145dc63344df4487171896a2c1b",
+    "Textures/ButtonAdd0.png": "08a968c5876a2cc063c4992de6096b27f3a1926bff5db7a47017408f1885e0a4",
+    "Textures/ButtonDel0.png": "1022bf07e23fdb7fbf5128ce82131e4e9b25d09685996a5119abf30ef05e658d",
+    "Textures/ButtonDel1.png": "071b8d007e968041d597fffb34b34d25452e0aab0c62e5f0f9b71b90117e34b2",
+    "Defs/KeyBindings.xml": "9426d1a9722a081825c8353a47d5a957d2a2cfce15f43788829dd768892711ed",
+    "Older/Assemblies/RimGPT.dll": "c6ebcea61ac77a5f0a4100fd9f1ef4098da1568bc4e94e11c3be0821da22cce9",
+    "Older/Assemblies/CrossPromotion.dll": "12d0a079d9a7de569986641610f7aeb354ab85f6ff08c288c1c30c5effdac733",
+    "Older/Assemblies/Newtonsoft.Json.dll": "f287c1077a0060df8afcb44c3bde28c6bb1023da707c26725ab2355a30b91d89",
+    "1.6/Assemblies/RimGPT.dll": "45c5119a28d656aaed2eda041d18fe0e3d9324fbdc6145ee3ba3ede1ba1f84c5",
+    "1.6/Assemblies/CrossPromotion.dll": "12d0a079d9a7de569986641610f7aeb354ab85f6ff08c288c1c30c5effdac733",
+    "1.6/Assemblies/Newtonsoft.Json.dll": "f287c1077a0060df8afcb44c3bde28c6bb1023da707c26725ab2355a30b91d89"
+  },
+  "repositoryFiles": {
+    "Textures/ToggleAI.png": "487f85055bcbd83850e1daa6732d989f5e60a4582c98baa84bba32842effb43f",
+    "Textures/ButtonDup0.png": "12f3fdce3f4fc28348c9d7635592788eeae338cc0ef2aa77cd5b518bfc7f7cd4",
+    "Textures/ButtonDup1.png": "9ab4d8f32a816f0a132f0a358f0025dfdebe1429344d5e14be6fec634a9cb86a",
+    "Textures/ButtonAdd1.png": "943c02ac37315ffbce09466385563679b2a00145dc63344df4487171896a2c1b",
+    "Textures/ButtonAdd0.png": "08a968c5876a2cc063c4992de6096b27f3a1926bff5db7a47017408f1885e0a4",
+    "Textures/ButtonDel0.png": "1022bf07e23fdb7fbf5128ce82131e4e9b25d09685996a5119abf30ef05e658d",
+    "Textures/ButtonDel1.png": "071b8d007e968041d597fffb34b34d25452e0aab0c62e5f0f9b71b90117e34b2",
+    "Libraries/Newtonsoft.Json.dll": "f287c1077a0060df8afcb44c3bde28c6bb1023da707c26725ab2355a30b91d89",
+    "Defs/KeyBindings.xml": "9426d1a9722a081825c8353a47d5a957d2a2cfce15f43788829dd768892711ed",
+    "Older/Assemblies/RimGPT.dll": "c6ebcea61ac77a5f0a4100fd9f1ef4098da1568bc4e94e11c3be0821da22cce9",
+    "Older/Assemblies/CrossPromotion.dll": "12d0a079d9a7de569986641610f7aeb354ab85f6ff08c288c1c30c5effdac733",
+    "Older/Assemblies/Newtonsoft.Json.dll": "f287c1077a0060df8afcb44c3bde28c6bb1023da707c26725ab2355a30b91d89",
+    "1.6/Assemblies/RimGPT.dll": "29f07e086ed802e1a641ec4a7b90d0631609d69ce1d469e753d3b02b4f52b322",
+    "1.6/Assemblies/CrossPromotion.dll": "12d0a079d9a7de569986641610f7aeb354ab85f6ff08c288c1c30c5effdac733",
+    "1.6/Assemblies/Newtonsoft.Json.dll": "f287c1077a0060df8afcb44c3bde28c6bb1023da707c26725ab2355a30b91d89"
+  }
+}

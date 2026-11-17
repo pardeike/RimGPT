@@ -258,6 +258,13 @@ namespace RimGPT
 
 		public static string NameAndType(this Pawn pawn) => $"{pawn.Type()} '{pawn.LabelShortCap}'";
 
+		// A pawn without a name has an empty label, and string.Replace rejects an empty search text.
+		public static string WithNameAndType(this string text, Pawn pawn)
+		{
+			var label = pawn.LabelShortCap;
+			return label.NullOrEmpty() ? text : text.Replace(label, pawn.NameAndType());
+		}
+
 		public static string ApplyVoiceStyle(this string text, Persona persona)
 		{
 			var voiceStyle = "funny";
@@ -296,7 +303,7 @@ namespace RimGPT
 			{
 				var p = pawns[i];
 				if (p.RaceProps.Humanlike)
-					result = result.Replace(p.LabelShortCap, p.NameAndType());
+					result = result.WithNameAndType(p);
 			}
 			return result;
 		}

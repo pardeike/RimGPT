@@ -6,6 +6,7 @@
     <li>1.4</li>
     <li>1.5</li>
     <li>1.6</li>
+    <li>1.7</li>
   </supportedVersions>
   <modDependencies>
     <li>
@@ -16,7 +17,7 @@
     </li>
   </modDependencies>
   <packageId>brrainz.rimgpt</packageId>
-  <modVersion>2.2.3.0</modVersion>
+  <modVersion>2.2.4.0</modVersion>
   <description>OpenAI runs your raids. Good luck.
 
 Powered by Harmony Patch Library

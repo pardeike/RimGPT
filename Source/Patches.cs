@@ -192,19 +192,9 @@ namespace RimGPT
 
 	// send colonist details while choosing starting pawns
 	//
-	[HarmonyPatch] // 1.4
-	public static class Page_ConfigureStartingPawns_DrawPortraitArea_Patch
-	{
-		public static bool Prepare() => TargetMethod() != null;
-		public static MethodBase TargetMethod() => AccessTools.Method("RimWorld.Page_ConfigureStartingPawns:DrawPortraitArea");
-		public static void Postfix(Pawn ___curPawn) => StartingPawnUpdater.Update(___curPawn);
-	}
-	//
-	[HarmonyPatch] // 1.5
+	[HarmonyPatch(typeof(StartingPawnUtility), nameof(StartingPawnUtility.DrawPortraitArea))]
 	public static class StartingPawnUtility_DrawPortraitArea_Patch
 	{
-		public static bool Prepare() => TargetMethod() != null;
-		public static MethodBase TargetMethod() => AccessTools.Method("RimWorld.StartingPawnUtility:DrawPortraitArea");
 		public static void Postfix(int pawnIndex)
 		{
 			var pawn = StartingPawnUtility.StartingAndOptionalPawns[pawnIndex];
@@ -335,11 +325,13 @@ namespace RimGPT
 				return;
 			if (defName.StartsWith("Goto"))
 				return;
+			if (curDriver is JobDriver_IdleWhileDespawned)
+				return;
 
 			var report = curDriver.GetReport();
-			report = report.Replace(pawn.LabelShortCap, pawn.NameAndType());
+			report = report.WithNameAndType(pawn);
 			if (job.targetA.Thing is Pawn target)
-				report = report.Replace(target.LabelShortCap, target.NameAndType());
+				report = report.WithNameAndType(target);
 
 			Personas.Add($"{pawn.NameAndType()} {report}", 3);
 		}
@@ -670,7 +662,7 @@ namespace RimGPT
 		{
 
 			// Checks if the action was cancelled for either a Thing or Cell target, bailing out only if neither is found.
-			var wasCancelledByPlayer = des.target.Cell != null && DesignationHelpers.IsTrackedCancelCell(des.target.Cell);
+			var wasCancelledByPlayer = DesignationHelpers.IsTrackedCancelCell(des.target.Cell);
 
 			if (!wasCancelledByPlayer)
 				return;

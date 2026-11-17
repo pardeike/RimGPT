@@ -3,6 +3,7 @@ using HarmonyLib;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -68,7 +69,7 @@ namespace RimGPT
 			Settings = GetSettings<RimGPTSettings>();
 
 			var harmony = new Harmony("net.pardeike.rimworld.mod.RimGPT");
-			harmony.PatchAll();
+			harmony.PatchAll(Assembly.GetExecutingAssembly());
 			CrossPromotion.Install(76561197973010050);
 
 			LongEventHandler.ExecuteWhenFinished(() =>
